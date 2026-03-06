@@ -9,10 +9,8 @@ import type {
   GetStoriesByTickerOptions,
   GetStoriesOptions,
   GetStoryOptions,
-  GetTheNewsOptions,
   SearchDocumentsOptions,
   Story,
-  TheNewsResponse,
 } from "../types.js";
 
 export class Documents {
@@ -76,8 +74,4 @@ export class Documents {
     );
   }
 
-  /** Get curated dashboard view: top stories + news stream + market tickers. */
-  async getTheNews(options?: GetTheNewsOptions): Promise<TheNewsResponse> {
-    return this.client.get("/api/v1/documents/the-news", options);
-  }
 }
