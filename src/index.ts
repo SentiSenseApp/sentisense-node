@@ -30,7 +30,6 @@ export type {
   DocumentSource,
   Story,
   StoryCluster,
-  TheNewsResponse,
   Quarter,
   InstitutionalFlow,
   Holder,

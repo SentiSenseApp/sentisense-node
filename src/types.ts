@@ -177,10 +177,6 @@ export interface Story {
   topDocuments?: Document[];
 }
 
-export interface TheNewsResponse {
-  [key: string]: unknown;
-}
-
 // ── Documents method options ────────────────────────────────
 
 export interface GetByTickerOptions {
@@ -229,10 +225,6 @@ export interface GetStoryOptions {
 }
 
 export interface GetStoriesByTickerOptions {
-  limit?: number;
-}
-
-export interface GetTheNewsOptions {
   limit?: number;
 }
 

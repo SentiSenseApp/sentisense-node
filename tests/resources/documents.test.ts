@@ -100,12 +100,4 @@ describe("documents.getBySource", () => {
   });
 });
 
-describe("documents.getTheNews", () => {
-  it("calls the-news endpoint", async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse({}));
-    await client.documents.getTheNews({ limit: 20 });
-    const url = mockFetch.mock.calls[0][0] as string;
-    expect(url).toContain("/api/v1/documents/the-news");
-    expect(url).toContain("limit=20");
-  });
-});
+
