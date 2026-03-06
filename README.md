@@ -58,7 +58,6 @@ client.documents.getByTicker("AAPL", { source: "news", days: 3 })
 client.documents.search("NVDA earnings", { days: 7, limit: 20 })
 client.documents.getStories({ limit: 10, expanded: true })
 client.documents.getStory("cluster_abc123")
-client.documents.getTheNews({ limit: 20 })
 ```
 
 ### Institutional Flows (13F)
