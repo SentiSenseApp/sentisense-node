@@ -1,0 +1,83 @@
+import type { APIClient } from "../client.js";
+import type {
+  Document,
+  DocumentSource,
+  GetByEntityOptions,
+  GetBySourceOptions,
+  GetByTickerOptions,
+  GetByTickerRangeOptions,
+  GetStoriesByTickerOptions,
+  GetStoriesOptions,
+  GetStoryOptions,
+  GetTheNewsOptions,
+  SearchDocumentsOptions,
+  Story,
+  TheNewsResponse,
+} from "../types.js";
+
+export class Documents {
+  constructor(private client: APIClient) {}
+
+  /** Get news articles for a stock. */
+  async getByTicker(ticker: string, options?: GetByTickerOptions): Promise<Document[]> {
+    return this.client.get(`/api/v1/documents/ticker/${encodeURIComponent(ticker)}`, options);
+  }
+
+  /** Get news articles for a stock within a date range. */
+  async getByTickerRange(ticker: string, options: GetByTickerRangeOptions): Promise<Document[]> {
+    return this.client.get(
+      `/api/v1/documents/ticker/${encodeURIComponent(ticker)}/range`,
+      options,
+    );
+  }
+
+  /** Get documents for a KB entity. */
+  async getByEntity(entityId: string, options?: GetByEntityOptions): Promise<Document[]> {
+    return this.client.get(
+      `/api/v1/documents/entity/${encodeURIComponent(entityId)}`,
+      options,
+    );
+  }
+
+  /** Smart search with natural language query parsing. */
+  async search(query: string, options?: SearchDocumentsOptions): Promise<Document[]> {
+    return this.client.get("/api/v1/documents/search", { query, ...options });
+  }
+
+  /** Get latest documents from a source type. */
+  async getBySource(source: DocumentSource, options?: GetBySourceOptions): Promise<Document[]> {
+    return this.client.get(
+      `/api/v1/documents/source/${encodeURIComponent(source)}`,
+      options,
+    );
+  }
+
+  /** Get AI-curated news story clusters. */
+  async getStories(options?: GetStoriesOptions): Promise<Story[]> {
+    return this.client.get("/api/v1/documents/stories", options);
+  }
+
+  /** Get detailed story with all source documents. Free users get preview. */
+  async getStory(clusterId: string, options?: GetStoryOptions): Promise<Story> {
+    return this.client.get(
+      `/api/v1/documents/stories/${encodeURIComponent(clusterId)}`,
+      options,
+    );
+  }
+
+  /** Get stories for a specific stock. */
+  async getStoriesByTicker(
+    ticker: string,
+    options?: GetStoriesByTickerOptions,
+  ): Promise<Story[]> {
+    return this.client.get(
+      `/api/v1/documents/stories/ticker/${encodeURIComponent(ticker)}`,
+      options,
+    );
+  }
+
+  /** Get curated dashboard view: top stories + news stream + market tickers. */
+  async getTheNews(options?: GetTheNewsOptions): Promise<TheNewsResponse> {
+    return this.client.get("/api/v1/documents/the-news", options);
+  }
+}
