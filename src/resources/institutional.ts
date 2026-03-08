@@ -2,7 +2,7 @@ import type { APIClient } from "../client.js";
 import type {
   GetFlowsOptions,
   Holder,
-  InstitutionalFlow,
+  InstitutionalFlowsResponse,
   Quarter,
 } from "../types.js";
 
@@ -15,7 +15,7 @@ export class Institutional {
   }
 
   /** Get aggregate institutional activity per ticker for a quarter. */
-  async getFlows(reportDate: string, options?: GetFlowsOptions): Promise<InstitutionalFlow[]> {
+  async getFlows(reportDate: string, options?: GetFlowsOptions): Promise<InstitutionalFlowsResponse> {
     return this.client.get("/api/v1/institutional/flows", {
       reportDate,
       ...options,

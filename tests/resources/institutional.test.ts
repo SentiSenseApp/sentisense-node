@@ -31,11 +31,14 @@ describe("institutional.getQuarters", () => {
 
 describe("institutional.getFlows", () => {
   it("passes reportDate and limit", async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse([]));
-    await client.institutional.getFlows("2025-02-14", { limit: 20 });
+    const data = { inflows: [{ ticker: "AAPL" }], outflows: [{ ticker: "TSLA" }] };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    const result = await client.institutional.getFlows("2025-02-14", { limit: 20 });
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("reportDate=2025-02-14");
     expect(url).toContain("limit=20");
+    expect(result.inflows).toHaveLength(1);
+    expect(result.outflows).toHaveLength(1);
   });
 });
 

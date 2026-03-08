@@ -32,6 +32,7 @@ export type {
   StoryCluster,
   Quarter,
   InstitutionalFlow,
+  InstitutionalFlowsResponse,
   Holder,
   MentionData,
   MentionCount,
