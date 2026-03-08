@@ -263,6 +263,11 @@ export interface Holder {
   sharesChangePct: number;
 }
 
+export interface InstitutionalFlowsResponse {
+  inflows: InstitutionalFlow[];
+  outflows: InstitutionalFlow[];
+}
+
 export interface GetFlowsOptions {
   limit?: number;
 }

@@ -7,11 +7,17 @@ const quarters = await client.institutional.getQuarters();
 const latestQuarter = quarters[0];
 console.log(`Latest quarter: ${latestQuarter.label}`);
 
-// Get top institutional flows
+// Get top institutional flows (split into inflows and outflows)
 const flows = await client.institutional.getFlows(latestQuarter.reportDate, { limit: 10 });
-for (const flow of flows) {
-  const direction = flow.netSharesChange > 0 ? "NET BUY" : "NET SELL";
-  console.log(`${flow.ticker} — ${direction} ${Math.abs(flow.netSharesChange).toLocaleString()} shares`);
+
+console.log("--- Inflows (net buying) ---");
+for (const flow of flows.inflows) {
+  console.log(`${flow.ticker} — NET BUY ${flow.netSharesChange.toLocaleString()} shares`);
+}
+
+console.log("\n--- Outflows (net selling) ---");
+for (const flow of flows.outflows) {
+  console.log(`${flow.ticker} — NET SELL ${Math.abs(flow.netSharesChange).toLocaleString()} shares`);
 }
 
 // Get holders for a specific stock
