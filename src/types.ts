@@ -144,25 +144,21 @@ export interface GetFundamentalsOptions {
 
 export type DocumentSource = "news" | "reddit" | "x" | "substack";
 
+/** Document object with sentiment metrics and metadata. */
 export interface Document {
   id: string;
-  text: string;
-  subtext: string;
   url: string;
   source: "NEWS" | "REDDIT" | "X" | "SUBSTACK";
-  publisher: string;
   published: number;
   averageSentiment: number;
   reliability: number;
   sentimentMap: Record<string, string>;
-  primaryImageUrl: string | null;
 }
 
+/** Story cluster with title, sentiment, and metrics. */
 export interface StoryCluster {
   id: string;
   title: string;
-  summarizedContent: string;
-  selectedImageUrl: string | null;
   clusterSize: number;
   averageSentiment: number;
   createdAt: number;
@@ -172,9 +168,9 @@ export interface Story {
   cluster: StoryCluster;
   displayTickers: string[];
   tickers: string[];
+  primaryEntityNames: string[];
   impactScore: number;
   representativeTimestamp: number;
-  topDocuments?: Document[];
 }
 
 // ── Documents method options ────────────────────────────────
@@ -216,12 +212,7 @@ export interface GetStoriesOptions {
   limit?: number;
   days?: number;
   offset?: number;
-  expanded?: boolean;
   filterHours?: number;
-}
-
-export interface GetStoryOptions {
-  share?: boolean;
 }
 
 export interface GetStoriesByTickerOptions {
