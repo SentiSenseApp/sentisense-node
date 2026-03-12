@@ -28,6 +28,7 @@ export type {
   MetricsBreakdown,
   Document,
   DocumentSource,
+  SentimentEntry,
   Story,
   StoryCluster,
   Quarter,
