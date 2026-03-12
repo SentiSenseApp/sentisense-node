@@ -144,6 +144,15 @@ export interface GetFundamentalsOptions {
 
 export type DocumentSource = "news" | "reddit" | "x" | "substack";
 
+/** Per-entity sentiment classification with resolved entity details. */
+export interface SentimentEntry {
+  ticker: string | null;
+  name: string | null;
+  entityId: string;
+  entityType: string;
+  sentiment: string;
+}
+
 /** Document object with sentiment metrics and metadata. */
 export interface Document {
   id: string;
@@ -152,7 +161,7 @@ export interface Document {
   published: number;
   averageSentiment: number;
   reliability: number;
-  sentimentMap: Record<string, string>;
+  sentiment: SentimentEntry[];
 }
 
 /** Story cluster with title, sentiment, and metrics. */
@@ -170,7 +179,7 @@ export interface Story {
   tickers: string[];
   primaryEntityNames: string[];
   impactScore: number;
-  representativeTimestamp: number;
+  brokeAt: number;
 }
 
 // ── Documents method options ────────────────────────────────
