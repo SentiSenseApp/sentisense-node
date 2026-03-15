@@ -272,33 +272,80 @@ export interface GetFlowsOptions {
   limit?: number;
 }
 
-// ── Entity Metrics ──────────────────────────────────────────
+// ── Entity Metrics (v2 — Serving Metrics) ──────────────────
 
+/** Supported metric types for the v2 Serving Metrics API. */
+export type MetricType =
+  | "mentions"
+  | "sentiment"
+  | "sentisense_score"
+  | "social_dominance"
+  | "creators";
+
+/** Options for `EntityMetrics.getMetrics()`. */
+export interface MetricsOptions {
+  /** Metric to retrieve. Defaults to `"sentiment"`. */
+  metricType?: MetricType;
+  /** Start of the time range (epoch milliseconds). */
+  startTime?: number;
+  /** End of the time range (epoch milliseconds). */
+  endTime?: number;
+  /** Maximum number of data points to return. */
+  maxDataPoints?: number;
+}
+
+/** Options for `EntityMetrics.getDistribution()`. */
+export interface MetricDistributionOptions {
+  /** Dimension to break the metric down by. Defaults to `"source"`. */
+  dimension?: string;
+}
+
+/** A single data point returned by the v2 time-series metrics endpoint. */
+export interface ServingMetric {
+  timestamp: number;
+  value: number;
+  [key: string]: unknown;
+}
+
+/** Distribution data returned by the v2 distribution endpoint. */
+export interface MetricDistribution {
+  [key: string]: unknown;
+}
+
+// ── Entity Metrics (v1 — deprecated) ───────────────────────
+
+/** @deprecated Use `ServingMetric[]` from the v2 API instead. */
 export interface MentionData {
   [key: string]: unknown;
 }
 
+/** @deprecated Use `ServingMetric[]` from the v2 API instead. */
 export interface MentionCount {
   [key: string]: unknown;
 }
 
+/** @deprecated Use `ServingMetric[]` from the v2 API instead. */
 export interface SentimentData {
   [key: string]: unknown;
 }
 
+/** @deprecated */
 export interface EntityMetricsDateRange {
   startDate?: string;
   endDate?: string;
 }
 
+/** @deprecated */
 export interface GetMentionsOptions extends EntityMetricsDateRange {
   source?: DocumentSource;
 }
 
+/** @deprecated */
 export interface GetMentionCountOptions extends EntityMetricsDateRange {
   source?: DocumentSource;
 }
 
+/** @deprecated */
 export interface GetSentimentBySourceOptions {
   date?: string;
 }
