@@ -72,10 +72,21 @@ client.institutional.getActivists("2025-02-14")
 ### Entity Metrics
 
 ```typescript
-client.entityMetrics.getMentions("AAPL")
-client.entityMetrics.getSentiment("AAPL")
-client.entityMetrics.getAverageSentiment("AAPL")
+// Time-series metrics (v2 API)
+client.entityMetrics.getMetrics("AAPL", { metricType: "sentiment" })
+client.entityMetrics.getMetrics("AAPL", {
+  metricType: "mentions",
+  startTime: Date.now() - 7 * 86400000,
+  endTime: Date.now(),
+  maxDataPoints: 100,
+})
+
+// Distribution by source
+client.entityMetrics.getDistribution("AAPL", "sentiment")
+client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })
 ```
+
+Available metric types: `mentions`, `sentiment`, `sentisense_score`, `social_dominance`, `creators`.
 
 ### Knowledge Base
 
