@@ -10,6 +10,7 @@ import { EntityMetrics } from "./resources/entityMetrics.js";
 import { Institutional } from "./resources/institutional.js";
 import { KB } from "./resources/kb.js";
 import { MarketMoodResource } from "./resources/marketMood.js";
+import { MarketSummaryResource } from "./resources/marketSummary.js";
 import { Stocks } from "./resources/stocks.js";
 import type { SentiSenseOptions } from "./types.js";
 import { VERSION } from "./version.js";
@@ -32,6 +33,7 @@ export class SentiSense implements APIClient {
   readonly institutional: Institutional;
   readonly entityMetrics: EntityMetrics;
   readonly marketMood: MarketMoodResource;
+  readonly marketSummary: MarketSummaryResource;
   readonly kb: KB;
 
   constructor(options: SentiSenseOptions = {}) {
@@ -44,6 +46,7 @@ export class SentiSense implements APIClient {
     this.institutional = new Institutional(this);
     this.entityMetrics = new EntityMetrics(this);
     this.marketMood = new MarketMoodResource(this);
+    this.marketSummary = new MarketSummaryResource(this);
     this.kb = new KB(this);
   }
 

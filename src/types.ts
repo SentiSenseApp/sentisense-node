@@ -350,10 +350,26 @@ export interface GetSentimentBySourceOptions {
   date?: string;
 }
 
-// ── Market Mood ─────────────────────────────────────────────
+// ── Market Mood & Market Summary ─────────────────────────────
 
 export interface MarketMood {
   [key: string]: unknown;
+}
+
+/** AI-generated market summary with headline and analysis. */
+export interface MarketSummary {
+  /** Total mentions across all stocks. */
+  totalMentions: number;
+  /** Most active stock tickers by mention volume. */
+  topActiveStocks: string[];
+  /** Timestamp when this data was last updated (epoch milliseconds). */
+  lastUpdated: number;
+  /** 1-2 sentence headline/punchline (may be null if unavailable). */
+  headline: string | null;
+  /** Full markdown analysis content (may be null if unavailable). */
+  expandedContent: string | null;
+  /** Timestamp when the AI summary was generated (epoch seconds, may be null). */
+  generatedAt: number | null;
 }
 
 // ── Knowledge Base ──────────────────────────────────────────
