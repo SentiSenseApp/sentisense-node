@@ -44,6 +44,7 @@ export type {
   MentionCount,
   SentimentData,
   MarketMood,
+  MarketSummary,
   KBEntity,
 } from "./types.js";
 
