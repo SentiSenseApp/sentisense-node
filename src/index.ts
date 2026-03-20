@@ -11,6 +11,11 @@ export {
 
 export type {
   SentiSenseOptions,
+  InsiderActivitySummary,
+  InsiderActivityResponse,
+  InsiderTrade,
+  ClusterBuy,
+  GetInsiderOptions,
   StockPrice,
   StockDetail,
   StockImage,

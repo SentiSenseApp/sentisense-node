@@ -272,6 +272,64 @@ export interface GetFlowsOptions {
   limit?: number;
 }
 
+// ── Insider Trading ──────────────────────────────────────────
+
+export interface InsiderActivitySummary {
+  ticker: string;
+  companyName: string;
+  tradeCount: number;
+  insiderCount: number;
+  totalShares: number;
+  totalValue: number;
+  latestDate: string;
+  latestInsider: string;
+  latestTitle: string;
+}
+
+export interface InsiderActivityResponse {
+  buys: InsiderActivitySummary[];
+  sells: InsiderActivitySummary[];
+}
+
+export interface InsiderTrade {
+  ticker: string;
+  companyName: string;
+  insiderName: string;
+  insiderTitle: string;
+  insiderRelation: "OFFICER" | "DIRECTOR" | "TEN_PCT_OWNER" | "OTHER";
+  officer: boolean;
+  director: boolean;
+  tenPctOwner: boolean;
+  transactionDate: string;
+  filedDate: string;
+  transactionCode: string;
+  transactionType: "BUY" | "SELL" | "EXERCISE" | "AWARD" | "GIFT" | "OTHER";
+  securityTitle: string;
+  sharesTransacted: number;
+  pricePerShare: number | null;
+  totalValue: number;
+  sharesOwnedAfter: number | null;
+  directOwnership: boolean;
+  /** True only when the trade was under a confirmed Rule 10b5-1 pre-planned trading plan. */
+  rule10b51: boolean;
+}
+
+export interface ClusterBuy {
+  ticker: string;
+  companyName: string;
+  insiderCount: number;
+  tradeCount: number;
+  totalShares: number;
+  totalValue: number;
+  firstBuyDate: string;
+  lastBuyDate: string;
+}
+
+export interface GetInsiderOptions {
+  /** Number of days to look back (1–365). Defaults to 90. */
+  lookbackDays?: number;
+}
+
 // ── Entity Metrics (v2 — Serving Metrics) ──────────────────
 
 /** Supported metric types for the v2 Serving Metrics API. */
