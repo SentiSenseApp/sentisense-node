@@ -7,6 +7,7 @@ import {
 } from "./errors.js";
 import { Documents } from "./resources/documents.js";
 import { EntityMetrics } from "./resources/entityMetrics.js";
+import { Insider } from "./resources/insider.js";
 import { Institutional } from "./resources/institutional.js";
 import { KB } from "./resources/kb.js";
 import { MarketMoodResource } from "./resources/marketMood.js";
@@ -31,6 +32,7 @@ export class SentiSense implements APIClient {
   readonly stocks: Stocks;
   readonly documents: Documents;
   readonly institutional: Institutional;
+  readonly insider: Insider;
   readonly entityMetrics: EntityMetrics;
   readonly marketMood: MarketMoodResource;
   readonly marketSummary: MarketSummaryResource;
@@ -44,6 +46,7 @@ export class SentiSense implements APIClient {
     this.stocks = new Stocks(this);
     this.documents = new Documents(this);
     this.institutional = new Institutional(this);
+    this.insider = new Insider(this);
     this.entityMetrics = new EntityMetrics(this);
     this.marketMood = new MarketMoodResource(this);
     this.marketSummary = new MarketSummaryResource(this);
@@ -53,7 +56,9 @@ export class SentiSense implements APIClient {
   /** @internal */
   async get<T = unknown>(path: string, params?: object): Promise<T> {
     const url = this.buildUrl(path, params);
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      "Accept": "application/json",
+    };
 
     if (this.apiKey) {
       headers["X-SentiSense-API-Key"] = this.apiKey;

@@ -54,6 +54,11 @@ export class Documents {
     return this.client.get("/api/v1/documents/stories", options);
   }
 
+  /** Get full story detail by cluster ID. */
+  async getStoryDetail(clusterId: string): Promise<unknown> {
+    return this.client.get(`/api/v1/documents/stories/${encodeURIComponent(clusterId)}`);
+  }
+
   /** Get stories for a specific stock. */
   async getStoriesByTicker(
     ticker: string,
