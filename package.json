@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SentiSenseApp/sentisense-node.git"
+    "url": "git+https://github.com/SentiSenseApp/sentisense-node.git"
   },
   "homepage": "https://sentisense.ai",
   "bugs": {
