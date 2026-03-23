@@ -430,6 +430,51 @@ export interface MarketSummary {
   generatedAt: number | null;
 }
 
+// ── Insights ─────────────────────────────────────────────────
+
+/** A single AI-generated trading insight. */
+export interface Insight {
+  /** Category of the signal (e.g., `"insider_buy_signal"`, `"institutional_position_change"`, `"volume_anomaly_high"`). */
+  insightType: string;
+  /** Full AI-generated description of the signal. */
+  insightText: string;
+  /** Model confidence score (0.0–1.0). */
+  confidence: number;
+  /** Signal priority: `"low"`, `"medium"`, or `"high"`. */
+  urgency: "low" | "medium" | "high";
+  /** When this insight was generated (epoch seconds). */
+  generatedAt: number;
+  /** Source document references (may be null). */
+  docRefs?: Record<string, unknown>[] | null;
+  /** JSON string with additional signal metadata (may be null). */
+  metadata?: string | null;
+}
+
+/** A locked insight entry shown to free users: metadata only, no insight text. */
+export interface LockedInsight {
+  insightType: string;
+  urgency: string;
+  generatedAt: number;
+}
+
+/** Preview response returned to free/unauthenticated users on insights endpoints. */
+export interface InsightPreviewResponse {
+  isPreview: true;
+  previewReason: "LOGIN_REQUIRED" | "PRO_REQUIRED";
+  /** Full insight objects for the top N results. */
+  insights: Insight[];
+  /** Metadata-only entries for the remaining signals. */
+  locked: LockedInsight[];
+}
+
+/** Options for `Insights.stock()`. */
+export interface GetInsightsOptions {
+  /** Filter by urgency level: `"low"`, `"medium"`, or `"high"`. */
+  urgency?: string;
+  /** Filter by insight type (e.g., `"insider_buy_signal"`). */
+  insightType?: string;
+}
+
 // ── Knowledge Base ──────────────────────────────────────────
 
 export interface KBEntity {
