@@ -11,6 +11,10 @@ export {
 
 export type {
   SentiSenseOptions,
+  Insight,
+  InsightPreviewResponse,
+  LockedInsight,
+  GetInsightsOptions,
   InsiderActivitySummary,
   InsiderActivityResponse,
   InsiderTrade,
