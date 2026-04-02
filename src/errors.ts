@@ -25,9 +25,12 @@ export class NotFoundError extends SentiSenseError {
 }
 
 export class RateLimitError extends SentiSenseError {
-  constructor(message: string, code?: string) {
+  retryAfter?: number;
+
+  constructor(message: string, code?: string, retryAfter?: number) {
     super(message, 429, code);
     this.name = "RateLimitError";
+    this.retryAfter = retryAfter;
   }
 }
 
