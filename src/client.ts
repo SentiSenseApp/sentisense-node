@@ -19,6 +19,13 @@ import { VERSION } from "./version.js";
 
 const DEFAULT_BASE_URL = "https://app.sentisense.ai";
 const DEFAULT_TIMEOUT = 30_000;
+const DEFAULT_MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1_000;
+const MAX_DELAY_MS = 60_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /** @internal HTTP interface exposed to resource classes. */
 export interface APIClient {
@@ -29,6 +36,7 @@ export class SentiSense implements APIClient {
   private baseUrl: string;
   private apiKey: string | undefined;
   private timeout: number;
+  private maxRetries: number;
 
   readonly stocks: Stocks;
   readonly documents: Documents;
@@ -44,6 +52,7 @@ export class SentiSense implements APIClient {
     this.apiKey = options.apiKey;
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
+    this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
 
     this.stocks = new Stocks(this);
     this.documents = new Documents(this);
@@ -72,32 +81,54 @@ export class SentiSense implements APIClient {
       headers["User-Agent"] = `sentisense-node/${VERSION}`;
     }
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeout);
+    let delayMs = 0;
 
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers,
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        await this.handleErrorResponse(response);
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (delayMs > 0) {
+        await sleep(delayMs);
+        delayMs = 0;
       }
 
-      return (await response.json()) as T;
-    } catch (error) {
-      if (error instanceof SentiSenseError) throw error;
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new SentiSenseError(`Request timed out after ${this.timeout}ms`);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.timeout);
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const isRetryable = response.status === 429 || response.status >= 500;
+          if (isRetryable && attempt < this.maxRetries) {
+            if (response.status === 429) {
+              const ra = response.headers.get("Retry-After");
+              delayMs = (ra ? parseInt(ra, 10) : 60) * 1000;
+            } else {
+              delayMs = Math.min(BASE_DELAY_MS * Math.pow(2, attempt), MAX_DELAY_MS) + Math.random() * 1000;
+            }
+            try { await response.body?.cancel(); } catch { /* ignore */ }
+            continue;
+          }
+          await this.handleErrorResponse(response);
+        }
+
+        return (await response.json()) as T;
+      } catch (error) {
+        if (error instanceof SentiSenseError) throw error;
+        if (error instanceof Error && error.name === "AbortError") {
+          throw new SentiSenseError(`Request timed out after ${this.timeout}ms`);
+        }
+        throw new SentiSenseError(
+          error instanceof Error ? error.message : "Unknown error",
+        );
+      } finally {
+        clearTimeout(timer);
       }
-      throw new SentiSenseError(
-        error instanceof Error ? error.message : "Unknown error",
-      );
-    } finally {
-      clearTimeout(timer);
     }
+
+    throw new SentiSenseError("All retries exhausted");
   }
 
   private buildUrl(path: string, params?: object): string {
@@ -129,8 +160,10 @@ export class SentiSense implements APIClient {
         throw new AuthenticationError(message, response.status, code);
       case 404:
         throw new NotFoundError(message, code);
-      case 429:
-        throw new RateLimitError(message, code);
+      case 429: {
+        const ra = response.headers.get("Retry-After");
+        throw new RateLimitError(message, code, ra ? parseInt(ra, 10) : undefined);
+      }
       default:
         throw new APIError(message, response.status, code);
     }

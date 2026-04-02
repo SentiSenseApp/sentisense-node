@@ -4,6 +4,7 @@ export interface SentiSenseOptions {
   apiKey?: string;
   baseUrl?: string;
   timeout?: number;
+  maxRetries?: number;
 }
 
 // ── Stocks ──────────────────────────────────────────────────
