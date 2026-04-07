@@ -53,7 +53,7 @@ export class Stocks {
   }
 
   /** Get real-time prices for multiple tickers. */
-  async getPrices(tickers: string[]): Promise<Record<string, StockPrice>> {
+  async getPrices(tickers: string[]): Promise<StockPrice[]> {
     return this.client.get("/api/v1/stocks/prices", {
       tickers: tickers.join(","),
     });
