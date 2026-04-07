@@ -8,6 +8,7 @@ import {
 import { Documents } from "./resources/documents.js";
 import { EntityMetrics } from "./resources/entityMetrics.js";
 import { Insider } from "./resources/insider.js";
+import { Politicians } from "./resources/politicians.js";
 import { Insights } from "./resources/insights.js";
 import { Institutional } from "./resources/institutional.js";
 import { KB } from "./resources/kb.js";
@@ -42,6 +43,7 @@ export class SentiSense implements APIClient {
   readonly documents: Documents;
   readonly institutional: Institutional;
   readonly insider: Insider;
+  readonly politicians: Politicians;
   readonly insights: Insights;
   readonly entityMetrics: EntityMetrics;
   readonly marketMood: MarketMoodResource;
@@ -58,6 +60,7 @@ export class SentiSense implements APIClient {
     this.documents = new Documents(this);
     this.institutional = new Institutional(this);
     this.insider = new Insider(this);
+    this.politicians = new Politicians(this);
     this.insights = new Insights(this);
     this.entityMetrics = new EntityMetrics(this);
     this.marketMood = new MarketMoodResource(this);

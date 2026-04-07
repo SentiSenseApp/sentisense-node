@@ -331,6 +331,72 @@ export interface GetInsiderOptions {
   lookbackDays?: number;
 }
 
+// ── Politicians Trading ─────────────────────────────────────
+
+/** A congressional STOCK Act trade disclosure. */
+export interface CongressTrade {
+  politicianName: string;
+  firstName: string;
+  lastName: string;
+  chamber: "SENATE" | "HOUSE";
+  party: string;
+  state: string;
+  bioguideId: string;
+  imageUrl: string | null;
+  ticker: string;
+  assetDescription: string;
+  assetType: "Stock" | "ETF";
+  transactionType: "PURCHASE" | "SALE" | "EXCHANGE" | "OTHER";
+  transactionDate: string;
+  disclosureDate: string;
+  disclosureDelayDays: number;
+  /** Raw STOCK Act range (e.g., "$1,001 - $15,000"). */
+  amountRange: string;
+  amountMin: number;
+  amountMax: number;
+  owner: "Self" | "Spouse" | "Child" | "Joint";
+  urlSlug: string;
+  sentimentScore: number | null;
+}
+
+/** Summary statistics for a tracked politician. */
+export interface PoliticianSummary {
+  urlSlug: string;
+  displayName: string;
+  firstName: string;
+  lastName: string;
+  chamber: "SENATE" | "HOUSE";
+  party: string;
+  state: string;
+  bioguideId: string;
+  imageUrl: string | null;
+  kbEntityId: string | null;
+  totalTrades: number;
+  purchaseCount: number;
+  saleCount: number;
+  latestTradeDate: string | null;
+  sentimentScore: number | null;
+}
+
+/** Detailed politician profile with recent trades and top tickers. */
+export interface PoliticianDetail {
+  profile: PoliticianSummary;
+  recentTrades: CongressTrade[];
+  topTickers: string[];
+}
+
+export interface GetPoliticiansOptions {
+  /** Number of days to look back (1-365). Defaults to 90. */
+  lookbackDays?: number;
+}
+
+/** Generic preview wrapper used by PRO-gated endpoints. */
+export interface PreviewResponse<T> {
+  isPreview: boolean;
+  previewReason: "LOGIN_REQUIRED" | "PRO_REQUIRED" | null;
+  data: T;
+}
+
 // ── Entity Metrics (v2 — Serving Metrics) ──────────────────
 
 /** Supported metric types for the v2 Serving Metrics API. */
