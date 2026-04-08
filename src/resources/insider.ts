@@ -4,6 +4,7 @@ import type {
   InsiderTrade,
   ClusterBuy,
   GetInsiderOptions,
+  PreviewResponse,
 } from "../types.js";
 
 export class Insider {
@@ -15,7 +16,7 @@ export class Insider {
    * PRO-gated. Free/unauthenticated users receive a preview (top 5 per direction)
    * with `isPreview: true` in the response.
    */
-  async getActivity(options?: GetInsiderOptions): Promise<InsiderActivityResponse> {
+  async getActivity(options?: GetInsiderOptions): Promise<PreviewResponse<InsiderActivityResponse>> {
     return this.client.get("/api/v1/insider/activity", options);
   }
 
@@ -24,7 +25,7 @@ export class Insider {
    *
    * PRO-gated. Free users receive a preview of the top 5 transactions.
    */
-  async getTrades(ticker: string, options?: GetInsiderOptions): Promise<InsiderTrade[]> {
+  async getTrades(ticker: string, options?: GetInsiderOptions): Promise<PreviewResponse<InsiderTrade[]>> {
     return this.client.get(
       `/api/v1/insider/trades/${encodeURIComponent(ticker.toUpperCase())}`,
       options,
@@ -36,7 +37,7 @@ export class Insider {
    *
    * PRO-gated. Free users receive a preview of the top 3 signals.
    */
-  async getClusterBuys(options?: GetInsiderOptions): Promise<ClusterBuy[]> {
+  async getClusterBuys(options?: GetInsiderOptions): Promise<PreviewResponse<ClusterBuy[]>> {
     return this.client.get("/api/v1/insider/cluster-buys", options);
   }
 }
