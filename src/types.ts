@@ -356,7 +356,7 @@ export interface CongressTrade {
   amountMax: number;
   owner: "Self" | "Spouse" | "Child" | "Joint";
   urlSlug: string;
-  sentimentScore: number | null;
+  sentiSenseScore: number | null;
 }
 
 /** Summary statistics for a tracked politician. */
@@ -375,7 +375,7 @@ export interface PoliticianSummary {
   purchaseCount: number;
   saleCount: number;
   latestTradeDate: string | null;
-  sentimentScore: number | null;
+  sentiSenseScore: number | null;
 }
 
 /** Detailed politician profile with recent trades and top tickers. */
