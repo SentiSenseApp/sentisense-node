@@ -27,6 +27,7 @@ export type {
   PreviewResponse,
   StockPrice,
   StockDetail,
+  SimilarStock,
   StockImage,
   StockProfile,
   StockEntity,

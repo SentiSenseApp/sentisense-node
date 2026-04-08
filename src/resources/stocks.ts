@@ -15,6 +15,7 @@ import type {
   GetSimilarOptions,
   MarketStatus,
   MetricsBreakdown,
+  SimilarStock,
   ShortInterest,
   ShortVolume,
   StockDetail,
@@ -82,7 +83,7 @@ export class Stocks {
   }
 
   /** Get peer/similar stocks. */
-  async getSimilar(ticker: string, options?: GetSimilarOptions): Promise<StockDetail[]> {
+  async getSimilar(ticker: string, options?: GetSimilarOptions): Promise<SimilarStock[]> {
     return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/similar`, options);
   }
 

@@ -25,6 +25,14 @@ export interface StockDetail {
   urlSlug?: string;
 }
 
+export interface SimilarStock {
+  symbol: string;
+  name: string;
+  kbEntityId?: string;
+  price: number | null;
+  changePercent: number | null;
+}
+
 export interface StockImage {
   iconUrl: string | null;
   logoUrl: string | null;
