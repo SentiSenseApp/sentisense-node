@@ -15,6 +15,7 @@ export interface StockPrice {
   change: number;
   changePercent: number;
   previousClose: number;
+  /** Unix timestamp in milliseconds of the price quote. */
   timestamp: number;
 }
 
@@ -179,6 +180,7 @@ export interface StoryCluster {
   title: string;
   clusterSize: number;
   averageSentiment: number;
+  /** Unix timestamp in seconds. */
   createdAt: number;
 }
 
@@ -188,6 +190,7 @@ export interface Story {
   tickers: string[];
   primaryEntityNames: string[];
   impactScore: number;
+  /** Unix timestamp in seconds when the story first broke. */
   brokeAt: number;
 }
 
@@ -435,6 +438,7 @@ export interface MetricDistributionOptions {
 
 /** A single data point returned by the v2 time-series metrics endpoint. */
 export interface ServingMetric {
+  /** Unix timestamp in seconds. */
   timestamp: number;
   value: number;
   [key: string]: unknown;
