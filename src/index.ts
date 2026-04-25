@@ -26,6 +26,7 @@ export type {
   GetPoliticiansOptions,
   PreviewResponse,
   StockPrice,
+  StockQuote,
   StockDetail,
   SimilarStock,
   StockImage,

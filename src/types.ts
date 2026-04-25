@@ -19,6 +19,27 @@ export interface StockPrice {
   timestamp: number;
 }
 
+/** Aggregate quote snapshot from GET /api/v1/stocks/{ticker}/quote. */
+export interface StockQuote {
+  ticker: string;
+  currentPrice: number | null;
+  change: number | null;
+  changePercent: number | null;
+  volume: number | null;
+  open: number | null;
+  dayHigh: number | null;
+  dayLow: number | null;
+  previousClose: number | null;
+  week52High: number | null;
+  week52Low: number | null;
+  marketCap: number | null;
+  peRatio: number | null;
+  epsTTM: number | null;
+  dividendYield: number | null;
+  timestamp: number | null;
+  extendedHours: boolean | null;
+}
+
 export interface StockDetail {
   ticker: string;
   name: string;

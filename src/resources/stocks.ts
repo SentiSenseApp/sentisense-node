@@ -23,6 +23,7 @@ import type {
   StockImage,
   StockPrice,
   StockProfile,
+  StockQuote,
 } from "../types.js";
 
 export class Stocks {
@@ -51,6 +52,15 @@ export class Stocks {
   /** Get real-time price for a single ticker. */
   async getPrice(ticker: string): Promise<StockPrice> {
     return this.client.get("/api/v1/stocks/price", { ticker });
+  }
+
+  /**
+   * Get aggregate quote snapshot: live price, today OHLC, 52-week range,
+   * market cap, P/E, EPS TTM, and dividend yield in a single call.
+   * All fields except `ticker` may be null when upstream data is unavailable.
+   */
+  async getQuote(ticker: string): Promise<StockQuote> {
+    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/quote`);
   }
 
   /** Get real-time prices for multiple tickers. */
