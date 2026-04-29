@@ -283,6 +283,16 @@ export interface InstitutionalFlow {
   hedgeFundNetChange: number;
   activistActivity: boolean;
   reportDate: string;
+  /**
+   * Quarterly average closing price used to weight the dollar flow.
+   * Null when no price is cached for this (quarter, ticker) yet.
+   */
+  avgClosePrice?: number | null;
+  /**
+   * Dollar-weighted net flow: `netSharesChange × avgClosePrice`. 0 when
+   * `avgClosePrice` is missing — fall back to displaying `netSharesChange`.
+   */
+  dollarFlowUsd: number;
 }
 
 export interface Holder {
