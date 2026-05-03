@@ -34,4 +34,18 @@ export class Institutional {
   async getActivists(reportDate: string): Promise<Holder[]> {
     return this.client.get("/api/v1/institutional/activist", { reportDate });
   }
+
+  /**
+   * Get the full profile, summary stats, and current-quarter holdings for a
+   * specific institutional filer.
+   *
+   * Resolved by URL slug (e.g. `Berkshire-Hathaway`) or numeric SEC CIK.
+   * Free users receive the profile and top 10 holdings; PRO users receive the
+   * full holdings array. Returns 404 if the slug or CIK is unknown.
+   */
+  async getInstitutionDetail(slugOrCik: string): Promise<unknown> {
+    return this.client.get(
+      `/api/v1/institutional/institution/${encodeURIComponent(slugOrCik)}`,
+    );
+  }
 }

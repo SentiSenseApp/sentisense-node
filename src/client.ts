@@ -5,6 +5,7 @@ import {
   RateLimitError,
   SentiSenseError,
 } from "./errors.js";
+import { Analyst } from "./resources/analyst.js";
 import { Documents } from "./resources/documents.js";
 import { EntityMetrics } from "./resources/entityMetrics.js";
 import { Insider } from "./resources/insider.js";
@@ -31,6 +32,7 @@ function sleep(ms: number): Promise<void> {
 /** @internal HTTP interface exposed to resource classes. */
 export interface APIClient {
   get<T = unknown>(path: string, params?: object): Promise<T>;
+  post<T = unknown>(path: string, body: unknown): Promise<T>;
 }
 
 export class SentiSense implements APIClient {
@@ -45,6 +47,7 @@ export class SentiSense implements APIClient {
   readonly insider: Insider;
   readonly politicians: Politicians;
   readonly insights: Insights;
+  readonly analyst: Analyst;
   readonly entityMetrics: EntityMetrics;
   readonly marketMood: MarketMoodResource;
   readonly marketSummary: MarketSummaryResource;
@@ -62,6 +65,7 @@ export class SentiSense implements APIClient {
     this.insider = new Insider(this);
     this.politicians = new Politicians(this);
     this.insights = new Insights(this);
+    this.analyst = new Analyst(this);
     this.entityMetrics = new EntityMetrics(this);
     this.marketMood = new MarketMoodResource(this);
     this.marketSummary = new MarketSummaryResource(this);
@@ -132,6 +136,51 @@ export class SentiSense implements APIClient {
     }
 
     throw new SentiSenseError("All retries exhausted");
+  }
+
+  /** @internal */
+  async post<T = unknown>(path: string, body: unknown): Promise<T> {
+    const url = this.buildUrl(path);
+    const headers: Record<string, string> = {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    };
+
+    if (this.apiKey) {
+      headers["X-SentiSense-API-Key"] = this.apiKey;
+    }
+
+    if (typeof process !== "undefined" && process.versions?.node) {
+      headers["User-Agent"] = `sentisense-node/${VERSION}`;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        await this.handleErrorResponse(response);
+      }
+
+      return (await response.json()) as T;
+    } catch (error) {
+      if (error instanceof SentiSenseError) throw error;
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new SentiSenseError(`Request timed out after ${this.timeout}ms`);
+      }
+      throw new SentiSenseError(
+        error instanceof Error ? error.message : "Unknown error",
+      );
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private buildUrl(path: string, params?: object): string {

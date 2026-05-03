@@ -173,4 +173,19 @@ export class Stocks {
   async getShortVolume(ticker: string): Promise<ShortVolume> {
     return this.client.get("/api/v1/stocks/short-volume", { ticker });
   }
+
+  /**
+   * Get company-specific KPI time-series for a ticker. Returns curated GAAP and
+   * non-GAAP metrics from earnings filings (e.g. iPhone unit sales, Tesla deliveries,
+   * AWS revenue).
+   *
+   * Free users receive metadata only with an empty `kpis` list; PRO users receive
+   * the full series. Most tickers do not yet have curated coverage and the endpoint
+   * returns 404 in that case.
+   */
+  async getKpis(ticker: string): Promise<unknown> {
+    return this.client.get(
+      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/kpis`,
+    );
+  }
 }

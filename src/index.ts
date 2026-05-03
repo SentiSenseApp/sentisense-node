@@ -1,6 +1,22 @@
 export { SentiSense } from "./client.js";
 export { SentiSense as default } from "./client.js";
 
+export type {
+  AnalystConsensus,
+  AnalystAction,
+  AnalystEstimate,
+  AnalystEarningsSurprise,
+  AnalystEstimatesResponse,
+  GetAnalystActionsOptions,
+  GetAnalystMarketActivityOptions,
+} from "./resources/analyst.js";
+
+export type {
+  GetStockInsightsRangeOptions,
+  GetLatestInsightsOptions,
+  GetUserInsightsOptions,
+} from "./resources/insights.js";
+
 export {
   SentiSenseError,
   AuthenticationError,
