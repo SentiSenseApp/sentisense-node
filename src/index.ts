@@ -17,6 +17,16 @@ export type {
   GetUserInsightsOptions,
 } from "./resources/insights.js";
 
+//  /  KPI types
+export type {
+  KpiDataPoint,
+  KpiSeries,
+  CompanyKpisData,
+  KpiCoverageEntry,
+  KpiCoverageResponse,
+  KpiTypeEntry,
+} from "./types.js";
+
 export {
   SentiSenseError,
   AuthenticationError,

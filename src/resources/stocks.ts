@@ -2,6 +2,7 @@ import type { APIClient } from "../client.js";
 import type {
   AISummary,
   ChartData,
+  CompanyKpisData,
   FloatInfo,
   Fundamentals,
   FundamentalsPeriod,
@@ -13,8 +14,11 @@ import type {
   GetMetricsBreakdownOptions,
   GetProfileOptions,
   GetSimilarOptions,
+  KpiCoverageResponse,
+  KpiTypeEntry,
   MarketStatus,
   MetricsBreakdown,
+  PreviewResponse,
   SimilarStock,
   ShortInterest,
   ShortVolume,
@@ -180,12 +184,39 @@ export class Stocks {
    * AWS revenue).
    *
    * Free users receive metadata only with an empty `kpis` list; PRO users receive
-   * the full series. Most tickers do not yet have curated coverage and the endpoint
-   * returns 404 in that case.
+   * the full series. Returns 404 for tickers that do not yet have curated coverage.
+   *
+   * Coverage today: near-complete for the S&P 500 plus extended universe
+   * (~500 tickers). Use `listKpiCoverage()` to enumerate.
    */
-  async getKpis(ticker: string): Promise<unknown> {
+  async getKpis(ticker: string): Promise<PreviewResponse<CompanyKpisData>> {
     return this.client.get(
       `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/kpis`,
+    );
+  }
+
+  /**
+   * List every ticker with curated KPI coverage. Returns `{count, tickers: [...]}`
+   * with lightweight metadata (ticker, companyName, lastUpdated, kpiCount).
+   * Sorted alphabetically by ticker.
+   *
+   * Auth: API key required, but the call does NOT consume your monthly quota
+   * (rate-limit-per-minute still applies). []
+   */
+  async listKpiCoverage(): Promise<KpiCoverageResponse> {
+    return this.client.get("/api/v1/stocks/with-kpis");
+  }
+
+  /**
+   * List the KPI metadata tuples available for a ticker — `id, name, category,
+   * chartType` — without paying the cost of the full series payload. Mirrors
+   * the `/api/v1/insights/stock/{ticker}/types` precedent.
+   *
+   * Auth: API key required, no quota cost. 404 if the ticker has no curated KPIs.
+   */
+  async getKpiTypes(ticker: string): Promise<KpiTypeEntry[]> {
+    return this.client.get(
+      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/kpis/types`,
     );
   }
 }

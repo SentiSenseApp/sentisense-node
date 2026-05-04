@@ -585,6 +585,75 @@ export interface GetInsightsOptions {
   insightType?: string;
 }
 
+// ── KPIs ( / ) ───────────────────────────────
+
+/** One period value in a KPI time series. */
+export interface KpiDataPoint {
+  /** e.g. "Q2 FY2026" */
+  period: string;
+  /** ISO date, e.g. "2025-12-27" */
+  date: string;
+  value: number;
+  /** Preliminary flag; often null. */
+  isEstimate?: boolean | null;
+}
+
+/** A single KPI time series for a company. */
+export interface KpiSeries {
+  /** Stable per-ticker identifier, e.g. "iphone_revenue". */
+  id: string;
+  /** Human-readable name, e.g. "iPhone Revenue". */
+  name: string;
+  /** Logical category, e.g. "product_revenue", "segment_revenue". */
+  category: string;
+  /** Unit of measurement, e.g. "USD". */
+  unit: string;
+  /** Display hint, e.g. "currency_abbreviated". */
+  displayFormat: string;
+  /** Default chart type, e.g. "bar" or "line". */
+  chartType: string;
+  /** Time-series data points. */
+  values: KpiDataPoint[];
+  /** Citation for the source filing. */
+  sourceRef?: string;
+  /** Set when the company has stopped reporting this metric. */
+  discontinued?: boolean;
+  /** Optional human-readable note about discontinuation. */
+  discontinuedNote?: string;
+}
+
+/** Full KPI payload for a company. Returned by `client.stocks.getKpis`. */
+export interface CompanyKpisData {
+  ticker: string;
+  companyName: string;
+  cik?: string;
+  lastUpdated: string;
+  kpis: KpiSeries[];
+}
+
+/** Lightweight coverage entry. Returned by `client.stocks.listKpiCoverage`. */
+export interface KpiCoverageEntry {
+  ticker: string;
+  companyName: string;
+  lastUpdated: string;
+  kpiCount: number;
+}
+
+/** Coverage listing envelope: count + list of covered tickers. */
+export interface KpiCoverageResponse {
+  count: number;
+  tickers: KpiCoverageEntry[];
+}
+
+/** Lightweight KPI metadata tuple. Returned by `client.stocks.getKpiTypes`. */
+export interface KpiTypeEntry {
+  id: string;
+  name: string;
+  category: string;
+  chartType: string;
+}
+
+
 // ── Knowledge Base ──────────────────────────────────────────
 
 export interface KBEntity {

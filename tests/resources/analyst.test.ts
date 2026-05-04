@@ -102,3 +102,34 @@ describe("stocks.getKpis + institutional.getInstitutionDetail", () => {
     expect(url).toContain("/api/v1/institutional/institution/Berkshire-Hathaway");
   });
 });
+
+describe("stocks.listKpiCoverage + getKpiTypes ()", () => {
+  it("listKpiCoverage hits /api/v1/stocks/with-kpis and parses count + tickers", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      count: 2,
+      tickers: [
+        { ticker: "AAPL", companyName: "Apple Inc.", lastUpdated: "2026-04-30", kpiCount: 8 },
+        { ticker: "TSLA", companyName: "Tesla, Inc.", lastUpdated: "2026-04-15", kpiCount: 6 },
+      ],
+    }));
+    const result = await client.stocks.listKpiCoverage();
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/stocks/with-kpis");
+    expect(result.count).toBe(2);
+    expect(result.tickers[0].ticker).toBe("AAPL");
+    expect(result.tickers[0].kpiCount).toBe(8);
+  });
+
+  it("getKpiTypes hits /api/v1/stocks/{TICKER}/kpis/types and uppercases ticker", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([
+      { id: "iphone_revenue", name: "iPhone Revenue", category: "product_revenue", chartType: "bar" },
+      { id: "services_revenue", name: "Services Revenue", category: "segment_revenue", chartType: "line" },
+    ]));
+    const types = await client.stocks.getKpiTypes("aapl");
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/stocks/AAPL/kpis/types");
+    expect(types.length).toBe(2);
+    expect(types[0].id).toBe("iphone_revenue");
+    expect(types[1].chartType).toBe("line");
+  });
+});
