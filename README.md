@@ -96,6 +96,22 @@ client.kb.getEntity("entity-id")
 client.kb.getAllEntities()
 ```
 
+### Analyst Ratings (PRO, preview on free)
+
+```typescript
+client.analyst.consensus("AAPL")                        // Price targets, upside %, buy/hold/sell distribution
+client.analyst.actions("AAPL", { lookbackDays: 30 })    // Recent upgrade/downgrade actions
+client.analyst.estimates("AAPL")                        // Forward EPS estimates + earnings surprise history
+client.analyst.marketActivity({ lookbackDays: 7 })      // Market-wide analyst actions
+```
+
+### Company KPIs (PRO, preview on free)
+
+```typescript
+client.stocks.getKpis("AAPL")       // Product metrics and segment revenue time-series
+client.stocks.listKpiCoverage()     // All tickers with curated KPI data
+```
+
 ### Market Mood
 
 ```typescript
