@@ -96,20 +96,22 @@ client.kb.getEntity("entity-id")
 client.kb.getAllEntities()
 ```
 
-### Analyst Ratings (PRO, preview on free)
+### Analyst Ratings
+
+The **price target cone** (mean, high, low, upside %) and consensus are **free for everyone, full data via API** — we give it away. Upgrade/downgrade feeds and forward EPS estimates are limited on free, unlimited on PRO.
 
 ```typescript
-client.analyst.consensus("AAPL")                        // Price targets, upside %, buy/hold/sell distribution
-client.analyst.actions("AAPL", { lookbackDays: 30 })    // Recent upgrade/downgrade actions
-client.analyst.estimates("AAPL")                        // Forward EPS estimates + earnings surprise history
-client.analyst.marketActivity({ lookbackDays: 7 })      // Market-wide analyst actions
+client.analyst.consensus("AAPL")                        // Price target cone + consensus. Free for everyone, full data.
+client.analyst.actions("AAPL", { lookbackDays: 30 })    // Upgrade/downgrade feed. Free: 3 most recent. PRO: unlimited.
+client.analyst.estimates("AAPL")                        // Forward EPS + earnings surprises. Free: 1 quarter. PRO: full history.
+client.analyst.marketActivity({ lookbackDays: 7 })      // Market-wide analyst actions (PRO).
 ```
 
-### Company KPIs (PRO, preview on free)
+### Company KPIs (PRO)
 
 ```typescript
-client.stocks.getKpis("AAPL")       // Product metrics and segment revenue time-series
-client.stocks.listKpiCoverage()     // All tickers with curated KPI data
+client.stocks.getKpis("AAPL")       // Product metrics and segment revenue time-series. Free returns metadata only (empty kpis array); PRO returns full series.
+client.stocks.listKpiCoverage()     // All tickers with curated KPI data (free, no quota cost)
 ```
 
 ### Market Mood
