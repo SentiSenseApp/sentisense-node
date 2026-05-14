@@ -79,12 +79,20 @@ export interface StockEntity {
 }
 
 export interface ChartDataPoint {
+  /** Unix timestamp in milliseconds. */
+  timestamp?: number;
   date: string;
   open: number;
   high: number;
   low: number;
   close: number;
   volume: number;
+  /**
+   * US-equity market session: "pre" (04:00–09:30 ET), "regular" (09:30–16:00 ET),
+   * or "post" (16:00–20:00 ET). Populated for intraday timeframes (1D / 5D / 1W / 1M);
+   * `null` for daily / weekly bars (3M and longer) that span whole sessions.
+   */
+  session?: "pre" | "regular" | "post" | null;
 }
 
 export interface ChartData {
@@ -136,7 +144,7 @@ export interface AISummary {
 // ── Stocks method options ───────────────────────────────────
 
 export interface GetChartOptions {
-  timeframe?: "1M" | "3M" | "6M" | "1Y";
+  timeframe?: "1D" | "5D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
 }
 
 export interface GetImagesOptions {
