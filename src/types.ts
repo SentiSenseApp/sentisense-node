@@ -11,17 +11,33 @@ export interface SentiSenseOptions {
 
 export interface StockPrice {
   ticker: string;
+  /** Regular-session price. During RTH: live last trade. Otherwise: most recent RTH close. */
   price: number;
   change: number;
   changePercent: number;
   previousClose: number;
   /** Unix timestamp in milliseconds of the price quote. */
   timestamp: number;
+  /** Extended-hours view (pre-market or after-hours). Null/absent during RTH, overnight, and weekends. */
+  extendedHours?: ExtendedHoursInfo | null;
+}
+
+/**
+ * Extended-hours session view embedded in price / quote responses when the snapshot sees
+ * pre-market (04:00–09:30 ET) or after-hours (16:00–20:00 ET) activity. `change` and
+ * `changePercent` are computed by the server vs the regular-session `currentPrice`.
+ */
+export interface ExtendedHoursInfo {
+  session: "pre" | "post";
+  price: number;
+  change: number;
+  changePercent: number;
 }
 
 /** Aggregate quote snapshot from GET /api/v1/stocks/{ticker}/quote. */
 export interface StockQuote {
   ticker: string;
+  /** Regular-session price. During RTH: live last trade. Otherwise: most recent RTH close. */
   currentPrice: number | null;
   change: number | null;
   changePercent: number | null;
@@ -37,7 +53,8 @@ export interface StockQuote {
   epsTTM: number | null;
   dividendYield: number | null;
   timestamp: number | null;
-  extendedHours: boolean | null;
+  /** Extended-hours view (pre-market or after-hours). Null/absent during RTH, overnight, and weekends. */
+  extendedHours?: ExtendedHoursInfo | null;
 }
 
 export interface StockDetail {
