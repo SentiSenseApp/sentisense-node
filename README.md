@@ -114,6 +114,18 @@ client.stocks.getKpis("AAPL")       // Product metrics and segment revenue time-
 client.stocks.listKpiCoverage()     // All tickers with curated KPI data (free, no quota cost)
 ```
 
+### ETFs (beta)
+
+Composition data is public; the holdings-weighted aggregate views follow the same PRO-with-preview pattern as Analyst/Insider. Aggregates synthesize fund-level views from each constituent's per-stock data, weighted by allocation, with a `coverage` block on every response.
+
+```typescript
+client.etfs.list()                                              // Every ETF tracked. Returns ticker, name, issuer, tracked index, asset class.
+client.etfs.holdings("QQQ")                                     // Full composition: per-holding weights + freshness metadata.
+client.etfs.analystAggregate("QQQ")                             // Holdings-weighted analyst consensus. Free: headline + coverage. PRO: + topContributors.
+client.etfs.insiderAggregate("ARKK", { lookbackDays: 90 })      // Holdings-weighted Form 4 net flow. Free: headline. PRO: + topContributors.
+client.etfs.sentimentAggregate("QQQ")                           // SentiSense readings side-by-side: constituent-weighted vs direct.
+```
+
 ### Market Mood
 
 ```typescript

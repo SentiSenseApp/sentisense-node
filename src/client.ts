@@ -8,6 +8,7 @@ import {
 import { Analyst } from "./resources/analyst.js";
 import { Documents } from "./resources/documents.js";
 import { EntityMetrics } from "./resources/entityMetrics.js";
+import { Etfs } from "./resources/etfs.js";
 import { Insider } from "./resources/insider.js";
 import { Politicians } from "./resources/politicians.js";
 import { Insights } from "./resources/insights.js";
@@ -43,6 +44,7 @@ export class SentiSense implements APIClient {
 
   readonly stocks: Stocks;
   readonly documents: Documents;
+  readonly etfs: Etfs;
   readonly institutional: Institutional;
   readonly insider: Insider;
   readonly politicians: Politicians;
@@ -61,6 +63,7 @@ export class SentiSense implements APIClient {
 
     this.stocks = new Stocks(this);
     this.documents = new Documents(this);
+    this.etfs = new Etfs(this);
     this.institutional = new Institutional(this);
     this.insider = new Insider(this);
     this.politicians = new Politicians(this);

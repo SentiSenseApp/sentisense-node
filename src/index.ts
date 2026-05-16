@@ -17,6 +17,23 @@ export type {
   GetUserInsightsOptions,
 } from "./resources/insights.js";
 
+//  ETF aggregate types
+export type {
+  EtfInfo,
+  EtfHolding,
+  EtfHoldings,
+  EtfAggregateCoverage,
+  WeightedConsensus,
+  EtfAnalystContributor,
+  EtfAnalystAggregate,
+  WeightedNetFlow,
+  EtfInsiderContributor,
+  EtfInsiderAggregate,
+  EtfSentimentReading,
+  EtfSentimentAggregate,
+  GetEtfInsiderAggregateOptions,
+} from "./resources/etfs.js";
+
 //  /  KPI types
 export type {
   KpiDataPoint,
