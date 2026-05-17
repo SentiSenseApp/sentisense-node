@@ -236,8 +236,8 @@ export interface Story {
   tickers: string[];
   primaryEntityNames: string[];
   impactScore: number;
-  /** Unix timestamp in seconds when the story first broke. */
-  brokeAt: number;
+  /** Unix timestamp in seconds when the story first broke. Null when the story has no representative document timestamp yet. */
+  brokeAt: number | null;
 }
 
 // ── Documents method options ────────────────────────────────
