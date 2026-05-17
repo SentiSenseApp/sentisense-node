@@ -15,24 +15,27 @@ export interface EtfHolding {
   ticker: string;
   name: string | null;
   /** Weight in the fund as a percentage (0-100). */
-  weight_pct: number;
-  /** First date this holding appeared in the composition. */
-  first_seen: string | null;
+  weightPct: number;
+  /** ISO date "YYYY-MM-DD" — first date this holding appeared in the composition. */
+  firstSeen: string | null;
 }
 
 export interface EtfHoldings {
   ticker: string;
   issuer: string;
-  issuer_endpoint: string | null;
-  as_of_date: string;
-  fetched_at: string;
-  next_refresh_due: string;
-  total_holdings: number;
+  issuerEndpoint: string | null;
+  /** ISO date "YYYY-MM-DD" — composition snapshot date from the issuer. */
+  asOfDate: string;
+  /** Epoch seconds when SentiSense refreshed the composition. */
+  fetchedAt: number | null;
+  /** ISO date "YYYY-MM-DD" — when the composition is scheduled to be refreshed next. */
+  nextRefreshDue: string;
+  totalHoldings: number;
   holdings: EtfHolding[];
   /** True when this is a top-N view rather than the full fund. */
   partial?: boolean | null;
   /** Issuer's reported total holdings when `partial=true`. */
-  total_known_holdings?: number | null;
+  totalKnownHoldings?: number | null;
 }
 
 export interface EtfAggregateCoverage {
@@ -63,12 +66,14 @@ export interface EtfAnalystContributor {
 
 export interface EtfAnalystAggregate {
   ticker: string;
+  /** ISO date "YYYY-MM-DD" — composition snapshot date. */
   asOfDate: string | null;
-  computedAt: string;
+  /** Epoch seconds when this rollup was computed. */
+  computedAt: number;
   coverage: EtfAggregateCoverage;
   weightedConsensus: WeightedConsensus;
-  /** PRO-only; null on the free preview. */
-  topContributors: EtfAnalystContributor[] | null;
+  /** Top contributors (up to 10) by absolute contribution to the weighted upside. */
+  topContributors: EtfAnalystContributor[];
 }
 
 export interface WeightedNetFlow {
@@ -95,27 +100,31 @@ export interface EtfInsiderContributor {
 
 export interface EtfInsiderAggregate {
   ticker: string;
+  /** ISO date "YYYY-MM-DD" — composition snapshot date. */
   asOfDate: string | null;
-  computedAt: string;
+  /** Epoch seconds when this rollup was computed. */
+  computedAt: number;
   lookbackDays: number;
   coverage: EtfAggregateCoverage;
   weightedNetFlow: WeightedNetFlow;
-  /** PRO-only; null on the free preview. */
-  topContributors: EtfInsiderContributor[] | null;
+  /** Top contributors (up to 10) by absolute weighted-net-dollar contribution. */
+  topContributors: EtfInsiderContributor[];
 }
 
 export interface EtfSentimentReading {
   sentiSenseScore: number | null;
   /** BULLISH / NEUTRAL / BEARISH. */
   scoreLabel: string;
-  /** Epoch millis when the underlying metric was produced. */
+  /** Epoch seconds when the underlying metric was produced. */
   asOfTimestamp: number | null;
 }
 
 export interface EtfSentimentAggregate {
   ticker: string;
+  /** ISO date "YYYY-MM-DD" — composition snapshot date. */
   asOfDate: string | null;
-  computedAt: string;
+  /** Epoch seconds when this aggregate was assembled. */
+  computedAt: number;
   coverage: EtfAggregateCoverage;
   /** Holdings-weighted SentiSense across the fund's constituents. */
   constituentsWeighted: EtfSentimentReading;
@@ -160,8 +169,8 @@ export class Etfs {
   }
 
   /**
-   * Get the holdings-weighted analyst consensus for an ETF. Free users receive
-   * the headline and coverage block; PRO unlocks per-holding `topContributors`.
+   * Get the holdings-weighted analyst consensus for an ETF, including the
+   * top per-holding contributors that drive the weighted upside.
    */
   async analystAggregate(
     ticker: string,
@@ -173,8 +182,8 @@ export class Etfs {
 
   /**
    * Get the holdings-weighted SEC Form 4 insider aggregate for an ETF over a
-   * configurable trailing window. Free users receive the headline + buy/sell
-   * split; PRO unlocks per-holding `topContributors` with signed contribution.
+   * configurable trailing window, including per-holding `topContributors` with
+   * signed contribution to the weighted headline.
    */
   async insiderAggregate(
     ticker: string,
