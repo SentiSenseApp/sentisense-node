@@ -226,8 +226,8 @@ export interface StoryCluster {
   title: string;
   clusterSize: number;
   averageSentiment: number;
-  /** Unix timestamp in seconds. */
-  createdAt: number;
+  /** Unix timestamp in seconds when the cluster was assembled by our pipeline. */
+  clusteredAt: number;
 }
 
 export interface Story {
