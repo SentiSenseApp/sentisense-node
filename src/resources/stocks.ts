@@ -153,11 +153,6 @@ export class Stocks {
     return this.client.get("/api/v1/stocks/fundamentals/current", { ticker });
   }
 
-  /** Get historical P/E, P/B, P/S ratios. */
-  async getHistoricalRatios(ticker: string): Promise<unknown> {
-    return this.client.get("/api/v1/stocks/fundamentals/historical/ratios", { ticker });
-  }
-
   /** Get historical revenue data. */
   async getHistoricalRevenue(ticker: string): Promise<unknown> {
     return this.client.get("/api/v1/stocks/fundamentals/historical/revenue", { ticker });
