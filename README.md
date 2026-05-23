@@ -16,14 +16,12 @@ npm install sentisense
 ```typescript
 import SentiSense from "sentisense";
 
-// Public endpoints work without an API key
-const client = new SentiSense();
-const price = await client.stocks.getPrice("AAPL");
-console.log(price);
+const client = new SentiSense({ apiKey: "ss_live_YOUR_KEY" });
 
-// Use an API key for authenticated endpoints
-const authed = new SentiSense({ apiKey: "ssk_YOUR_KEY" });
-const flows = await authed.institutional.getFlows("2025-02-14");
+const price = await client.stocks.getPrice("AAPL");
+console.log(price.currentPrice);
+
+const flows = await client.institutional.getFlows("2025-02-14");
 ```
 
 ## Features
@@ -86,7 +84,7 @@ client.entityMetrics.getDistribution("AAPL", "sentiment")
 client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })
 ```
 
-Available metric types: `mentions`, `sentiment`, `sentisense_score`, `social_dominance`, `creators`.
+Available metric types: `mentions`, `sentiment`, `sentisense`, `social_dominance`, `creators`.
 
 ### Knowledge Base
 
@@ -161,7 +159,7 @@ All errors extend `SentiSenseError` and include `status`, `code`, and `message` 
 
 ```typescript
 const client = new SentiSense({
-  apiKey: "ssk_YOUR_KEY",     // Optional for public endpoints
+  apiKey: "ss_live_YOUR_KEY",  // Get yours at app.sentisense.ai/settings/developer
   baseUrl: "https://...",      // Default: https://app.sentisense.ai
   timeout: 30000,              // Default: 30s (in milliseconds)
 });
