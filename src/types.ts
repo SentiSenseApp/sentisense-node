@@ -12,10 +12,12 @@ export interface SentiSenseOptions {
 export interface StockPrice {
   ticker: string;
   /** Regular-session price. During RTH: live last trade. Otherwise: most recent RTH close. */
-  price: number;
+  currentPrice: number;
   change: number;
   changePercent: number;
   previousClose: number;
+  /** Regular-session volume. */
+  volume: number;
   /** Unix timestamp in milliseconds of the price quote. */
   timestamp: number;
   /** Extended-hours view (pre-market or after-hours). Null/absent during RTH, overnight, and weekends. */
