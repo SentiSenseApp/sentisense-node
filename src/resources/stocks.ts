@@ -196,7 +196,7 @@ export class Stocks {
    * Sorted alphabetically by ticker.
    *
    * Auth: API key required, but the call does NOT consume your monthly quota
-   * (rate-limit-per-minute still applies). []
+   * (rate-limit-per-minute still applies).
    */
   async listKpiCoverage(): Promise<KpiCoverageResponse> {
     return this.client.get("/api/v1/stocks/with-kpis");

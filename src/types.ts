@@ -612,7 +612,7 @@ export interface GetInsightsOptions {
   insightType?: string;
 }
 
-// ── KPIs ( / ) ───────────────────────────────
+// ── KPIs ───────────────────────────────
 
 /** One period value in a KPI time series. */
 export interface KpiDataPoint {
