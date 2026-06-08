@@ -69,6 +69,7 @@ export interface StockDetail {
 export interface SimilarStock {
   symbol: string;
   name: string;
+  /** @deprecated No longer returned by the API; use `symbol` to identify the peer. Will be removed in a future release. */
   kbEntityId?: string;
   price: number | null;
   changePercent: number | null;
