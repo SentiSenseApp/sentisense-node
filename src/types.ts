@@ -464,6 +464,12 @@ export interface GetPoliticiansOptions {
 export interface PreviewResponse<T> {
   isPreview: boolean;
   previewReason: "LOGIN_REQUIRED" | "PRO_REQUIRED" | null;
+  /**
+   * Number of items in the full PRO dataset, before preview truncation.
+   * Present on preview (free-tier) list responses so callers can show
+   * "showing N of totalCount". Absent on full PRO responses.
+   */
+  totalCount?: number;
   data: T;
 }
 
