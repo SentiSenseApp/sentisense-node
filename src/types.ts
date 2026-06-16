@@ -343,6 +343,58 @@ export interface GetFlowsOptions {
   limit?: number;
 }
 
+/** A single institution summary from the discovery list. */
+export interface InstitutionSummary {
+  /** SEC Central Index Key of the (rolled-up) institution. */
+  cik: string;
+  /** URL slug for routing to `getInstitutionDetail`. */
+  urlSlug: string;
+  displayName: string;
+  /** Filer category, or null if unclassified. */
+  filerCategory: string | null;
+  /** Total AUM in USD for the quarter (rolled-up across the filer group). */
+  totalValueUsd: number;
+  /** Distinct equity tickers held this quarter (rolled-up, de-duped). */
+  holdingsCount: number;
+  /** True when this institution aggregates multiple related filer CIKs. */
+  multiCikRollup: boolean;
+  /** Number of subsidiary filers rolled up under this institution (0 when not a rollup). */
+  childCikCount: number;
+}
+
+/** The `data` payload of the institution discovery list. */
+export interface InstitutionList {
+  /** Quarter of the AUM snapshot, e.g. `"2026Q1"`. */
+  quarter: string;
+  /** Total institutions matching the filters, before pagination. */
+  totalCount: number;
+  offset: number;
+  limit: number;
+  institutions: InstitutionSummary[];
+}
+
+/** Wire envelope for the discovery list (always full, never a preview). */
+export interface InstitutionListResponse {
+  isPreview: boolean;
+  previewReason: "PRO_REQUIRED" | null;
+  data: InstitutionList;
+}
+
+export interface ListInstitutionsOptions {
+  /** Filer category filter (e.g. `"HEDGE_FUND"`). */
+  category?: string;
+  /** Minimum total AUM in USD (e.g. `10_000_000_000`). */
+  minAumUsd?: number;
+  /** Page size (default 50, max 200). */
+  limit?: number;
+  /** Pagination offset (default 0). */
+  offset?: number;
+  /** `"aumDesc"` (default), `"aumAsc"`, or `"nameAsc"`. */
+  sort?: "aumDesc" | "aumAsc" | "nameAsc";
+  /** AUM snapshot quarter as `YYYYQN` (e.g. `"2026Q1"`); defaults to latest. */
+  quarter?: string;
+}
+
 // ── Insider Trading ──────────────────────────────────────────
 
 export interface InsiderActivitySummary {

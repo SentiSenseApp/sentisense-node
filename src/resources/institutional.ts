@@ -2,7 +2,10 @@ import type { APIClient } from "../client.js";
 import type {
   GetFlowsOptions,
   Holder,
+  InstitutionList,
+  InstitutionListResponse,
   InstitutionalFlowsResponse,
+  ListInstitutionsOptions,
   Quarter,
 } from "../types.js";
 
@@ -33,6 +36,25 @@ export class Institutional {
   /** Get activist investor positions (NEW or INCREASED). */
   async getActivists(reportDate: string): Promise<Holder[]> {
     return this.client.get("/api/v1/institutional/activist", { reportDate });
+  }
+
+  /**
+   * Discover institutions: a paginated, AUM-ranked list of filers (slug + metadata)
+   * so you can find what to query without knowing slugs upfront.
+   *
+   * Each institution is rolled up by parent filer, so a multi-filer manager
+   * (e.g. Vanguard) appears once with combined AUM. Summary only; use
+   * `getInstitutionDetail` for a filer's full holdings.
+   *
+   * Requires an API key but does not consume monthly quota (per-minute rate
+   * limits still apply). Returns the unwrapped list payload.
+   */
+  async listInstitutions(options?: ListInstitutionsOptions): Promise<InstitutionList> {
+    const resp = await this.client.get<InstitutionListResponse>(
+      "/api/v1/institutional/institutions",
+      { ...options },
+    );
+    return resp.data;
   }
 
   /**
