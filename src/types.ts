@@ -806,6 +806,12 @@ export interface TrackerMetricValue {
   value: unknown;
   unit?: string | null;
   trend?: string | null;
+  /** Primary-source URL for this cell's value, when the tracker is citation-backed. */
+  sourceUrl?: string | null;
+  /** Short quote from the primary source supporting this cell's value. */
+  sourceQuote?: string | null;
+  /** The period this cell refers to (e.g. "2025", "2026-YTD"), when it varies per row. */
+  periodLabel?: string | null;
 }
 
 /** Top-of-page stat tile. A tracker may have 0–N headline metrics. */
