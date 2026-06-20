@@ -747,3 +747,167 @@ export interface KBEntity {
   name: string;
   [key: string]: unknown;
 }
+
+
+// ── Trackers ────────────────────────────────────────────────
+//
+// Trackers are observational data products. Every tracker — institution-alpha
+// leaderboards, hedge-fund reported returns, social trackers, surveillance
+// dashboards — returns the same standardized `TrackerSnapshot` envelope.
+// Dispatch on `viewType` to pick a renderer; consumers write one renderer per
+// viewType and get every tracker for free.
+
+/** Per-tracker discovery row returned by `client.trackers.list()`. */
+export interface TrackerListing {
+  trackerId: string;
+  displayName: string;
+  /** Coarse grouping for hub filtering: `"institutional"`, `"epidemiology"`, etc. */
+  category: string;
+  /** Sentence-long subtitle for hub cards + API discovery. */
+  description: string;
+  /** Renderer hint: `"table"`, `"choropleth"`, `"timeseries"`, `"heatmap"`. */
+  viewType: string;
+  /** Fragment on `/methodology` explaining the tracker (e.g. `"#rankings"`). */
+  methodologyAnchor: string;
+  /** Expected snapshot refresh cadence, in seconds. Informational. */
+  refreshIntervalSeconds: number;
+  /** Canonical detail URL (e.g. `"/api/v1/trackers/institution-alpha-5y"`). */
+  canonicalUrl: string;
+}
+
+/** Discovery envelope returned by `client.trackers.list()`. */
+export interface TrackerListResponse {
+  trackers: TrackerListing[];
+}
+
+/** One row of a `viewType: "table"` tracker — a ranked leaderboard cell. */
+export interface TrackerTableRow {
+  /** 1-based rank on the sort the tracker is built for; may be null. */
+  rank: number | null;
+  /** Stable identifier for the entity (CIK, ticker, etc.). */
+  rowId: string;
+  /** Display name. */
+  name: string;
+  /** Optional category tag (e.g. `"HEDGE_FUND"`). */
+  category: string | null;
+  /** Optional canonical link to the entity behind the row (e.g. `"/institutions/Berkshire-Hathaway"`). */
+  url: string | null;
+  /** Per-cell metric values; each carries its own label and unit. */
+  metrics: TrackerMetricValue[];
+}
+
+/**
+ * A labeled quantitative reading attached to a row, geo region, or
+ * time-series point. `value` is `unknown` because it can be a number or a
+ * status string ("Severe", "Resolved") without forcing a separate type.
+ */
+export interface TrackerMetricValue {
+  label: string;
+  value: unknown;
+  unit?: string | null;
+  trend?: string | null;
+}
+
+/** Top-of-page stat tile. A tracker may have 0–N headline metrics. */
+export interface TrackerHeadlineMetric {
+  label: string;
+  value: unknown;
+  unit?: string | null;
+  asOf?: string | null;
+  methodologyNote?: string | null;
+  trend?: string | null;
+}
+
+/** One geographic row for a `viewType: "choropleth"` tracker. */
+export interface TrackerGeoEntry {
+  geoId?: string | null;
+  /** Two-letter ISO country code, when applicable. */
+  isoCode?: string | null;
+  /** FIPS code with leading zeros preserved (e.g. `"06"`), when applicable. */
+  fips?: string | null;
+  name: string;
+  metrics: TrackerMetricValue[];
+  lastEvent?: { date?: string; url?: string; summary?: string } | null;
+}
+
+/** One point on a time series for a `viewType: "timeseries"` tracker. */
+export interface TrackerTimeSeriesPoint {
+  /** Free-form date string; trackers pick the granularity. */
+  date: string;
+  label?: string | null;
+  values: TrackerMetricValue[];
+}
+
+/** A notable event (outbreak, disruption, enforcement action). */
+export interface TrackerEvent {
+  id: string;
+  title: string;
+  status: string;
+  asOf?: string | null;
+  severity?: string | null;
+  geoIds?: string[] | null;
+  metrics?: TrackerMetricValue[] | null;
+  summary?: string | null;
+  sources?: TrackerSourceRef[] | null;
+}
+
+/** Recent news/alert signal. `tier`: 1=authoritative, 2=secondary, 3=mainstream press. */
+export interface TrackerSignal {
+  tier?: number | null;
+  source: string;
+  publishedAt: string;
+  url: string;
+  summary?: string | null;
+}
+
+/** Citation reference. */
+export interface TrackerSourceRef {
+  name: string;
+  url: string;
+  date?: string | null;
+}
+
+/**
+ * Standardized envelope every tracker returns. Exactly one of the payload
+ * fields (`rows`, `geo`, `timeSeries`) is populated based on `viewType`;
+ * `headline`, `events`, `signals`, `sources`, and `narrative` are
+ * companion fields that may appear on any tracker.
+ */
+export interface TrackerSnapshot {
+  trackerId: string;
+  /** Optional sub-scope (e.g. `"us"` for hantavirus). Null for unscoped trackers. */
+  scope?: string | null;
+  schemaVersion: string;
+  displayName: string;
+  description?: string | null;
+  /** Renderer hint: `"table"`, `"choropleth"`, `"timeseries"`, `"heatmap"`. */
+  viewType: string;
+  /** Free-form "data as of" label (typically a quarter, date, or week). */
+  asOf?: string | null;
+  generatedAt?: string | null;
+  generatedBy?: string | null;
+  /** Optional Markdown narrative. */
+  narrative?: string | null;
+  headline?: TrackerHeadlineMetric[] | null;
+  geo?: TrackerGeoEntry[] | null;
+  timeSeries?: TrackerTimeSeriesPoint[] | null;
+  /** Populated when `viewType === "table"`. */
+  rows?: TrackerTableRow[] | null;
+  events?: TrackerEvent[] | null;
+  signals?: TrackerSignal[] | null;
+  sources?: TrackerSourceRef[] | null;
+}
+
+/**
+ * Wire response from `client.trackers.get()`. The snapshot is at `.data`;
+ * for FREE callers on a PRO-gated tracker, `isPreview` is `true`, `data`
+ * carries a truncated row set, and `totalCount` reports the full set size.
+ */
+export interface TrackerSnapshotResponse {
+  isPreview: boolean;
+  /** `"PRO_REQUIRED"` for FREE callers on a gated tracker; otherwise `null`. */
+  previewReason: "PRO_REQUIRED" | null;
+  /** Full row count before truncation. Only set on preview responses. */
+  totalCount?: number;
+  data: TrackerSnapshot;
+}

@@ -109,6 +109,18 @@ export type {
   MarketMood,
   MarketSummary,
   KBEntity,
+  TrackerListing,
+  TrackerListResponse,
+  TrackerSnapshot,
+  TrackerSnapshotResponse,
+  TrackerTableRow,
+  TrackerMetricValue,
+  TrackerHeadlineMetric,
+  TrackerGeoEntry,
+  TrackerTimeSeriesPoint,
+  TrackerEvent,
+  TrackerSignal,
+  TrackerSourceRef,
 } from "./types.js";
 
 export { VERSION } from "./version.js";
