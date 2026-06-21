@@ -751,8 +751,8 @@ export interface KBEntity {
 
 // ── Trackers ────────────────────────────────────────────────
 //
-// Trackers are observational data products. Every tracker — institution-alpha
-// leaderboards, hedge-fund reported returns, social trackers, surveillance
+// Trackers are observational data products. Every tracker — institution rankings,
+// hedge-fund reported returns, social trackers, surveillance
 // dashboards — returns the same standardized `TrackerSnapshot` envelope.
 // Dispatch on `viewType` to pick a renderer; consumers write one renderer per
 // viewType and get every tracker for free.
@@ -767,11 +767,13 @@ export interface TrackerListing {
   description: string;
   /** Renderer hint: `"table"`, `"choropleth"`, `"timeseries"`, `"heatmap"`. */
   viewType: string;
-  /** Fragment on `/methodology` explaining the tracker (e.g. `"#rankings"`). */
+  /** Access tier: `"free"` or `"pro"`. A `pro` tracker truncates to a free preview for FREE callers; a `free` tracker returns the full snapshot to everyone. */
+  accessTier?: string;
+  /** Fragment on `/methodology` explaining the tracker (e.g. `"#institution-rankings"`). */
   methodologyAnchor: string;
   /** Expected snapshot refresh cadence, in seconds. Informational. */
   refreshIntervalSeconds: number;
-  /** Canonical detail URL (e.g. `"/api/v1/trackers/institution-alpha-5y"`). */
+  /** Canonical detail URL (e.g. `"/api/v1/trackers/institution-concentration"`). */
   canonicalUrl: string;
 }
 
