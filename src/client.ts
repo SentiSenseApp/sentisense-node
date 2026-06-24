@@ -6,6 +6,7 @@ import {
   SentiSenseError,
 } from "./errors.js";
 import { Analyst } from "./resources/analyst.js";
+import { Calendar } from "./resources/calendar.js";
 import { Documents } from "./resources/documents.js";
 import { EntityMetrics } from "./resources/entityMetrics.js";
 import { Etfs } from "./resources/etfs.js";
@@ -56,6 +57,7 @@ export class SentiSense implements APIClient {
   readonly marketSummary: MarketSummaryResource;
   readonly kb: KB;
   readonly trackers: Trackers;
+  readonly calendar: Calendar;
 
   constructor(options: SentiSenseOptions = {}) {
     this.apiKey = options.apiKey;
@@ -76,6 +78,7 @@ export class SentiSense implements APIClient {
     this.marketSummary = new MarketSummaryResource(this);
     this.kb = new KB(this);
     this.trackers = new Trackers(this);
+    this.calendar = new Calendar(this);
   }
 
   /** @internal */

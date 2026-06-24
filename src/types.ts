@@ -513,6 +513,56 @@ export interface GetPoliticiansOptions {
 }
 
 /** Generic preview wrapper used by PRO-gated endpoints. */
+// ── Calendar () ─────────────────────────────────────
+
+export interface EarningsEvent {
+  ticker: string;
+  companyName: string;
+  /** Report date, ISO calendar day "YYYY-MM-DD". */
+  earningsDate: string;
+  /** Session timing. */
+  earningsTime: "before_open" | "after_close" | "during_market" | "unknown";
+  /** Fiscal period label (e.g. "Q2 2026"), nullable. */
+  fiscalQuarter: string | null;
+  /** Whether the company has confirmed the date (vs. estimated/projected). */
+  confirmed: boolean;
+  /** Consensus EPS estimate, nullable. */
+  estimatedEps: number | null;
+}
+
+export interface CalendarMeta {
+  /** When the snapshot was generated, epoch seconds. */
+  generatedAt: number | null;
+  /** First day covered, ISO "YYYY-MM-DD". */
+  windowStart: string | null;
+  /** Last day covered, ISO "YYYY-MM-DD". */
+  windowEnd: string | null;
+  /** Number of events in this response. */
+  count: number;
+  /** Always "sentisense". */
+  source: string;
+}
+
+export interface EarningsCalendarResponse {
+  earnings: EarningsEvent[];
+  metadata: CalendarMeta;
+}
+
+export interface GetEarningsCalendarOptions {
+  /** Filter to a single ticker. */
+  ticker?: string;
+  /** Shorthand window: "this" (current Mon-Sun) or "next". */
+  week?: "this" | "next";
+  /** Inclusive lower date bound, ISO "YYYY-MM-DD". Overrides `week`. */
+  from?: string;
+  /** Inclusive upper date bound, ISO "YYYY-MM-DD". */
+  to?: string;
+  /** When true, only company-confirmed dates. */
+  confirmed?: boolean;
+  /** Session filter. */
+  time?: "before_open" | "after_close" | "during_market" | "unknown";
+}
+
 export interface PreviewResponse<T> {
   isPreview: boolean;
   previewReason: "LOGIN_REQUIRED" | "PRO_REQUIRED" | null;
