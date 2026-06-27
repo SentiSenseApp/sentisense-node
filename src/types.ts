@@ -515,7 +515,7 @@ export interface GetPoliticiansOptions {
 }
 
 /** Generic preview wrapper used by PRO-gated endpoints. */
-// ── Calendar () ─────────────────────────────────────
+// ── Calendar ────────────────────────────────────────────────
 
 export interface EarningsEvent {
   ticker: string;

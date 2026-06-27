@@ -103,7 +103,7 @@ describe("stocks.getKpis + institutional.getInstitutionDetail", () => {
   });
 });
 
-describe("stocks.listKpiCoverage + getKpiTypes ()", () => {
+describe("stocks.listKpiCoverage + getKpiTypes", () => {
   it("listKpiCoverage hits /api/v1/stocks/with-kpis and parses count + tickers", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({
       count: 2,
