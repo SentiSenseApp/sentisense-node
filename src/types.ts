@@ -235,7 +235,9 @@ export interface StoryCluster {
 
 export interface Story {
   cluster: StoryCluster;
+  /** Human-formatted labels for display, e.g. `"Apple Inc (AAPL)"`. For display only; do not parse symbols out of these. Use `tickers` programmatically. */
   displayTickers: string[];
+  /** Bare ticker symbols for programmatic use, e.g. `"AAPL"`. Use these to filter or look up stocks. */
   tickers: string[];
   primaryEntityNames: string[];
   impactScore: number;
