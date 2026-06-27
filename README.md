@@ -54,8 +54,8 @@ client.stocks.getAISummary("AAPL", { depth: "deep" })   // AI report (PRO)
 ```typescript
 client.documents.getByTicker("AAPL", { source: "news", days: 3 })
 client.documents.search("NVDA earnings", { days: 7, limit: 20 })
-client.documents.getStories({ limit: 10, expanded: true })
-client.documents.getStory("cluster_abc123")
+client.documents.getStories({ limit: 10 })
+client.documents.getStoryDetail("cluster_abc123")
 ```
 
 ### Institutional Flows (13F)

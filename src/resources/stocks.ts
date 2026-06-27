@@ -2,6 +2,7 @@ import type { APIClient } from "../client.js";
 import type {
   AISummary,
   ChartData,
+  ChartDataPoint,
   CompanyKpisData,
   FloatInfo,
   Fundamentals,
@@ -128,9 +129,19 @@ export class Stocks {
     );
   }
 
-  /** Get historical OHLCV chart data. */
+  /**
+   * Get historical OHLCV chart data.
+   *
+   * The API returns a bare array of points; this normalizes it to
+   * `{ ticker, timeframe, data }`. `timeframe` echoes the requested value
+   * (defaulting to "1M", matching the server default when omitted).
+   */
   async getChart(ticker: string, options?: GetChartOptions): Promise<ChartData> {
-    return this.client.get("/api/v1/stocks/chart", { ticker, ...options });
+    const data = await this.client.get<ChartDataPoint[]>("/api/v1/stocks/chart", {
+      ticker,
+      ...options,
+    });
+    return { ticker, timeframe: options?.timeframe ?? "1M", data };
   }
 
   /** Get current market open/closed/pre-market/after-hours status. */

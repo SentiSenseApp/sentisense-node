@@ -567,7 +567,7 @@ export interface GetEarningsCalendarOptions {
 
 export interface PreviewResponse<T> {
   isPreview: boolean;
-  previewReason: "LOGIN_REQUIRED" | "PRO_REQUIRED" | null;
+  previewReason: "PRO_REQUIRED" | null;
   /**
    * Number of items in the full PRO dataset, before preview truncation.
    * Present on preview (free-tier) list responses so callers can show
@@ -708,7 +708,7 @@ export interface LockedInsight {
 /** Preview response returned to free/unauthenticated users on insights endpoints. */
 export interface InsightPreviewResponse {
   isPreview: true;
-  previewReason: "LOGIN_REQUIRED" | "PRO_REQUIRED";
+  previewReason: "PRO_REQUIRED";
   /** Full insight objects for the top N results. */
   insights: Insight[];
   /** Metadata-only entries for the remaining signals. */

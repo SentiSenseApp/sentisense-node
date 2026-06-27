@@ -61,11 +61,24 @@ describe("stocks.getProfile", () => {
 
 describe("stocks.getChart", () => {
   it("passes timeframe option", async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse({ ticker: "AAPL", data: [] }));
+    mockFetch.mockResolvedValueOnce(jsonResponse([]));
     await client.stocks.getChart("AAPL", { timeframe: "6M" });
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("ticker=AAPL");
     expect(url).toContain("timeframe=6M");
+  });
+
+  it("wraps the bare-array wire response as { ticker, timeframe, data }", async () => {
+    const bars = [{ date: "2025-01-02", open: 1, high: 2, low: 1, close: 2, volume: 100 }];
+    mockFetch.mockResolvedValueOnce(jsonResponse(bars));
+    const result = await client.stocks.getChart("AAPL", { timeframe: "6M" });
+    expect(result).toEqual({ ticker: "AAPL", timeframe: "6M", data: bars });
+  });
+
+  it("defaults timeframe to 1M when omitted", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    const result = await client.stocks.getChart("AAPL");
+    expect(result.timeframe).toBe("1M");
   });
 });
 
