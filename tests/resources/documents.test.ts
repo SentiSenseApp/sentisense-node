@@ -71,10 +71,10 @@ describe("documents.getStories", () => {
   });
 });
 
-describe("documents.getStory", () => {
+describe("documents.getStoryDetail", () => {
   it("includes clusterId in path", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({}));
-    await client.documents.getStory("cluster_abc123");
+    await client.documents.getStoryDetail("cluster_abc123");
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/documents/stories/cluster_abc123");
   });

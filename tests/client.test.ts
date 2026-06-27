@@ -119,14 +119,14 @@ describe("error handling", () => {
       errorResponse(429, { error: "quota_exceeded", message: "Rate limit exceeded" }),
     );
 
-    const client = new SentiSense({ apiKey: "ssk_test" });
+    const client = new SentiSense({ apiKey: "ssk_test", maxRetries: 0 });
     await expect(client.stocks.list()).rejects.toThrow(RateLimitError);
   });
 
   it("throws APIError on other errors", async () => {
     mockFetch.mockResolvedValueOnce(errorResponse(500, { message: "Internal error" }));
 
-    const client = new SentiSense();
+    const client = new SentiSense({ maxRetries: 0 });
     await expect(client.stocks.list()).rejects.toThrow(APIError);
   });
 
@@ -135,7 +135,7 @@ describe("error handling", () => {
       errorResponse(429, { error: "quota_exceeded", message: "Slow down" }),
     );
 
-    const client = new SentiSense();
+    const client = new SentiSense({ maxRetries: 0 });
     try {
       await client.stocks.list();
       expect.unreachable("should have thrown");
