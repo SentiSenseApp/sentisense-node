@@ -457,6 +457,25 @@ export interface GetInsiderOptions {
 
 // ── Politicians Trading ─────────────────────────────────────
 
+/**
+ * Asset-type-specific detail on a congressional trade.
+ *
+ * `null` for plain `Stock`/`ETF` holdings. When present it is a discriminated
+ * ("oneOf") shape keyed by `kind`. Today only options carry metadata; new asset
+ * types slot in additively under their own `kind`. Only the fields relevant to
+ * `kind` are present.
+ */
+export interface AssetMetadata {
+  /** Discriminator; currently only `"OPTION"`. */
+  kind: "OPTION";
+  /** `"CALL"` or `"PUT"` (OPTION). */
+  optionType?: "CALL" | "PUT";
+  /** Strike in dollars (OPTION). */
+  strikePrice?: number;
+  /** Expiry as ISO `"YYYY-MM-DD"` (OPTION). */
+  expirationDate?: string;
+}
+
 /** A congressional STOCK Act trade disclosure. */
 export interface CongressTrade {
   politicianName: string;
@@ -469,7 +488,12 @@ export interface CongressTrade {
   imageUrl: string | null;
   ticker: string;
   assetDescription: string;
-  assetType: "Stock" | "ETF";
+  assetType: "Stock" | "ETF" | "Stock Option";
+  /**
+   * Structured asset detail, or `null`/absent for plain stocks and ETFs.
+   * For options carries optionType/strikePrice/expirationDate under `kind: "OPTION"`.
+   */
+  assetMetadata?: AssetMetadata | null;
   transactionType: "PURCHASE" | "SALE" | "EXCHANGE" | "OTHER";
   transactionDate: string;
   disclosureDate: string;

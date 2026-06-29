@@ -39,6 +39,45 @@ describe("politicians.getActivity", () => {
     expect(url).toContain("/api/v1/politicians/activity");
     expect(url).not.toContain("lookbackDays");
   });
+
+  it("surfaces option assetMetadata on option trades", async () => {
+    const data = {
+      isPreview: false,
+      previewReason: null,
+      data: [
+        {
+          ticker: "NVDA",
+          assetType: "Stock Option",
+          assetMetadata: {
+            kind: "OPTION",
+            optionType: "CALL",
+            strikePrice: 50,
+            expirationDate: "2026-12-18",
+          },
+          transactionType: "PURCHASE",
+        },
+      ],
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    const result = await client.politicians.getActivity();
+    const trade = result.data[0];
+    expect(trade.assetType).toBe("Stock Option");
+    expect(trade.assetMetadata?.kind).toBe("OPTION");
+    expect(trade.assetMetadata?.optionType).toBe("CALL");
+    expect(trade.assetMetadata?.strikePrice).toBe(50);
+    expect(trade.assetMetadata?.expirationDate).toBe("2026-12-18");
+  });
+
+  it("leaves assetMetadata absent on plain stock trades", async () => {
+    const data = {
+      isPreview: false,
+      previewReason: null,
+      data: [{ ticker: "NVDA", assetType: "Stock", transactionType: "PURCHASE" }],
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    const result = await client.politicians.getActivity();
+    expect(result.data[0].assetMetadata).toBeUndefined();
+  });
 });
 
 describe("politicians.getFilings", () => {
