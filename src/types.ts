@@ -54,6 +54,8 @@ export interface StockQuote {
   peRatio: number | null;
   epsTTM: number | null;
   dividendYield: number | null;
+  /** 200-day simple moving average of daily closes. Null when fewer than 200 trading days of history exist. */
+  movingAverage200Day: number | null;
   timestamp: number | null;
   /** Extended-hours view (pre-market or after-hours). Null/absent during RTH, overnight, and weekends. */
   extendedHours?: ExtendedHoursInfo | null;
