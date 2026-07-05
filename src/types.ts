@@ -632,10 +632,30 @@ export interface MetricDistributionOptions {
 }
 
 /** A single data point returned by the v2 time-series metrics endpoint. */
+/**
+ * The value envelope on a {@link ServingMetric}. For a count metric (e.g. `mentions`) the
+ * scalar is `value` directly (a number); for a value metric (e.g. `sentiment`, a polarity in
+ * [-1, 1]) it is nested one level deeper at `value.value`.
+ */
+export interface ServingMetricValue {
+  value: number | { value: number; valueType?: string };
+  type?: string;
+  valueType?: string;
+  [key: string]: unknown;
+}
+
 export interface ServingMetric {
-  /** Unix timestamp in seconds. */
+  /** Unix timestamp in milliseconds. */
   timestamp: number;
-  value: number;
+  /** The metric type, e.g. "SENTIMENT" or "MENTIONS". */
+  metricType?: string;
+  /**
+   * The metric value. Read the scalar at `metricValue.value` (count metrics) or
+   * `metricValue.value.value` (value metrics, e.g. sentiment polarity).
+   */
+  metricValue?: ServingMetricValue;
+  /** @deprecated Not present on the wire; read `metricValue.value` (or `.value.value`) instead. */
+  value?: number;
   [key: string]: unknown;
 }
 
