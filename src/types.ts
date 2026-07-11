@@ -656,11 +656,16 @@ export interface ServingMetric {
   /** The metric type, e.g. "SENTIMENT" or "MENTIONS". */
   metricType?: string;
   /**
-   * The metric value. Read the scalar at `metricValue.value` (count metrics) or
+   * The full metric value, including the stats block. For just the scalar, prefer the flat
+   * `value` field below; this nests the scalar at `metricValue.value` (count metrics) or
    * `metricValue.value.value` (value metrics, e.g. sentiment polarity).
    */
   metricValue?: ServingMetricValue;
-  /** @deprecated Not present on the wire; read `metricValue.value` (or `.value.value`) instead. */
+  /**
+   * The flattened scalar reading for this point: the polarity for a `sentiment` metric, the
+   * count for `mentions`. Populated on the wire, so prefer it over walking `metricValue`.
+   * Absent when the point has no reading (treat as "no reading", not `0`).
+   */
   value?: number;
   [key: string]: unknown;
 }
