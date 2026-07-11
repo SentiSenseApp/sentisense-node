@@ -280,6 +280,12 @@ export interface GetBySourceOptions {
   days?: number;
   hours?: number;
   limit?: number;
+  /**
+   * Result ordering. `latest` (default) returns newest first. `top` returns a
+   * reliability-first ranking that surfaces recent content from high-authority
+   * publishers ahead of low-authority floods.
+   */
+  sort?: "latest" | "top";
 }
 
 export interface GetStoriesOptions {

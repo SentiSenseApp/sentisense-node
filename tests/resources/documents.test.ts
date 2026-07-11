@@ -98,6 +98,16 @@ describe("documents.getBySource", () => {
     expect(url).toContain("/api/v1/documents/source/reddit");
     expect(url).toContain("days=2");
   });
+
+  it("passes the sort option through", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    await client.documents.getBySource("news", { hours: 6, limit: 50, sort: "top" });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/documents/source/news");
+    expect(url).toContain("hours=6");
+    expect(url).toContain("limit=50");
+    expect(url).toContain("sort=top");
+  });
 });
 
 
