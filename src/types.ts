@@ -203,7 +203,7 @@ export interface GetFundamentalsOptions {
 
 // ── Documents & News ────────────────────────────────────────
 
-export type DocumentSource = "news" | "reddit" | "x" | "substack";
+export type DocumentSource = "news" | "reddit" | "x" | "substack" | "youtube";
 
 /** Per-entity sentiment classification with resolved entity details. */
 export interface SentimentEntry {
@@ -218,7 +218,7 @@ export interface SentimentEntry {
 export interface Document {
   id: string;
   url: string;
-  source: "NEWS" | "REDDIT" | "X" | "SUBSTACK";
+  source: "NEWS" | "REDDIT" | "X" | "SUBSTACK" | "YOUTUBE";
   published: number;
   averageSentiment: number;
   reliability: number;
