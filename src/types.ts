@@ -319,6 +319,15 @@ export interface InstitutionalFlow {
   soldOutPositions: number;
   indexFundNetChange: number;
   hedgeFundNetChange: number;
+  /** Net share change contributed by each remaining filer category this quarter. */
+  activistNetChange: number;
+  pensionNetChange: number;
+  bankNetChange: number;
+  insuranceNetChange: number;
+  mutualFundNetChange: number;
+  sovereignWealthNetChange: number;
+  endowmentNetChange: number;
+  conglomerateNetChange: number;
   activistActivity: boolean;
   reportDate: string;
   /**
