@@ -40,6 +40,25 @@ describe("institutional.getFlows", () => {
     expect(result.inflows).toHaveLength(1);
     expect(result.outflows).toHaveLength(1);
   });
+
+  it("omits reportDate when not provided and surfaces coverage fields", async () => {
+    const data = {
+      inflows: [],
+      outflows: [],
+      reportDate: "2026-06-30",
+      isPending: true,
+      filerCount: 578,
+      baselineFilerCount: 8789,
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    const result = await client.institutional.getFlows();
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).not.toContain("reportDate=");
+    expect(result.reportDate).toBe("2026-06-30");
+    expect(result.isPending).toBe(true);
+    expect(result.filerCount).toBe(578);
+    expect(result.baselineFilerCount).toBe(8789);
+  });
 });
 
 describe("institutional.getHolders", () => {

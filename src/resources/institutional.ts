@@ -17,8 +17,14 @@ export class Institutional {
     return this.client.get("/api/v1/institutional/quarters");
   }
 
-  /** Get aggregate institutional activity per ticker for a quarter. */
-  async getFlows(reportDate: string, options?: GetFlowsOptions): Promise<InstitutionalFlowsResponse> {
+  /**
+   * Get aggregate institutional activity per ticker for a quarter.
+   *
+   * `reportDate` is optional: omit it to get the latest available quarter, which may be
+   * a still-open one holding only early filers. The response then carries `reportDate`
+   * plus `isPending` and filer coverage counts so a partial quarter is clearly labeled.
+   */
+  async getFlows(reportDate?: string, options?: GetFlowsOptions): Promise<InstitutionalFlowsResponse> {
     return this.client.get("/api/v1/institutional/flows", {
       reportDate,
       ...options,

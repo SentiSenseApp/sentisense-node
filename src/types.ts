@@ -356,6 +356,24 @@ export interface Holder {
 export interface InstitutionalFlowsResponse {
   inflows: InstitutionalFlow[];
   outflows: InstitutionalFlow[];
+  /**
+   * Quarter these flows are for (ISO date). Populated when `reportDate` is omitted from
+   * the request so the caller knows which quarter the server defaulted to.
+   */
+  reportDate?: string;
+  /**
+   * True when `reportDate` is a still-open 13F filing window (within 45 days of quarter
+   * end), so only early filers are represented and the flows are partial.
+   */
+  isPending?: boolean;
+  /** Distinct 13F filers represented in this quarter. Present only when `isPending`. */
+  filerCount?: number;
+  /**
+   * Distinct filers in the latest fully-filed quarter, as a coverage baseline for a
+   * pending quarter (e.g. `filerCount` 578 of `baselineFilerCount` 8789). Present only
+   * when `isPending`.
+   */
+  baselineFilerCount?: number;
 }
 
 export interface GetFlowsOptions {

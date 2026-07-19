@@ -21,7 +21,8 @@ const client = new SentiSense({ apiKey: "ss_live_YOUR_KEY" });
 const price = await client.stocks.getPrice("AAPL");
 console.log(price.currentPrice);
 
-const flows = await client.institutional.getFlows("2025-02-14");
+// reportDate is optional; omit it to get the latest available quarter
+const flows = await client.institutional.getFlows();
 ```
 
 ## Features
