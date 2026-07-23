@@ -748,9 +748,9 @@ export interface MarketMood {
 
 /** AI-generated market summary with headline and analysis. */
 export interface MarketSummary {
-  /** Total mentions across all stocks. */
+  /** Not populated by the API (always empty); retained for backward compatibility. */
   totalMentions: number;
-  /** Most active stock tickers by mention volume. */
+  /** Not populated by the API (always empty); retained for backward compatibility. */
   topActiveStocks: string[];
   /** Timestamp when this data was last updated (epoch milliseconds). */
   lastUpdated: number;
