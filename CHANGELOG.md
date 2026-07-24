@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.30.0
+
+Removed methods whose endpoints no longer work. Both were unusable at runtime, so this
+breaks only code that was already failing.
+
+### Breaking (removed)
+
+- **`entityMetrics.getMentions` / `getMentionCount` / `getMentionCountBySource` /
+  `getSentiment` / `getSentimentBySource` / `getAverageSentiment`.** These called the v1
+  `/entity-metrics/` endpoints, which the API retired in March 2026 (HTTP 410). Use
+  `entityMetrics.getMetrics(symbol, { metricType })` and
+  `entityMetrics.getDistribution(symbol, metricType)` instead.
+- **`kb.getEntity`.** Its endpoint returned 400/404 for every id form, so it never worked;
+  removed. Use `kb.getPopularEntities()` / `kb.getAllEntities()`.
+- Removed the now-orphaned exported types tied to those methods (`MentionData`,
+  `MentionCount`, `SentimentData`, `EntityMetricsDateRange`, `GetMentionsOptions`,
+  `GetMentionCountOptions`, `GetSentimentBySourceOptions`).
+
 ## 0.29.0
 
 Corrects the declared return types of the methods whose responses are wrapped, so the

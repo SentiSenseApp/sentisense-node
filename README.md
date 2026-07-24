@@ -148,7 +148,6 @@ Available metric types: `mentions`, `sentiment`, `sentisense`, `social_dominance
 
 ```typescript
 client.kb.getPopularEntities()
-client.kb.getEntity("entity-id")
 client.kb.getAllEntities()
 ```
 

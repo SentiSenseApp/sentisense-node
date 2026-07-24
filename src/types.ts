@@ -777,44 +777,6 @@ export interface MetricDistribution {
   [key: string]: unknown;
 }
 
-// ── Entity Metrics (v1 — deprecated) ───────────────────────
-
-/** @deprecated Use `ServingMetric[]` from the v2 API instead. */
-export interface MentionData {
-  [key: string]: unknown;
-}
-
-/** @deprecated Use `ServingMetric[]` from the v2 API instead. */
-export interface MentionCount {
-  [key: string]: unknown;
-}
-
-/** @deprecated Use `ServingMetric[]` from the v2 API instead. */
-export interface SentimentData {
-  [key: string]: unknown;
-}
-
-/** @deprecated */
-export interface EntityMetricsDateRange {
-  startDate?: string;
-  endDate?: string;
-}
-
-/** @deprecated */
-export interface GetMentionsOptions extends EntityMetricsDateRange {
-  source?: DocumentSource;
-}
-
-/** @deprecated */
-export interface GetMentionCountOptions extends EntityMetricsDateRange {
-  source?: DocumentSource;
-}
-
-/** @deprecated */
-export interface GetSentimentBySourceOptions {
-  date?: string;
-}
-
 // ── Market Mood & Market Summary ─────────────────────────────
 
 export interface MarketMood {
