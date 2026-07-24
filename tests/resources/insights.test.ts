@@ -1,19 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SentiSense from "../../src/index.js";
-import type { Insight, PreviewResponse } from "../../src/types.js";
 
 /**
  * The insights endpoints all go through the server's preview-response builder, so the
  * wire shape is `{ isPreview, previewReason, data }` for every caller. The declared
- * return type still offers an `{ insights, locked }` union arm that the API does not
- * emit anywhere (grep the server: there is no `locked`), so these tests cast before
- * reading. The casts mark where the published type disagrees with the server.
+ * return type is now `PreviewResponse<Insight[]>`, so `result.data` type-checks with no
+ * cast: that native access is the regression guard.
  */
-
-/** Reads a response through the shape the server actually sends. */
-function asEnvelope(value: unknown): PreviewResponse<Insight[]> {
-  return value as unknown as PreviewResponse<Insight[]>;
-}
 
 const mockFetch = vi.fn();
 
@@ -43,7 +36,7 @@ const client = new SentiSense({ apiKey: "ss_live_test" });
 describe("insights.stock", () => {
   it("uppercases the ticker, passes options, and returns the array under data", async () => {
     mockFetch.mockResolvedValueOnce(envelope([{ insightId: "i1" }, { insightId: "i2" }]));
-    const result = asEnvelope(await client.insights.stock("aapl", { urgency: "high" }));
+    const result = await client.insights.stock("aapl", { urgency: "high" });
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/insights/stock/AAPL");
     expect(url).toContain("urgency=high");
@@ -53,7 +46,7 @@ describe("insights.stock", () => {
 
   it("surfaces totalCount on a truncated free-tier response", async () => {
     mockFetch.mockResolvedValueOnce(envelope([{ insightId: "i1" }], true, 12));
-    const result = asEnvelope(await client.insights.stock("AAPL"));
+    const result = await client.insights.stock("AAPL");
     expect(result.isPreview).toBe(true);
     expect(result.previewReason).toBe("PRO_REQUIRED");
     expect(result.data).toHaveLength(1);
@@ -78,7 +71,7 @@ describe("insights.stockRange", () => {
 describe("insights.market", () => {
   it("returns the envelope, not a bare array", async () => {
     mockFetch.mockResolvedValueOnce(envelope([{ insightId: "m1" }]));
-    const result = asEnvelope(await client.insights.market());
+    const result = await client.insights.market();
     expect(mockFetch.mock.calls[0][0]).toContain("/api/v1/insights/market");
     expect(result.data).toHaveLength(1);
     // Guards the regression: iterating the response itself used to be the documented

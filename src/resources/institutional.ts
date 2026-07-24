@@ -4,9 +4,11 @@ import type {
   Holder,
   InstitutionList,
   InstitutionListResponse,
-  InstitutionalFlowsResponse,
+  InstitutionalFlows,
   ListInstitutionsOptions,
+  PreviewResponse,
   Quarter,
+  TickerHolders,
 } from "../types.js";
 
 export class Institutional {
@@ -23,24 +25,44 @@ export class Institutional {
    * `reportDate` is optional: omit it to get the latest available quarter, which may be
    * a still-open one holding only early filers. The response then carries `reportDate`
    * plus `isPending` and filer coverage counts so a partial quarter is clearly labeled.
+   *
+   * Returns the preview envelope, so the flows are one level down:
+   * `const { data } = await client.institutional.getFlows(); data.inflows`.
    */
-  async getFlows(reportDate?: string, options?: GetFlowsOptions): Promise<InstitutionalFlowsResponse> {
+  async getFlows(
+    reportDate?: string,
+    options?: GetFlowsOptions,
+  ): Promise<PreviewResponse<InstitutionalFlows>> {
     return this.client.get("/api/v1/institutional/flows", {
       reportDate,
       ...options,
     });
   }
 
-  /** Get institutional holders for a specific stock. */
-  async getHolders(ticker: string, reportDate: string): Promise<Holder[]> {
+  /**
+   * Get institutional holders for a specific stock.
+   *
+   * Returns the preview envelope wrapping a {@link TickerHolders} object, so the rows
+   * are two levels down: `(await getHolders(t, d)).data.holders`, alongside ticker-level
+   * totals like `holderCount`. Free callers get a truncated `holders` array with
+   * `isPreview: true`.
+   */
+  async getHolders(
+    ticker: string,
+    reportDate: string,
+  ): Promise<PreviewResponse<TickerHolders>> {
     return this.client.get(
       `/api/v1/institutional/holders/${encodeURIComponent(ticker)}`,
       { reportDate },
     );
   }
 
-  /** Get activist investor positions (NEW or INCREASED). */
-  async getActivists(reportDate: string): Promise<Holder[]> {
+  /**
+   * Get activist investor positions (NEW or INCREASED).
+   *
+   * Returns the preview envelope, so read the rows as `.data`.
+   */
+  async getActivists(reportDate: string): Promise<PreviewResponse<Holder[]>> {
     return this.client.get("/api/v1/institutional/activist", { reportDate });
   }
 

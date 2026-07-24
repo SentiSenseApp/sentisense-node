@@ -1,8 +1,8 @@
 import type { APIClient } from "../client.js";
 import type {
   Insight,
-  InsightPreviewResponse,
   GetInsightsOptions,
+  PreviewResponse,
 } from "../types.js";
 
 export interface GetStockInsightsRangeOptions {
@@ -28,15 +28,14 @@ export class Insights {
   /**
    * Get AI-generated insights for a specific stock, sorted by urgency then confidence.
    *
-   * PRO users receive a flat array of Insight objects.
-   * Free/unauthenticated users receive a preview with `isPreview: true`,
-   * the top 3 insights in full, and a `locked` array with metadata-only entries
-   * (type, urgency, timestamp) showing what additional signals exist.
+   * Returns the preview envelope: read the insights as `.data`. PRO callers get the
+   * full list with `isPreview: false`; free callers get the top 3 with `isPreview: true`
+   * and `totalCount` carrying the untruncated size.
    */
   async stock(
     ticker: string,
     options?: GetInsightsOptions,
-  ): Promise<Insight[] | InsightPreviewResponse> {
+  ): Promise<PreviewResponse<Insight[]>> {
     return this.client.get(
       `/api/v1/insights/stock/${encodeURIComponent(ticker.toUpperCase())}`,
       options,
@@ -46,13 +45,14 @@ export class Insights {
   /**
    * Get AI insights for a stock within a date range.
    *
-   * Free users receive the top 3; PRO users receive the full list.
-   * The server returns 400 if `startDate` is after `endDate`.
+   * Returns the preview envelope: read the insights as `.data`. Free callers receive
+   * the top 3, PRO callers the full list. The server returns 400 if `startDate` is
+   * after `endDate`.
    */
   async stockRange(
     ticker: string,
     options: GetStockInsightsRangeOptions,
-  ): Promise<Insight[] | InsightPreviewResponse> {
+  ): Promise<PreviewResponse<Insight[]>> {
     return this.client.get(
       `/api/v1/insights/stock/${encodeURIComponent(ticker.toUpperCase())}/range`,
       options,
@@ -62,22 +62,23 @@ export class Insights {
   /**
    * Get AI-generated market-level insights, sorted by urgency then confidence.
    *
-   * PRO users receive a flat array of Insight objects.
-   * Free/unauthenticated users receive a preview with `isPreview: true`,
-   * the top 5 insights in full, and a `locked` array with metadata-only entries.
+   * Returns the preview envelope: read the insights as `.data`. PRO callers get the
+   * full list with `isPreview: false`; free callers get the top 5 with `isPreview: true`
+   * and `totalCount` carrying the untruncated size.
    */
-  async market(): Promise<Insight[] | InsightPreviewResponse> {
+  async market(): Promise<PreviewResponse<Insight[]>> {
     return this.client.get("/api/v1/insights/market");
   }
 
   /**
    * Get the latest AI insights across all tracked stocks, newest first.
    *
-   * Free users receive the top 5; PRO users receive up to `limit` (clamped to 1-200).
+   * Returns the preview envelope: read the insights as `.data`. Free callers receive
+   * the top 5, PRO callers up to `limit` (clamped to 1-200).
    */
   async latest(
     options?: GetLatestInsightsOptions,
-  ): Promise<Insight[] | InsightPreviewResponse> {
+  ): Promise<PreviewResponse<Insight[]>> {
     return this.client.get("/api/v1/insights/latest", options);
   }
 
@@ -86,10 +87,11 @@ export class Insights {
    *
    * Biased toward the user's watchlist and portfolio when available; falls back
    * to market-level insights otherwise. API key authentication required.
+   * Returns the preview envelope: read the insights as `.data`.
    */
   async user(
     options?: GetUserInsightsOptions,
-  ): Promise<Insight[] | InsightPreviewResponse> {
+  ): Promise<PreviewResponse<Insight[]>> {
     return this.client.get("/api/v1/insights/user", options);
   }
 

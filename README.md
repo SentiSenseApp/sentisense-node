@@ -36,13 +36,8 @@ const flows = await client.institutional.getFlows();
 
 ## Response shapes
 
-Most methods resolve to the payload directly, but two families wrap it.
-
-> **Known issue: some declared return types describe the inner payload rather than the
-> wrapper.** For the methods listed below, the runtime value is the wrapper, so reading the
-> declared shape gives you `undefined` even though it compiles. Cast to the wrapper type
-> (each is exported) until the declarations are corrected in a future release. The runtime
-> behavior is stable and is what is documented here.
+Most methods resolve to the payload directly, but two families wrap it. The return types
+describe the wrapper, so `.data` / `.documents` type-check natively, no cast.
 
 **1. Tier-gated endpoints return a preview envelope.** The payload is in `data`, and
 `isPreview` tells you whether it was truncated for your tier. On a truncated response
@@ -52,11 +47,7 @@ Affected: `institutional.getFlows` / `getHolders` / `getActivists`, and all five
 `insights` methods.
 
 ```typescript
-import type { InstitutionalFlows, PreviewResponse, TickerHolders } from "sentisense";
-
-const flows = (await client.institutional.getFlows()) as unknown as
-  PreviewResponse<InstitutionalFlows>;
-
+const flows = await client.institutional.getFlows();
 if (flows.isPreview) {
   console.log(`Preview: ${flows.data.inflows.length} of ${flows.totalCount}`);
 }
@@ -65,10 +56,15 @@ for (const flow of flows.data.inflows) {
 }
 
 // holders nest one level deeper: ticker-level totals plus the rows
-const holders = (await client.institutional.getHolders("AAPL", "2026-06-30")) as unknown as
-  PreviewResponse<TickerHolders>;
+const holders = await client.institutional.getHolders("AAPL", "2026-06-30");
 console.log(`${holders.data.holderCount} holders`);
 const newPositions = holders.data.holders.filter((h) => h.changeType === "NEW");
+
+// insights use the same envelope, wrapping a plain array
+const insights = await client.insights.stock("AAPL");
+for (const insight of insights.data) {
+  console.log(insight.insightText);
+}
 ```
 
 **2. Document endpoints return a search wrapper.** This is not the preview envelope:
@@ -78,11 +74,7 @@ Affected: `documents.getByTicker` / `getByTickerRange` / `getByEntity` / `search
 `getBySource`. Also `stocks.getFundamentalsPeriods`, whose periods are in `periods`.
 
 ```typescript
-import type { DocumentSearchResponse } from "sentisense";
-
-const results = (await client.documents.search("NVDA earnings", { days: 7 })) as unknown as
-  DocumentSearchResponse;
-
+const results = await client.documents.search("NVDA earnings", { days: 7 });
 console.log(`${results.totalCount} matches`);
 for (const doc of results.documents) {
   console.log(doc.url, doc.averageSentiment);
@@ -91,7 +83,12 @@ for (const doc of results.documents) {
 
 Everything else, including `stocks.getPrice()`, `documents.getStories()`,
 `insights.types()` and `institutional.getQuarters()`, resolves to the value itself with no
-wrapper and needs no cast.
+wrapper.
+
+> **Upgrading from 0.28.x or earlier?** These return types were corrected in 0.29.0. If your
+> code read the flat shape (`flows.inflows`, `holders.filter(...)`), it was returning
+> `undefined` / throwing at runtime already; switch to `flows.data.inflows` /
+> `holders.data.holders`. See [CHANGELOG.md](./CHANGELOG.md) for the full mapping.
 
 ## API Reference
 

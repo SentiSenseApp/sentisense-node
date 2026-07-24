@@ -134,15 +134,33 @@ export interface Fundamentals {
   [key: string]: unknown;
 }
 
+/**
+ * Trailing-twelve-month snapshot from `stocks.getCurrentFundamentals()`: TTM ratios,
+ * a different shape from the per-period statement data in {@link Fundamentals}.
+ */
+export interface TtmFundamentals {
+  ticker: string;
+  currentPrice?: number;
+  peTTM?: number | null;
+  psTTM?: number | null;
+  epsTTM?: number | null;
+  revenueTTM?: number | null;
+  quartersIncluded?: number;
+  /** False when there is not enough filed history to compute the TTM figures. */
+  available?: boolean;
+  /** Populated when `available` is false, explaining why. */
+  reason?: string | null;
+  [key: string]: unknown;
+}
+
 export interface FundamentalsPeriod {
   fiscalPeriod: string;
   fiscalYear: number;
 }
 
 /**
- * What `stocks.getFundamentalsPeriods()` actually returns: the periods are in `periods`,
- * not at the top level. The method is currently declared as returning
- * `FundamentalsPeriod[]`, which does not match the wire; cast to this to read it.
+ * What `stocks.getFundamentalsPeriods()` returns: the periods are in `periods`, not at
+ * the top level.
  */
 export interface FundamentalsPeriodsResponse {
   ticker: string;
@@ -238,13 +256,10 @@ export interface Document {
 }
 
 /**
- * What the document-metrics endpoints actually return: the rows are in `documents`, not
- * at the top level.
- *
- * This is NOT the {@link PreviewResponse} envelope; there is no `isPreview` or `data`
- * here. `documents.getByTicker()`, `getByTickerRange()`, `getByEntity()`, `search()` and
- * `getBySource()` are currently declared as returning `Document[]`, which does not match
- * the wire; cast to this to read them.
+ * What the document-metrics endpoints return: `documents.getByTicker()`,
+ * `getByTickerRange()`, `getByEntity()`, `search()` and `getBySource()` all resolve to
+ * this. The rows are in `documents`, and this is NOT the {@link PreviewResponse}
+ * envelope: there is no `isPreview` or `data`.
  */
 export interface DocumentSearchResponse {
   documents: Document[];
@@ -387,14 +402,10 @@ export interface Holder {
 }
 
 /**
- * Institutional ownership for one ticker: what the server puts inside the response
- * envelope for `institutional.getHolders()`.
- *
- * The holder rows are in `holders`, and the endpoint wraps this in
- * `{ isPreview, previewReason, data }`. So the rows are two levels down at
- * `.data.holders`, not at the top level. `institutional.getHolders()` is currently
- * declared as returning `Holder[]`, which does not match; cast to
- * `PreviewResponse<TickerHolders>` to read it correctly.
+ * Institutional ownership for one ticker: the `data` payload of
+ * `institutional.getHolders()`, which returns `PreviewResponse<TickerHolders>`. The
+ * holder rows are in `holders`, so read them as `result.data.holders` (two levels down),
+ * alongside ticker-level totals like `holderCount`.
  */
 export interface TickerHolders {
   ticker: string;
@@ -407,13 +418,8 @@ export interface TickerHolders {
 }
 
 /**
- * The flows payload itself: what the server puts inside the response envelope.
- *
- * Note `institutional.getFlows()` is currently declared as returning this shape directly,
- * but the endpoint wraps it: the value you get back at runtime is
- * `{ isPreview, previewReason, data }` with these fields under `data`. Until the
- * declaration is corrected, read the flows as `(result as unknown as
- * PreviewResponse<InstitutionalFlows>).data.inflows`.
+ * The flows payload inside the response envelope: `institutional.getFlows()` returns
+ * `PreviewResponse<InstitutionalFlows>`, so read the flows as `result.data.inflows`.
  */
 export interface InstitutionalFlows {
   inflows: InstitutionalFlow[];
@@ -438,7 +444,11 @@ export interface InstitutionalFlows {
   baselineFilerCount?: number;
 }
 
-/** Alias of {@link InstitutionalFlows}; same shape. */
+/**
+ * @deprecated Names the INNER flows payload, but `getFlows()` returns the envelope
+ * {@link PreviewResponse}<{@link InstitutionalFlows}>. Kept as an alias of the inner
+ * shape so an existing import still resolves; will be removed in a future release.
+ */
 export type InstitutionalFlowsResponse = InstitutionalFlows;
 
 export interface GetFlowsOptions {
@@ -854,7 +864,11 @@ export interface LockedInsight {
   generatedAt: number;
 }
 
-/** Preview response returned to free/unauthenticated users on insights endpoints. */
+/**
+ * @deprecated The insights endpoints return `PreviewResponse<Insight[]>`, not this shape.
+ * No endpoint emits `insights` or `locked`. Kept only so an existing import resolves;
+ * will be removed in a future release.
+ */
 export interface InsightPreviewResponse {
   isPreview: true;
   previewReason: "PRO_REQUIRED";

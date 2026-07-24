@@ -6,7 +6,8 @@ import type {
   CompanyKpisData,
   FloatInfo,
   Fundamentals,
-  FundamentalsPeriod,
+  FundamentalsPeriodsResponse,
+  TtmFundamentals,
   GetAISummaryOptions,
   GetChartOptions,
   GetDescriptionsOptions,
@@ -154,13 +155,16 @@ export class Stocks {
     return this.client.get("/api/v1/stocks/fundamentals", { ticker, ...options });
   }
 
-  /** Get available fiscal periods. */
-  async getFundamentalsPeriods(ticker: string): Promise<FundamentalsPeriod[]> {
+  /** Get available fiscal periods. The periods are in `periods`. */
+  async getFundamentalsPeriods(ticker: string): Promise<FundamentalsPeriodsResponse> {
     return this.client.get("/api/v1/stocks/fundamentals/periods", { ticker });
   }
 
-  /** Get most recent fundamentals snapshot. */
-  async getCurrentFundamentals(ticker: string): Promise<Fundamentals> {
+  /**
+   * Get the trailing-twelve-month fundamentals snapshot: TTM ratios, a different
+   * shape from the per-period statement data `getFundamentals()` returns.
+   */
+  async getCurrentFundamentals(ticker: string): Promise<TtmFundamentals> {
     return this.client.get("/api/v1/stocks/fundamentals/current", { ticker });
   }
 

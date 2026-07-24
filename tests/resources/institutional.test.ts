@@ -1,16 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SentiSense from "../../src/index.js";
-import type {
-  Holder,
-  InstitutionalFlows,
-  PreviewResponse,
-  TickerHolders,
-} from "../../src/types.js";
-
-/** Reads a response through the shape the server actually sends. */
-function asEnvelope<T>(value: unknown): PreviewResponse<T> {
-  return value as unknown as PreviewResponse<T>;
-}
 
 const mockFetch = vi.fn();
 
@@ -42,13 +31,10 @@ describe("institutional.getQuarters", () => {
 
 /**
  * These fixtures mirror the REAL wire shape: the institutional endpoints wrap their
- * payload in the preview envelope `{ isPreview, previewReason, data }`. Mocking a flat
- * body here would let the suite pass while real callers crash, which is exactly what
- * happened before: the shipped example did `flows.inflows` and threw at runtime.
- *
- * The declared return types still describe the inner payload rather than the envelope,
- * so these tests cast before reading. The casts are deliberate and load-bearing: they
- * mark every spot where the published type disagrees with what the server sends.
+ * payload in the preview envelope `{ isPreview, previewReason, data }`. The declared
+ * return types now describe that envelope, so `result.data.inflows` type-checks with no
+ * cast. That native `.data` access IS the regression guard: if a signature ever reverts
+ * to the flat shape, these lines stop compiling.
  */
 function envelope(data: unknown, isPreview = false) {
   return jsonResponse({
@@ -62,9 +48,7 @@ describe("institutional.getFlows", () => {
   it("passes reportDate and limit, and unwraps the envelope via .data", async () => {
     const flows = { inflows: [{ ticker: "AAPL" }], outflows: [{ ticker: "TSLA" }] };
     mockFetch.mockResolvedValueOnce(envelope(flows));
-    const result = asEnvelope<InstitutionalFlows>(
-      await client.institutional.getFlows("2025-12-31", { limit: 20 }),
-    );
+    const result = await client.institutional.getFlows("2025-12-31", { limit: 20 });
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("reportDate=2025-12-31");
     expect(url).toContain("limit=20");
@@ -85,7 +69,7 @@ describe("institutional.getFlows", () => {
       baselineFilerCount: 8789,
     };
     mockFetch.mockResolvedValueOnce(envelope(flows));
-    const result = asEnvelope<InstitutionalFlows>(await client.institutional.getFlows());
+    const result = await client.institutional.getFlows();
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).not.toContain("reportDate=");
     expect(result.data.reportDate).toBe("2026-06-30");
@@ -118,9 +102,7 @@ describe("institutional.getHolders", () => {
       ],
     };
     mockFetch.mockResolvedValueOnce(envelope(payload));
-    const result = asEnvelope<TickerHolders>(
-      await client.institutional.getHolders("AAPL", "2026-06-30"),
-    );
+    const result = await client.institutional.getHolders("AAPL", "2026-06-30");
     expect(result.data.holderCount).toBe(2);
     expect(result.data.holders).toHaveLength(2);
     expect(result.data.holders.filter((h) => h.changeType === "NEW")).toHaveLength(1);
@@ -130,7 +112,7 @@ describe("institutional.getHolders", () => {
 describe("institutional.getActivists", () => {
   it("passes reportDate and returns the array under data", async () => {
     mockFetch.mockResolvedValueOnce(envelope([{ filerCik: "1", filerName: "A" }]));
-    const result = asEnvelope<Holder[]>(await client.institutional.getActivists("2025-12-31"));
+    const result = await client.institutional.getActivists("2025-12-31");
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/institutional/activist");
     expect(url).toContain("reportDate=2025-12-31");
