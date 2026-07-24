@@ -13,7 +13,8 @@ export class EntityMetrics {
   /**
    * Get time-series metric data for an entity using the v2 Serving Metrics API.
    *
-   * @param symbol   Ticker symbol (e.g. "AAPL") — the backend resolves the entity.
+   * @param symbol   Ticker symbol (e.g. "AAPL") or entity urlSlug (e.g. "Nancy-Pelosi",
+   *                 case-insensitive; discover slugs via stocks.getEntities()).
    * @param options  Metric type and optional time range / resolution.
    */
   async getMetrics(
@@ -34,7 +35,7 @@ export class EntityMetrics {
   /**
    * Get distribution data for a metric, broken down by a dimension (default: source).
    *
-   * @param symbol     Ticker symbol (e.g. "AAPL").
+   * @param symbol     Ticker symbol (e.g. "AAPL") or entity urlSlug.
    * @param metricType The metric to break down (e.g. "mentions", "sentiment").
    * @param options    Optional dimension parameter.
    */
