@@ -22,7 +22,7 @@ const client = new SentiSense({ apiKey: "ssk_test" });
 
 describe("documents.getByTicker", () => {
   it("includes ticker in path and passes options", async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    mockFetch.mockResolvedValueOnce(jsonResponse({ documents: [], totalCount: 0, searchTicker: null, source: "ALL", startDate: "2026-01-01", endDate: "2026-01-02" }));
     await client.documents.getByTicker("AAPL", { source: "news", days: 3 });
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/documents/ticker/AAPL");
@@ -33,7 +33,7 @@ describe("documents.getByTicker", () => {
 
 describe("documents.getByTickerRange", () => {
   it("passes date range params", async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    mockFetch.mockResolvedValueOnce(jsonResponse({ documents: [], totalCount: 0, searchTicker: null, source: "ALL", startDate: "2026-01-01", endDate: "2026-01-02" }));
     await client.documents.getByTickerRange("AAPL", {
       startDate: "2025-01-01",
       endDate: "2025-01-31",
@@ -49,7 +49,7 @@ describe("documents.getByTickerRange", () => {
 
 describe("documents.search", () => {
   it("passes query and options", async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    mockFetch.mockResolvedValueOnce(jsonResponse({ documents: [], totalCount: 0, searchTicker: null, source: "ALL", startDate: "2026-01-01", endDate: "2026-01-02" }));
     await client.documents.search("NVDA earnings", { days: 7, limit: 20 });
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/documents/search");
@@ -92,7 +92,7 @@ describe("documents.getStoriesByTicker", () => {
 
 describe("documents.getBySource", () => {
   it("includes source in path", async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    mockFetch.mockResolvedValueOnce(jsonResponse({ documents: [], totalCount: 0, searchTicker: null, source: "ALL", startDate: "2026-01-01", endDate: "2026-01-02" }));
     await client.documents.getBySource("reddit", { days: 2 });
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/documents/source/reddit");
@@ -100,7 +100,7 @@ describe("documents.getBySource", () => {
   });
 
   it("passes the sort option through", async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    mockFetch.mockResolvedValueOnce(jsonResponse({ documents: [], totalCount: 0, searchTicker: null, source: "ALL", startDate: "2026-01-01", endDate: "2026-01-02" }));
     await client.documents.getBySource("news", { hours: 6, limit: 50, sort: "top" });
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/documents/source/news");

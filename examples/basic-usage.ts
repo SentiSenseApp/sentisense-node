@@ -1,7 +1,8 @@
 import SentiSense from "sentisense";
 
-// Public endpoints work without an API key
-const client = new SentiSense();
+// Every endpoint requires an API key. Get a free one at
+// https://app.sentisense.ai/get-api-key
+const client = new SentiSense({ apiKey: process.env.SENTISENSE_API_KEY });
 
 // Get a stock price
 const price = await client.stocks.getPrice("AAPL");
@@ -15,7 +16,7 @@ for (const p of prices) {
 
 // Company profile
 const profile = await client.stocks.getProfile("NVDA");
-console.log(`${profile.name} — ${profile.sector} / ${profile.industry}`);
+console.log(`${profile.name}: ${profile.sector} / ${profile.industry}`);
 
 // Market status
 const status = await client.stocks.getMarketStatus();

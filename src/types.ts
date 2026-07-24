@@ -139,6 +139,18 @@ export interface FundamentalsPeriod {
   fiscalYear: number;
 }
 
+/**
+ * What `stocks.getFundamentalsPeriods()` actually returns: the periods are in `periods`,
+ * not at the top level. The method is currently declared as returning
+ * `FundamentalsPeriod[]`, which does not match the wire; cast to this to read it.
+ */
+export interface FundamentalsPeriodsResponse {
+  ticker: string;
+  periods: FundamentalsPeriod[];
+  /** Populated when no periods are available, explaining why. */
+  reason?: string | null;
+}
+
 export interface ShortInterest {
   ticker: string;
   [key: string]: unknown;
@@ -223,6 +235,27 @@ export interface Document {
   averageSentiment: number;
   reliability: number;
   sentiment: SentimentEntry[];
+}
+
+/**
+ * What the document-metrics endpoints actually return: the rows are in `documents`, not
+ * at the top level.
+ *
+ * This is NOT the {@link PreviewResponse} envelope; there is no `isPreview` or `data`
+ * here. `documents.getByTicker()`, `getByTickerRange()`, `getByEntity()`, `search()` and
+ * `getBySource()` are currently declared as returning `Document[]`, which does not match
+ * the wire; cast to this to read them.
+ */
+export interface DocumentSearchResponse {
+  documents: Document[];
+  /** Total matching documents before any limit was applied. */
+  totalCount: number;
+  /** Ticker the query resolved to, or `null` when the query was not ticker-scoped. */
+  searchTicker: string | null;
+  /** Source filter applied, or `"ALL"` when unfiltered. */
+  source: string;
+  startDate: string;
+  endDate: string;
 }
 
 /** Story cluster with title, sentiment, and metrics. */
@@ -353,7 +386,36 @@ export interface Holder {
   sharesChangePct: number;
 }
 
-export interface InstitutionalFlowsResponse {
+/**
+ * Institutional ownership for one ticker: what the server puts inside the response
+ * envelope for `institutional.getHolders()`.
+ *
+ * The holder rows are in `holders`, and the endpoint wraps this in
+ * `{ isPreview, previewReason, data }`. So the rows are two levels down at
+ * `.data.holders`, not at the top level. `institutional.getHolders()` is currently
+ * declared as returning `Holder[]`, which does not match; cast to
+ * `PreviewResponse<TickerHolders>` to read it correctly.
+ */
+export interface TickerHolders {
+  ticker: string;
+  companyName: string;
+  reportDate: string;
+  totalInstitutionalShares: number;
+  totalInstitutionalValue: number;
+  holderCount: number;
+  holders: Holder[];
+}
+
+/**
+ * The flows payload itself: what the server puts inside the response envelope.
+ *
+ * Note `institutional.getFlows()` is currently declared as returning this shape directly,
+ * but the endpoint wraps it: the value you get back at runtime is
+ * `{ isPreview, previewReason, data }` with these fields under `data`. Until the
+ * declaration is corrected, read the flows as `(result as unknown as
+ * PreviewResponse<InstitutionalFlows>).data.inflows`.
+ */
+export interface InstitutionalFlows {
   inflows: InstitutionalFlow[];
   outflows: InstitutionalFlow[];
   /**
@@ -375,6 +437,9 @@ export interface InstitutionalFlowsResponse {
    */
   baselineFilerCount?: number;
 }
+
+/** Alias of {@link InstitutionalFlows}; same shape. */
+export type InstitutionalFlowsResponse = InstitutionalFlows;
 
 export interface GetFlowsOptions {
   limit?: number;

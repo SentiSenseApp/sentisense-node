@@ -22,6 +22,7 @@ const price = await client.stocks.getPrice("AAPL");
 console.log(price.currentPrice);
 
 // reportDate is optional; omit it to get the latest available quarter
+// (this one returns a wrapper: see "Response shapes" below)
 const flows = await client.institutional.getFlows();
 ```
 
@@ -32,6 +33,65 @@ const flows = await client.institutional.getFlows();
 - Zero runtime dependencies (uses native `fetch`)
 - Namespaced API resources (stocks, documents, institutional, etc.)
 - Typed error hierarchy for clean error handling
+
+## Response shapes
+
+Most methods resolve to the payload directly, but two families wrap it.
+
+> **Known issue: some declared return types describe the inner payload rather than the
+> wrapper.** For the methods listed below, the runtime value is the wrapper, so reading the
+> declared shape gives you `undefined` even though it compiles. Cast to the wrapper type
+> (each is exported) until the declarations are corrected in a future release. The runtime
+> behavior is stable and is what is documented here.
+
+**1. Tier-gated endpoints return a preview envelope.** The payload is in `data`, and
+`isPreview` tells you whether it was truncated for your tier. On a truncated response
+`totalCount` carries the untruncated size, so you can render "showing N of M".
+
+Affected: `institutional.getFlows` / `getHolders` / `getActivists`, and all five
+`insights` methods.
+
+```typescript
+import type { InstitutionalFlows, PreviewResponse, TickerHolders } from "sentisense";
+
+const flows = (await client.institutional.getFlows()) as unknown as
+  PreviewResponse<InstitutionalFlows>;
+
+if (flows.isPreview) {
+  console.log(`Preview: ${flows.data.inflows.length} of ${flows.totalCount}`);
+}
+for (const flow of flows.data.inflows) {
+  console.log(flow.ticker, flow.netSharesChange);
+}
+
+// holders nest one level deeper: ticker-level totals plus the rows
+const holders = (await client.institutional.getHolders("AAPL", "2026-06-30")) as unknown as
+  PreviewResponse<TickerHolders>;
+console.log(`${holders.data.holderCount} holders`);
+const newPositions = holders.data.holders.filter((h) => h.changeType === "NEW");
+```
+
+**2. Document endpoints return a search wrapper.** This is not the preview envelope:
+the rows are in `documents` and there is no `isPreview`.
+
+Affected: `documents.getByTicker` / `getByTickerRange` / `getByEntity` / `search` /
+`getBySource`. Also `stocks.getFundamentalsPeriods`, whose periods are in `periods`.
+
+```typescript
+import type { DocumentSearchResponse } from "sentisense";
+
+const results = (await client.documents.search("NVDA earnings", { days: 7 })) as unknown as
+  DocumentSearchResponse;
+
+console.log(`${results.totalCount} matches`);
+for (const doc of results.documents) {
+  console.log(doc.url, doc.averageSentiment);
+}
+```
+
+Everything else, including `stocks.getPrice()`, `documents.getStories()`,
+`insights.types()` and `institutional.getQuarters()`, resolves to the value itself with no
+wrapper and needs no cast.
 
 ## API Reference
 
@@ -97,7 +157,7 @@ client.kb.getAllEntities()
 
 ### Analyst Ratings
 
-The **price target cone** (mean, high, low, upside %) and consensus are **free for everyone, full data via API** — we give it away. Upgrade/downgrade feeds and forward EPS estimates are limited on free, unlimited on PRO.
+The **price target cone** (mean, high, low, upside %) and consensus are **free for everyone, full data via API**: we give it away. Upgrade/downgrade feeds and forward EPS estimates are limited on free, unlimited on PRO.
 
 ```typescript
 client.analyst.consensus("AAPL")                        // Price target cone + consensus. Free for everyone, full data.
@@ -140,9 +200,9 @@ try {
   const summary = await client.stocks.getAISummary("AAPL");
 } catch (error) {
   if (error instanceof AuthenticationError) {
-    // 401 or 403 — invalid/missing API key or insufficient tier
+    // 401 or 403: invalid/missing API key or insufficient tier
   } else if (error instanceof RateLimitError) {
-    // 429 — quota exceeded
+    // 429: quota exceeded
   }
 }
 ```
