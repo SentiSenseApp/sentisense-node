@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.31.0
+
+### Breaking (removed)
+
+- **`kb.getAllEntities`.** The unpaginated full-entity dump endpoint has been retired
+  server-side (HTTP 410). Use `kb.getPopularEntities()` for suggestions, or
+  `stocks.getEntities(ticker)` for the entities related to a ticker.
+
 ## 0.30.0
 
 Removed methods whose endpoints no longer work. Both were unusable at runtime, so this
@@ -13,7 +21,8 @@ breaks only code that was already failing.
   `entityMetrics.getMetrics(symbol, { metricType })` and
   `entityMetrics.getDistribution(symbol, metricType)` instead.
 - **`kb.getEntity`.** Its endpoint returned 400/404 for every id form, so it never worked;
-  removed. Use `kb.getPopularEntities()` / `kb.getAllEntities()`.
+  removed. Use `kb.getPopularEntities()`. (This entry originally also pointed at
+  `kb.getAllEntities`, which was itself removed in 0.31.0.)
 - Removed the now-orphaned exported types tied to those methods (`MentionData`,
   `MentionCount`, `SentimentData`, `EntityMetricsDateRange`, `GetMentionsOptions`,
   `GetMentionCountOptions`, `GetSentimentBySourceOptions`).

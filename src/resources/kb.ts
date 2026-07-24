@@ -8,9 +8,4 @@ export class KB {
   async getPopularEntities(): Promise<KBEntity[]> {
     return this.client.get("/api/v1/kb/entities/popular");
   }
-
-  /** Get all tracked entities. */
-  async getAllEntities(): Promise<KBEntity[]> {
-    return this.client.get("/api/v1/kb/entities/all");
-  }
 }
