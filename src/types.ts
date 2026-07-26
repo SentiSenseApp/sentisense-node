@@ -196,7 +196,14 @@ export interface AISummary {
 // ── Stocks method options ───────────────────────────────────
 
 export interface GetChartOptions {
-  timeframe?: "1D" | "5D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
+  /**
+   * Chart range. "MAX" returns the full available history (up to ~26 years); "10Y" and "5Y"
+   * return weekly bars. Ranges of "5Y" and longer are split- and dividend-adjusted; shorter
+   * ranges are split-adjusted only.
+   *
+   * "ALL" is a legacy alias of "5Y", retained so existing code keeps compiling.
+   */
+  timeframe?: "1D" | "5D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "5Y" | "10Y" | "MAX" | "ALL";
 }
 
 export interface GetImagesOptions {
