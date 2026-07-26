@@ -150,7 +150,13 @@ export class Stocks {
     return this.client.get("/api/v1/stocks/market-status");
   }
 
-  /** Get financial statement data. */
+  /**
+   * Get financial statement data for one reporting period: income statement, balance sheet,
+   * and cash flow, including `capitalExpenditure` and `freeCashFlow`.
+   *
+   * Capital expenditure is signed as filed, so normally negative. See {@link Fundamentals}
+   * for the free-cash-flow relationship and when it is `null`.
+   */
   async getFundamentals(ticker: string, options?: GetFundamentalsOptions): Promise<Fundamentals> {
     return this.client.get("/api/v1/stocks/fundamentals", { ticker, ...options });
   }

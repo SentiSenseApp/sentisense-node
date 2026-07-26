@@ -128,9 +128,38 @@ export interface MarketStatus {
   [key: string]: unknown;
 }
 
+/**
+ * One period of filed financial statement data from `stocks.getFundamentals()`.
+ *
+ * The index signature is deliberate: the response carries the full income statement, balance
+ * sheet, and cash flow line items, and more are added over time, so every field is reachable
+ * whether or not it is typed here. The cash-flow block below is typed because its sign and
+ * relationships are easy to get wrong.
+ */
 export interface Fundamentals {
   ticker: string;
   timeframe: string;
+  /** Net cash from operating activities, in dollars. */
+  operatingCashFlow?: number | null;
+  /** Net cash from investing activities, in dollars. */
+  investingCashFlow?: number | null;
+  /** Net cash from financing activities, in dollars. */
+  financingCashFlow?: number | null;
+  /**
+   * Capital expenditure, in dollars, signed as filed: normally NEGATIVE, because it is an
+   * outflow. Take the absolute value before treating it as a magnitude.
+   */
+  capitalExpenditure?: number | null;
+  /**
+   * Free cash flow, in dollars: `operatingCashFlow - Math.abs(capitalExpenditure)`.
+   *
+   * `null` rather than a guess when the period's capital expenditure is not available, so a
+   * screen for positive free cash flow can never match on a fabricated number. Do not
+   * substitute `operatingCashFlow + investingCashFlow`: investing cash flow also carries
+   * marketable-securities and acquisition activity, which for a company holding a large
+   * securities portfolio is wrong by billions and can flip the sign.
+   */
+  freeCashFlow?: number | null;
   [key: string]: unknown;
 }
 
