@@ -1,6 +1,7 @@
 import {
   APIError,
   AuthenticationError,
+  DeepHistoryUnavailableError,
   NotFoundError,
   RateLimitError,
   SentiSenseError,
@@ -27,6 +28,8 @@ const DEFAULT_TIMEOUT = 30_000;
 const DEFAULT_MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 60_000;
+// Used when a 202 arrives without a usable Retry-After header.
+const DEEP_HISTORY_FALLBACK_WAIT_S = 3;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -114,6 +117,24 @@ export class SentiSense implements APIClient {
           headers,
           signal: controller.signal,
         });
+
+        // 202 means a deep chart range is still being built server-side. It is a 2xx, so
+        // without this it would fall through and return an empty array: the caller would
+        // see "no data" rather than "not ready yet", which is the exact confusion the
+        // status code exists to prevent. Retry honouring Retry-After, then surface it.
+        if (response.status === 202) {
+          const ra = response.headers.get("Retry-After");
+          const waitSeconds = ra ? parseInt(ra, 10) : DEEP_HISTORY_FALLBACK_WAIT_S;
+          try { await response.body?.cancel(); } catch { /* ignore */ }
+          if (attempt < this.maxRetries) {
+            delayMs = Math.max(500, waitSeconds * 1000);
+            continue;
+          }
+          throw new DeepHistoryUnavailableError(
+            "Deep history is still being assembled. Retry in a few seconds.",
+            Number.isFinite(waitSeconds) ? waitSeconds : undefined,
+          );
+        }
 
         if (!response.ok) {
           const isRetryable = response.status === 429 || response.status >= 500;

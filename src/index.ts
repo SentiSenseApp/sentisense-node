@@ -48,6 +48,7 @@ export {
   SentiSenseError,
   AuthenticationError,
   NotFoundError,
+  DeepHistoryUnavailableError,
   RateLimitError,
   APIError,
 } from "./errors.js";

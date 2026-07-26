@@ -24,6 +24,23 @@ export class NotFoundError extends SentiSenseError {
   }
 }
 
+/**
+ * Thrown when a deep chart range is still being assembled.
+ *
+ * The API answers 202 for "10Y" and "MAX" the first time a rarely-requested stock is asked
+ * for. It deliberately does not substitute a shorter range, so a successful response always
+ * carries the timeframe you asked for. Retry after a few seconds.
+ */
+export class DeepHistoryUnavailableError extends SentiSenseError {
+  retryAfter?: number;
+
+  constructor(message: string, retryAfter?: number) {
+    super(message, 202);
+    this.name = "DeepHistoryUnavailableError";
+    this.retryAfter = retryAfter;
+  }
+}
+
 export class RateLimitError extends SentiSenseError {
   retryAfter?: number;
 
