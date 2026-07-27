@@ -139,19 +139,28 @@ export interface MarketStatus {
 export interface Fundamentals {
   ticker: string;
   timeframe: string;
-  /** Net cash from operating activities, in dollars. */
+  /**
+   * The currency the filer reports in ("USD", "KRW", "EUR", ...). Statement figures are as
+   * reported in this currency and are never converted to US dollars: foreign companies listed
+   * as ADRs file in their home currency while their listed share price is in USD. Absent means
+   * the currency is unknown, not implicitly USD. For non-USD filers the API serves `peRatio`,
+   * `psRatio`, and `pbRatio` as `null` on purpose (a USD price over a home-currency per-share
+   * figure is a unit mismatch); do not recompute them client-side.
+   */
+  reportedCurrency?: string;
+  /** Net cash from operating activities, in the reporting currency (see `reportedCurrency`). */
   operatingCashFlow?: number | null;
-  /** Net cash from investing activities, in dollars. */
+  /** Net cash from investing activities, in the reporting currency. */
   investingCashFlow?: number | null;
-  /** Net cash from financing activities, in dollars. */
+  /** Net cash from financing activities, in the reporting currency. */
   financingCashFlow?: number | null;
   /**
-   * Capital expenditure, in dollars, signed as filed: normally NEGATIVE, because it is an
-   * outflow. Take the absolute value before treating it as a magnitude.
+   * Capital expenditure, in the reporting currency, signed as filed: normally NEGATIVE,
+   * because it is an outflow. Take the absolute value before treating it as a magnitude.
    */
   capitalExpenditure?: number | null;
   /**
-   * Free cash flow, in dollars: `operatingCashFlow - Math.abs(capitalExpenditure)`.
+   * Free cash flow, in the reporting currency: `operatingCashFlow - Math.abs(capitalExpenditure)`.
    *
    * `null` rather than a guess when the period's capital expenditure is not available, so a
    * screen for positive free cash flow can never match on a fabricated number. Do not
