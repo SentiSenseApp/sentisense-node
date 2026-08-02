@@ -102,10 +102,11 @@ export interface StockEntity {
 
 /** Per-source tone for a stock: where the conversation is, and how it leans. */
 export interface SentimentSourceTone {
+  /** "News", "Reddit", "X", "YouTube", "Substack". */
   source: string;
   /** "Bullish" | "Neutral" | "Bearish". */
   direction: string;
-  /** Share of this stock's mentions coming from this source. */
+  /** Whole-number percent of this stock's mentions, not a fraction. Sums to 100 across the array. */
   mentionShare: number;
   /** Exact polarity in [-1, 1]. */
   value?: number;
@@ -142,7 +143,9 @@ export interface StockSentiment {
   mentions?: number;
   /** 30-day average mentions per day. */
   mentionsAvg30d?: number;
+  /** Latest share of voice, as a fraction (0.021 = 2.1%). Note this is NOT the same unit as `mentionShare`. */
   socialDominance?: number;
+  /** Per-source tone, loudest source first. */
   bySource?: SentimentSourceTone[];
   relatedTickers?: Array<{ ticker: string; name: string }>;
   drivers?: SentimentDriver[];
