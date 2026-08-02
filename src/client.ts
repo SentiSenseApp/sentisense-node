@@ -31,6 +31,32 @@ const MAX_DELAY_MS = 60_000;
 // Used when a 202 arrives without a usable Retry-After header.
 const DEEP_HISTORY_FALLBACK_WAIT_S = 3;
 
+// Upper bounds on any server-supplied Retry-After. Rate limiting gets the longer ceiling
+// because a genuine limit window is legitimately minutes, while a deep-history warm-up is
+// seconds. Without a ceiling an oversized header value strands the caller indefinitely.
+const MAX_DEEP_HISTORY_WAIT_S = 30;
+const MAX_RATE_LIMIT_WAIT_S = 120;
+const RATE_LIMIT_FALLBACK_WAIT_S = 60;
+
+/**
+ * Seconds to wait before retrying, from a `Retry-After` header.
+ *
+ * Clamped to `[0.5, maxWaitS]`. `Retry-After` may legally carry an HTTP-date rather than a
+ * number of seconds, in which case `parseInt` yields `NaN`; left unguarded that produced a
+ * `NaN` delay which compared false against every threshold and retried instantly in a busy
+ * loop. Anything that is not a finite number falls back to `defaultS`.
+ */
+function retryAfterSeconds(
+  raw: string | null,
+  defaultS: number,
+  maxWaitS: number,
+): number {
+  if (!raw) return defaultS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return defaultS;
+  return Math.min(Math.max(0.5, parsed), maxWaitS);
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -123,16 +149,19 @@ export class SentiSense implements APIClient {
         // see "no data" rather than "not ready yet", which is the exact confusion the
         // status code exists to prevent. Retry honouring Retry-After, then surface it.
         if (response.status === 202) {
-          const ra = response.headers.get("Retry-After");
-          const waitSeconds = ra ? parseInt(ra, 10) : DEEP_HISTORY_FALLBACK_WAIT_S;
+          const waitSeconds = retryAfterSeconds(
+            response.headers.get("Retry-After"),
+            DEEP_HISTORY_FALLBACK_WAIT_S,
+            MAX_DEEP_HISTORY_WAIT_S,
+          );
           try { await response.body?.cancel(); } catch { /* ignore */ }
           if (attempt < this.maxRetries) {
-            delayMs = Math.max(500, waitSeconds * 1000);
+            delayMs = waitSeconds * 1000;
             continue;
           }
           throw new DeepHistoryUnavailableError(
             "Deep history is still being assembled. Retry in a few seconds.",
-            Number.isFinite(waitSeconds) ? waitSeconds : undefined,
+            waitSeconds,
           );
         }
 
@@ -140,8 +169,11 @@ export class SentiSense implements APIClient {
           const isRetryable = response.status === 429 || response.status >= 500;
           if (isRetryable && attempt < this.maxRetries) {
             if (response.status === 429) {
-              const ra = response.headers.get("Retry-After");
-              delayMs = (ra ? parseInt(ra, 10) : 60) * 1000;
+              delayMs = retryAfterSeconds(
+                response.headers.get("Retry-After"),
+                RATE_LIMIT_FALLBACK_WAIT_S,
+                MAX_RATE_LIMIT_WAIT_S,
+              ) * 1000;
             } else {
               delayMs = Math.min(BASE_DELAY_MS * Math.pow(2, attempt), MAX_DELAY_MS) + Math.random() * 1000;
             }

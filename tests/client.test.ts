@@ -166,3 +166,34 @@ describe("error handling", () => {
     await expect(client.stocks.list()).rejects.toThrow(SentiSenseError);
   });
 });
+
+describe("Retry-After handling", () => {
+  // `Retry-After` is vendor- and attacker-controlled. A huge value used to strand the
+  // caller for its full duration, and an HTTP-date (legal per RFC) parsed to NaN, which
+  // compared false against every threshold and retried instantly in a busy loop.
+
+  function acceptedResponse(retryAfter?: string): Response {
+    return new Response(null, {
+      status: 202,
+      headers: retryAfter ? { "Retry-After": retryAfter } : {},
+    });
+  }
+
+  it("caps an oversized Retry-After on a deep-history 202", async () => {
+    const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 0 });
+    mockFetch.mockResolvedValueOnce(acceptedResponse("86400"));
+
+    await expect(c.stocks.getChart({ ticker: "AAPL", timeframe: "MAX" })).rejects.toMatchObject({
+      retryAfter: 30,
+    });
+  });
+
+  it("falls back rather than yielding NaN when Retry-After is an HTTP-date", async () => {
+    const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 0 });
+    mockFetch.mockResolvedValueOnce(acceptedResponse("Wed, 21 Oct 2026 07:28:00 GMT"));
+
+    await expect(c.stocks.getChart({ ticker: "AAPL", timeframe: "MAX" })).rejects.toMatchObject({
+      retryAfter: 3,
+    });
+  });
+});

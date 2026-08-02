@@ -100,6 +100,58 @@ export interface StockEntity {
   [key: string]: unknown;
 }
 
+/** Per-source tone for a stock: where the conversation is, and how it leans. */
+export interface SentimentSourceTone {
+  source: string;
+  /** "Bullish" | "Neutral" | "Bearish". */
+  direction: string;
+  /** Share of this stock's mentions coming from this source. */
+  mentionShare: number;
+  /** Exact polarity in [-1, 1]. */
+  value?: number;
+}
+
+/** A news story moving a stock's sentiment, with its own tone. */
+export interface SentimentDriver {
+  title: string;
+  /** Tone of this driver in [-1, 1]. */
+  tone: number;
+}
+
+export interface StockSentiment {
+  ticker: string;
+  companyName?: string;
+  /** ISO date (YYYY-MM-DD) the data is current as of. */
+  asOf?: string;
+  /** Latest SentiSense Score: a 0-centered composite of sentiment and mentions, unbounded. */
+  sentisenseScore?: number;
+  /** 30-day average Score, the stable regime figure. */
+  sentisenseScoreAvg30d?: number;
+  sentisenseScoreDelta30d?: number;
+  /** Seven-band label of the 30-day average. */
+  scoreLabel?: string;
+  /** "Bullish" | "Neutral" | "Bearish", from the 30-day average. */
+  direction?: string;
+  /** Same three bands, from today's read. */
+  latestDirection?: string;
+  /** "UP" | "DOWN" | "FLAT". */
+  trend?: string;
+  /** Daily Score series. */
+  scoreSparkline?: number[];
+  /** Today's mention volume. */
+  mentions?: number;
+  /** 30-day average mentions per day. */
+  mentionsAvg30d?: number;
+  socialDominance?: number;
+  bySource?: SentimentSourceTone[];
+  relatedTickers?: Array<{ ticker: string; name: string }>;
+  drivers?: SentimentDriver[];
+  /** Plain-language summary of why the Score sits where it does. */
+  narrative?: string;
+  faq?: Array<{ question: string; answer: string }>;
+  [key: string]: unknown;
+}
+
 export interface ChartDataPoint {
   /** Unix timestamp in milliseconds. */
   timestamp?: number;

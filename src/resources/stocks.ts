@@ -26,6 +26,7 @@ import type {
   ShortVolume,
   StockDetail,
   StockEntity,
+  StockSentiment,
   StockImage,
   StockPrice,
   StockProfile,
@@ -106,6 +107,23 @@ export class Stocks {
   /** Get company profile (CEO, sector, industry, market data). */
   async getProfile(ticker: string, options?: GetProfileOptions): Promise<StockProfile> {
     return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/profile`, options);
+  }
+
+  /**
+   * Get the headline sentiment picture for a stock in one call.
+   *
+   * Returns the SentiSense Score with its 30-day regime, mention volume and social
+   * dominance, per-source tone in `bySource`, plus related tickers, story drivers, a
+   * narrative and an FAQ. Available in full on every API-key tier.
+   *
+   * Use `entityMetrics.getMetrics(ticker, "sentiment", ...)` instead when you need a time
+   * series over a specific window rather than the headline read. Returns 404 for tickers
+   * with no sentiment coverage.
+   */
+  async getSentiment(ticker: string): Promise<PreviewResponse<StockSentiment>> {
+    return this.client.get(
+      `/api/v1/stocks/${encodeURIComponent(ticker)}/sentiment`,
+    );
   }
 
   /** Get related KB entities (people, products, partners). */

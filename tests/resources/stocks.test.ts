@@ -144,3 +144,34 @@ describe("stocks.getShortInterest", () => {
     expect(url).toContain("ticker=GME");
   });
 });
+
+describe("stocks.getSentiment", () => {
+  it("calls GET /api/v1/stocks/{ticker}/sentiment and returns the envelope", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: {
+          ticker: "AAPL",
+          sentisenseScore: 41.2,
+          direction: "Bullish",
+          bySource: [{ source: "news", direction: "Bullish", mentionShare: 0.52, value: 0.31 }],
+        },
+      }),
+    );
+
+    const result = await client.stocks.getSentiment("AAPL");
+    const url = mockFetch.mock.calls[0][0] as string;
+
+    expect(url).toContain("/api/v1/stocks/AAPL/sentiment");
+    expect(result.isPreview).toBe(false);
+    expect(result.data.ticker).toBe("AAPL");
+    expect(result.data.bySource?.[0].value).toBe(0.31);
+  });
+
+  it("encodes the ticker", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ isPreview: false, previewReason: null, data: {} }));
+    await client.stocks.getSentiment("BRK B");
+    expect(mockFetch.mock.calls[0][0] as string).toContain("BRK%20B");
+  });
+});

@@ -4,6 +4,13 @@
 
 ### Added
 
+- **`stocks.getSentiment(ticker)`.** One call for a stock's headline sentiment picture: the
+  SentiSense Score with its 30-day regime (`sentisenseScore`, `sentisenseScoreAvg30d`,
+  `scoreLabel`, `direction`, `trend`, `scoreSparkline`), mention volume and social dominance,
+  per-source tone in `bySource`, plus related tickers, story drivers, a narrative and an FAQ.
+  Available in full on every API-key tier. Use
+  `entityMetrics.getMetrics(ticker, "sentiment", ...)` instead when you need a time series over
+  a specific window.
 - **Long chart timeframes: `5Y`, `10Y` and `MAX`.** `stocks.getChart` now accepts the deep-history
   ranges in addition to the existing intraday and multi-month options. `ALL` remains accepted as an
   alias of `5Y`.
@@ -21,6 +28,16 @@
   unknown, not implicitly USD. For non-USD filers the API serves `peRatio` / `psRatio` /
   `pbRatio` as `null` on purpose: a USD price over a home-currency per-share figure is a unit
   mismatch, so do not recompute them client-side.
+
+### Fixed
+
+- **`Retry-After` is now validated and clamped.** A large value previously left the client
+  waiting for its full duration, and a non-numeric value (the header may legally carry an
+  HTTP-date) parsed to `NaN`, which compared false against every threshold and retried
+  immediately in a busy loop. Waits are now bounded at 30 seconds for deep-history retries and
+  120 seconds for rate limiting, and any non-finite value falls back to the default wait.
+- **`VERSION` now matches `package.json`.** The two had drifted, so the client advertised a
+  stale version in its `User-Agent`.
 
 ## 0.31.0
 
