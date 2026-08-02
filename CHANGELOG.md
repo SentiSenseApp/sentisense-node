@@ -4,6 +4,16 @@
 
 ### Added
 
+- **Long chart timeframes: `5Y`, `10Y` and `MAX`.** `stocks.getChart` now accepts the deep-history
+  ranges in addition to the existing intraday and multi-month options. `ALL` remains accepted as an
+  alias of `5Y`.
+- **Automatic retry on deep-history warm-up.** Deep chart ranges can answer `202 Accepted` while the
+  series is still being assembled. The client now waits for the interval the server asks for and
+  retries, instead of surfacing the `202` as a result. If the data is still unavailable when the
+  retries are exhausted it throws `DeepHistoryUnavailableError`, so a warm-up is never mistaken for
+  an empty chart.
+- **Cash-flow fields on `Fundamentals`.** `operatingCashFlow`, `capitalExpenditure` and
+  `freeCashFlow` are now typed on the fundamentals response.
 - **`Fundamentals.reportedCurrency`.** Fundamentals responses now name the currency the filer
   reports in ("USD", "KRW", "EUR", ...). Statement figures are as reported in that currency and
   are never converted to US dollars; foreign companies listed as ADRs file in their home
