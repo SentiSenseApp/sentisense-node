@@ -52,8 +52,10 @@ export class Institutional {
    * 6,000 holders and 1.5 MB. Pass `limit` unless you really want all of them.
    * Omitting `options` sends the original unbounded request.
    *
-   * Paged responses also carry `returnedCount` and `offset` alongside the holder
-   * rows, so you can walk the list without re-counting it yourself.
+   * `limit` is the switch for the whole option set. With it, the response also carries
+   * `returnedCount`, `offset`, and a `notableChanges` summary, so you can walk the list
+   * without re-counting it. Without it, `offset` / `sortBy` / `sortDir` are ignored by the
+   * server and you get the full unsorted list back with a 200.
    */
   async getHolders(
     ticker: string,

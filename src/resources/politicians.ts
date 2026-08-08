@@ -3,6 +3,7 @@ import type {
   CongressTrade,
   PoliticianSummary,
   PoliticianDetail,
+  GetPoliticianActivityOptions,
   GetPoliticiansOptions,
   PreviewResponse,
 } from "../types.js";
@@ -15,9 +16,22 @@ export class Politicians {
    *
    * PRO-gated. Free/unauthenticated users receive a preview (top 5 trades)
    * with `isPreview: true` in the response.
+   *
+   * The feed is longer than one response: a default 90-day window is routinely well over a
+   * thousand disclosures, and without `limit` the server sends the first 200 with no marker
+   * that it stopped. `totalCount` on the envelope is the real size on every tier, so page
+   * with `limit` and `offset` rather than reading `data.length` as the total.
+   *
+   * ```typescript
+   * const first = await client.politicians.getActivity({ limit: 100 });
+   * for (let offset = 100; offset < first.totalCount!; offset += 100) {
+   *   const page = await client.politicians.getActivity({ limit: 100, offset });
+   *   // ... page.data
+   * }
+   * ```
    */
   async getActivity(
-    options?: GetPoliticiansOptions,
+    options?: GetPoliticianActivityOptions,
   ): Promise<PreviewResponse<CongressTrade[]>> {
     return this.client.get("/api/v1/politicians/activity", options);
   }

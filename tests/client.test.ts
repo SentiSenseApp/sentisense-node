@@ -183,7 +183,7 @@ describe("Retry-After handling", () => {
     const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 0 });
     mockFetch.mockResolvedValueOnce(acceptedResponse("86400"));
 
-    await expect(c.stocks.getChart({ ticker: "AAPL", timeframe: "MAX" })).rejects.toMatchObject({
+    await expect(c.stocks.getChart("AAPL", { timeframe: "MAX" })).rejects.toMatchObject({
       retryAfter: 30,
     });
   });
@@ -192,8 +192,59 @@ describe("Retry-After handling", () => {
     const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 0 });
     mockFetch.mockResolvedValueOnce(acceptedResponse("Wed, 21 Oct 2026 07:28:00 GMT"));
 
-    await expect(c.stocks.getChart({ ticker: "AAPL", timeframe: "MAX" })).rejects.toMatchObject({
+    await expect(c.stocks.getChart("AAPL", { timeframe: "MAX" })).rejects.toMatchObject({
       retryAfter: 3,
     });
+  });
+});
+
+describe("RateLimitError.retryAfter", () => {
+  // The same header hostility as above, but on the value handed to the caller. The 202
+  // path clamped it and the 429 path did not, so `error.retryAfter` could surface a raw
+  // 86400 or a NaN: `setTimeout(fn, NaN)` fires on the next tick, turning a caller's
+  // polite backoff into a hot loop against an endpoint that just asked it to stop.
+
+  function limited(retryAfter?: string): Response {
+    return new Response(JSON.stringify({ error: "quota_exceeded", message: "Slow down" }), {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        ...(retryAfter ? { "Retry-After": retryAfter } : {}),
+      },
+    });
+  }
+
+  async function retryAfterOf(header?: string): Promise<number | undefined> {
+    const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 0 });
+    mockFetch.mockResolvedValueOnce(limited(header));
+    try {
+      await c.stocks.list();
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(RateLimitError);
+      return (e as RateLimitError).retryAfter;
+    }
+  }
+
+  it("passes a sane value through unchanged", async () => {
+    expect(await retryAfterOf("12")).toBe(12);
+  });
+
+  it("caps an oversized value at the rate-limit ceiling", async () => {
+    expect(await retryAfterOf("86400")).toBe(120);
+  });
+
+  it("raises a zero to the floor, so a retry is never instant", async () => {
+    expect(await retryAfterOf("0")).toBe(0.5);
+  });
+
+  it("is undefined, never NaN, when Retry-After is an HTTP-date", async () => {
+    const value = await retryAfterOf("Wed, 21 Oct 2026 07:28:00 GMT");
+    expect(value).toBeUndefined();
+    expect(Number.isNaN(value as number)).toBe(false);
+  });
+
+  it("is undefined when the server sends no Retry-After at all", async () => {
+    expect(await retryAfterOf()).toBeUndefined();
   });
 });

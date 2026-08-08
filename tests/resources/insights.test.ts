@@ -31,7 +31,7 @@ function envelope(data: unknown, isPreview = false, totalCount?: number) {
   });
 }
 
-const client = new SentiSense({ apiKey: "ss_live_test" });
+const client = new SentiSense({ apiKey: "ssk_test" });
 
 describe("insights.stock", () => {
   it("uppercases the ticker, passes options, and returns the array under data", async () => {

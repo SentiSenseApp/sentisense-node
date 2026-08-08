@@ -10,17 +10,18 @@ try {
   for (const doc of results.documents) {
     const sentiment = doc.averageSentiment > 0 ? "positive" : doc.averageSentiment < 0 ? "negative" : "neutral";
     console.log(`[${sentiment}] ${doc.url}`);
-    console.log(`  ${doc.sourceName ?? doc.source}: ${new Date(doc.published * 1000).toLocaleDateString()}`);
+    // `sourceName` is the publisher for news, and null on social sources, where the
+    // platform in `source` is the better label.
+    const publisher = doc.sourceName ?? doc.source;
+    console.log(`  ${publisher}: ${new Date(doc.published * 1000).toLocaleDateString()}`);
   }
 
-  // Story clusters come back as a plain array.
-  const stories = await client.documents.getStories({ limit: 5, expanded: true });
+  // Story clusters come back as a plain array. The headline lives on `cluster`.
+  const stories = await client.documents.getStories({ limit: 5 });
   for (const story of stories) {
     console.log(`\n--- ${story.cluster.title} ---`);
-    console.log(`Impact: ${story.impactScore}/10 | Tickers: ${story.tickers.join(", ")}`);
-    if (story.topDocuments) {
-      console.log(`Sources: ${story.topDocuments.length} articles`);
-    }
+    console.log(`Impact: ${story.impactScore.toFixed(1)} | Tickers: ${story.tickers.join(", ")}`);
+    console.log(`Articles: ${story.cluster.clusterSize}`);
   }
 
   // Get news for a specific stock from Reddit

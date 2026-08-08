@@ -56,6 +56,17 @@ export interface StockQuote {
   dividendYield: number | null;
   /** 200-day simple moving average of daily closes. Null when fewer than 200 trading days of history exist. */
   movingAverage200Day: number | null;
+  /**
+   * Currency the issuer reports its financials in ("USD", "TWD", "JPY", ...). Absent when
+   * the currency is unknown, which is not the same as implicitly USD. Same field and same
+   * meaning as {@link Fundamentals.reportedCurrency}.
+   *
+   * Price fields on this response are always in the listing currency of the quoted symbol,
+   * so on an ADR filing in a home currency the price and the per-share statement figures are
+   * in different units. The valuation ratios derived from both (`peRatio`, `epsTTM`) are
+   * omitted rather than computed in that case, so treat them as possibly absent, not zero.
+   */
+  reportedCurrency?: string;
   timestamp: number | null;
   /** Extended-hours view (pre-market or after-hours). Null/absent during RTH, overnight, and weekends. */
   extendedHours?: ExtendedHoursInfo | null;
@@ -290,9 +301,14 @@ export interface AISummary {
 
 export interface GetChartOptions {
   /**
-   * Chart range. "MAX" returns the full available history (up to ~26 years); "10Y" and "5Y"
-   * return weekly bars. Ranges of "5Y" and longer are split- and dividend-adjusted; shorter
-   * ranges are split-adjusted only.
+   * Chart range. "MAX" returns the full available history (up to ~26 years) as monthly bars;
+   * "10Y" and "5Y" return weekly bars.
+   *
+   * Price basis differs by range, so do not compare closes across two ranges without
+   * checking this: "10Y" and "MAX" are split- and dividend-adjusted, while "5Y" and every
+   * shorter range are split-adjusted only. A "5Y" weekly close equals the "1Y" daily close of
+   * that week's last trading day; the "10Y" bar for the same week is lower by the dividends
+   * paid since, and the gap widens the further back you read.
    *
    * "ALL" is a legacy alias of "5Y", retained so existing code keeps compiling.
    */
@@ -349,6 +365,15 @@ export interface Document {
   id: string;
   url: string;
   source: "NEWS" | "REDDIT" | "X" | "SUBSTACK" | "YOUTUBE";
+  /**
+   * Publisher name for a news article, e.g. `"The Motley Fool"`. Null on social sources,
+   * where the publisher is the platform already named in `source`, so fall back to
+   * `source` for a label rather than printing an empty string.
+   *
+   * Typed optional so existing object literals keep compiling; the API sends the key on
+   * every document row.
+   */
+  sourceName?: string | null;
   published: number;
   averageSentiment: number;
   reliability: number;
@@ -485,7 +510,7 @@ export interface InstitutionalFlow {
   avgClosePrice?: number | null;
   /**
    * Dollar-weighted net flow: `netSharesChange × avgClosePrice`. 0 when
-   * `avgClosePrice` is missing — fall back to displaying `netSharesChange`.
+   * `avgClosePrice` is missing, so fall back to displaying `netSharesChange`.
    */
   dollarFlowUsd: number;
 }
@@ -499,6 +524,37 @@ export interface Holder {
   changeType: "NEW" | "INCREASED" | "DECREASED" | "SOLD_OUT" | "UNCHANGED";
   sharesChange: number;
   sharesChangePct: number;
+  /**
+   * URL slug for this filer, to pass straight to
+   * `institutional.getInstitutionDetail()`. Null when the filer has no curated
+   * institution page, so check it before building a link.
+   *
+   * Typed optional so existing object literals keep compiling; the API sends the key
+   * on every holder row.
+   */
+  entitySlug?: string | null;
+  /**
+   * Number of SEC filer CIKs rolled up into this row, when the row aggregates a
+   * multi-filer manager. Null for a single-CIK filer, which is the common case, so
+   * read it as "1 or unknown" rather than zero.
+   */
+  cikCount?: number | null;
+}
+
+/**
+ * A server-side shortlist of the quarter's significant position changes, so a caller
+ * paging through thousands of rows does not have to fetch them all to find the movers.
+ *
+ * Scoped to the whole ticker, not to the page you asked for: the same values come back
+ * whatever `limit` and `offset` you send. The server picks both the threshold behind
+ * `count` and the ranking behind `top`, and neither is part of the API contract, so treat
+ * this as a display aid and re-derive anything you need to sort or filter on from `holders`.
+ */
+export interface HolderNotableChanges {
+  /** How many holders the server judged to have changed significantly this quarter. */
+  count: number;
+  /** The shortlist itself, already ranked. Same row shape as `holders`. */
+  top: Holder[];
 }
 
 /**
@@ -513,8 +569,25 @@ export interface TickerHolders {
   reportDate: string;
   totalInstitutionalShares: number;
   totalInstitutionalValue: number;
+  /** Every institutional holder of this ticker for the quarter, ignoring any paging. */
   holderCount: number;
   holders: Holder[];
+  /**
+   * Rows actually returned in `holders`. Sent only when you passed `limit`, so use
+   * `holders.length` if you need a count that is always there. On the last page it is
+   * smaller than the `limit` you asked for, which is how you know to stop.
+   */
+  returnedCount?: number;
+  /**
+   * Row offset these `holders` start at, echoing the request. Sent only when you passed
+   * `limit`; the unpaged response omits it rather than sending 0.
+   */
+  offset?: number;
+  /**
+   * Ticker-wide summary of the quarter's biggest position changes. Sent only when you
+   * passed `limit`, since it exists to spare a paging caller a full scan.
+   */
+  notableChanges?: HolderNotableChanges;
 }
 
 /**
@@ -555,18 +628,25 @@ export interface GetFlowsOptions {
   limit?: number;
 }
 
-/** Paging and sort options for `institutional.getHolders`. */
+/**
+ * Paging and sort options for `institutional.getHolders`.
+ *
+ * `limit` is the switch for the whole set: sent on its own it pages, and it is also what
+ * turns on `offset`, `sortBy`, `sortDir`, and the `returnedCount` / `offset` /
+ * `notableChanges` fields on the response. Send any of the others without `limit` and the
+ * server ignores them and returns the full unsorted list, silently, with a 200.
+ */
 export interface GetHoldersOptions {
   /**
    * Maximum holder rows to return. Must be >= 1; values above 1000 are capped
    * server-side. Omit to get the full, unbounded holder list.
    */
   limit?: number;
-  /** Row offset to start from, for paging with `limit`. Server default is 0. */
+  /** Row offset to start from. Server default is 0. Requires `limit`. */
   offset?: number;
-  /** Sort field. Server default is `"shares"`. */
+  /** Sort field. Server default is `"shares"`. Requires `limit`. */
   sortBy?: "shares" | "valueUsd" | "sharesChangePct";
-  /** Sort direction. Server default is `"desc"`. */
+  /** Sort direction. Server default is `"desc"`. Requires `limit`. */
   sortDir?: "asc" | "desc";
 }
 
@@ -763,6 +843,27 @@ export interface GetPoliticiansOptions {
   lookbackDays?: number;
 }
 
+/**
+ * Options for `politicians.getActivity`, which pages on top of the shared lookback window.
+ *
+ * The market-wide feed is far longer than one response: a 90-day window is routinely well
+ * over a thousand disclosures and the server returns 200 of them by default. Read
+ * `totalCount` on the envelope to size the walk, then step through with `limit` and
+ * `offset`. Omitting both keeps the original single 200-row request.
+ */
+export interface GetPoliticianActivityOptions extends GetPoliticiansOptions {
+  /**
+   * Rows to return. Must be >= 1; the server rejects 0 or negative with HTTP 400
+   * (`invalid_limit`) and caps anything above 500 at 500. Omit for the default 200.
+   */
+  limit?: number;
+  /**
+   * Row offset to start from. Defaults to 0, and unlike the holders endpoint it works
+   * without `limit`. An offset past the end returns an empty `data` array, not an error.
+   */
+  offset?: number;
+}
+
 /** Generic preview wrapper used by PRO-gated endpoints. */
 // ── Calendar ────────────────────────────────────────────────
 
@@ -818,15 +919,21 @@ export interface PreviewResponse<T> {
   isPreview: boolean;
   previewReason: "PRO_REQUIRED" | null;
   /**
-   * Number of items in the full PRO dataset, before preview truncation.
-   * Present on preview (free-tier) list responses so callers can show
-   * "showing N of totalCount". Absent on full PRO responses.
+   * Size of the full result set, before any truncation your response went through.
+   *
+   * Sent whenever the server knows that number and the response might not hold all of it:
+   * on a preview (`isPreview: true`), so you can render "showing N of totalCount", and on a
+   * paged endpoint such as `politicians.getActivity`, where it is the full match count for
+   * your filters on every tier, including a PRO response with `isPreview: false`.
+   *
+   * Absent on the endpoints that simply return everything, so a missing `totalCount` means
+   * "ask `data` for the count", never "zero results".
    */
   totalCount?: number;
   data: T;
 }
 
-// ── Entity Metrics (v2 — Serving Metrics) ──────────────────
+// ── Entity Metrics (v2 Serving Metrics) ───────────────────
 
 /** Supported metric types for the v2 Serving Metrics API. */
 export type MetricType =
@@ -1043,9 +1150,9 @@ export interface KBEntity {
 
 // ── Trackers ────────────────────────────────────────────────
 //
-// Trackers are observational data products. Every tracker — institution rankings,
+// Trackers are observational data products. Every tracker (institution rankings,
 // hedge-fund reported returns, social trackers, surveillance
-// dashboards — returns the same standardized `TrackerSnapshot` envelope.
+// dashboards) returns the same standardized `TrackerSnapshot` envelope.
 // Dispatch on `viewType` to pick a renderer; consumers write one renderer per
 // viewType and get every tracker for free.
 
@@ -1074,7 +1181,7 @@ export interface TrackerListResponse {
   trackers: TrackerListing[];
 }
 
-/** One row of a `viewType: "table"` tracker — a ranked leaderboard cell. */
+/** One row of a `viewType: "table"` tracker: a ranked leaderboard cell. */
 export interface TrackerTableRow {
   /** 1-based rank on the sort the tracker is built for; may be null. */
   rank: number | null;

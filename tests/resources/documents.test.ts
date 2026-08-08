@@ -59,15 +59,39 @@ describe("documents.search", () => {
   });
 });
 
+describe("Document.sourceName", () => {
+  it("carries the publisher on news and null on social sources", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        documents: [
+          { id: "1", url: "https://example.com/a", source: "NEWS", sourceName: "The Motley Fool", published: 1786211955, averageSentiment: 0.2, reliability: 0.9, sentiment: [] },
+          { id: "2", url: "https://example.com/b", source: "REDDIT", sourceName: null, published: 1786211955, averageSentiment: 0, reliability: 0.5, sentiment: [] },
+        ],
+        totalCount: 2,
+        searchTicker: null,
+        source: "ALL",
+        startDate: "2026-08-01",
+        endDate: "2026-08-08",
+      }),
+    );
+    const result = await client.documents.search("NVDA earnings");
+    expect(result.documents[0].sourceName).toBe("The Motley Fool");
+    // Null on social, so a label has to fall back to `source`.
+    expect(result.documents[1].sourceName).toBeNull();
+    expect(result.documents[1].sourceName ?? result.documents[1].source).toBe("REDDIT");
+  });
+});
+
 describe("documents.getStories", () => {
   it("passes all story options", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse([]));
-    await client.documents.getStories({ limit: 10, expanded: true, days: 3 });
+    await client.documents.getStories({ limit: 10, days: 3, offset: 5, filterHours: 48 });
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/documents/stories");
     expect(url).toContain("limit=10");
-    expect(url).toContain("expanded=true");
     expect(url).toContain("days=3");
+    expect(url).toContain("offset=5");
+    expect(url).toContain("filterHours=48");
   });
 });
 

@@ -145,6 +145,26 @@ describe("stocks.getShortInterest", () => {
   });
 });
 
+describe("stocks.getQuote", () => {
+  it("reads reportedCurrency without a cast", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ticker: "AAPL", currentPrice: 313.33, reportedCurrency: "USD" }),
+    );
+    const result = await client.stocks.getQuote("AAPL");
+    expect(mockFetch.mock.calls[0][0] as string).toContain("/api/v1/stocks/AAPL/quote");
+    expect(result.reportedCurrency).toBe("USD");
+  });
+
+  it("leaves reportedCurrency undefined when the issuer's currency is unknown", async () => {
+    // Live behaviour on an ADR filing in a home currency: the field is omitted, along
+    // with the valuation ratios that would mix two currencies. Undefined here must read
+    // as "unknown", never as "USD".
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ticker: "TSM", currentPrice: 420.04 }));
+    const result = await client.stocks.getQuote("TSM");
+    expect(result.reportedCurrency).toBeUndefined();
+  });
+});
+
 describe("stocks.getSentiment", () => {
   it("calls GET /api/v1/stocks/{ticker}/sentiment and returns the envelope", async () => {
     mockFetch.mockResolvedValueOnce(

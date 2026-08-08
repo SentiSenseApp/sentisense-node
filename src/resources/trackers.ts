@@ -7,10 +7,10 @@ import type {
 } from "../types.js";
 
 /**
- * Trackers — observational data products published as a standardized
+ * Trackers: observational data products published as a standardized
  * `TrackerSnapshot` envelope. Every tracker (institution rankings,
  * hedge-fund reported returns, social trackers, surveillance dashboards)
- * returns the same shape — consumers write one renderer per `viewType` and
+ * returns the same shape, so consumers write one renderer per `viewType` and
  * get every current and future SentiSense tracker for free.
  *
  * @see TrackerSnapshot
@@ -19,7 +19,7 @@ export class Trackers {
   constructor(private client: APIClient) {}
 
   /**
-   * List every publicly-visible tracker — id, display name, category,
+   * List every publicly-visible tracker: id, display name, category,
    * one-line description, and the methodology anchor to link out to.
    */
   async list(): Promise<TrackerListResponse> {
@@ -34,8 +34,8 @@ export class Trackers {
    * `"choropleth"` they live at `data.geo[]`; etc. Dispatch on `viewType`
    * in your renderer.
    *
-   * @param trackerId — slug from {@link list}, e.g. `"institution-concentration"`.
-   * @param params — provider-specific query params (e.g. `{ scope: "us" }` for
+   * @param trackerId slug from {@link list}, e.g. `"institution-concentration"`.
+   * @param params provider-specific query params (e.g. `{ scope: "us" }` for
    *   geographically-scoped trackers like hantavirus). Unknown keys are ignored.
    */
   async get(

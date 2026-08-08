@@ -16,7 +16,7 @@ export interface EtfHolding {
   name: string | null;
   /** Weight in the fund as a percentage (0-100). */
   weightPct: number;
-  /** ISO date "YYYY-MM-DD" — first date this holding appeared in the composition. */
+  /** ISO date "YYYY-MM-DD". First date this holding appeared in the composition. */
   firstSeen: string | null;
 }
 
@@ -24,11 +24,11 @@ export interface EtfHoldings {
   ticker: string;
   issuer: string;
   issuerEndpoint: string | null;
-  /** ISO date "YYYY-MM-DD" — composition snapshot date from the issuer. */
+  /** ISO date "YYYY-MM-DD". Composition snapshot date from the issuer. */
   asOfDate: string;
   /** Epoch seconds when SentiSense refreshed the composition. */
   fetchedAt: number | null;
-  /** ISO date "YYYY-MM-DD" — when the composition is scheduled to be refreshed next. */
+  /** ISO date "YYYY-MM-DD". When the composition is scheduled to be refreshed next. */
   nextRefreshDue: string;
   totalHoldings: number;
   holdings: EtfHolding[];
@@ -66,7 +66,7 @@ export interface EtfAnalystContributor {
 
 export interface EtfAnalystAggregate {
   ticker: string;
-  /** ISO date "YYYY-MM-DD" — composition snapshot date. */
+  /** ISO date "YYYY-MM-DD". Composition snapshot date. */
   asOfDate: string | null;
   /** Epoch seconds when this rollup was computed. */
   computedAt: number;
@@ -100,7 +100,7 @@ export interface EtfInsiderContributor {
 
 export interface EtfInsiderAggregate {
   ticker: string;
-  /** ISO date "YYYY-MM-DD" — composition snapshot date. */
+  /** ISO date "YYYY-MM-DD". Composition snapshot date. */
   asOfDate: string | null;
   /** Epoch seconds when this rollup was computed. */
   computedAt: number;
@@ -121,7 +121,7 @@ export interface EtfSentimentReading {
 
 export interface EtfSentimentAggregate {
   ticker: string;
-  /** ISO date "YYYY-MM-DD" — composition snapshot date. */
+  /** ISO date "YYYY-MM-DD". Composition snapshot date. */
   asOfDate: string | null;
   /** Epoch seconds when this aggregate was assembled. */
   computedAt: number;

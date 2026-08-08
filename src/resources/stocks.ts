@@ -242,8 +242,8 @@ export class Stocks {
   }
 
   /**
-   * List the KPI metadata tuples available for a ticker — `id, name, category,
-   * chartType` — without paying the cost of the full series payload. Mirrors
+   * List the KPI metadata tuples available for a ticker (`id, name, category,
+   * chartType`) without paying the cost of the full series payload. Mirrors
    * the `/api/v1/insights/stock/{ticker}/types` precedent.
    *
    * Auth: API key required, no quota cost. 404 if the ticker has no curated KPIs.

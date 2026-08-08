@@ -16,7 +16,7 @@ npm install sentisense
 ```typescript
 import SentiSense from "sentisense";
 
-const client = new SentiSense({ apiKey: "ss_live_YOUR_KEY" });
+const client = new SentiSense({ apiKey: process.env.SENTISENSE_API_KEY });
 
 const price = await client.stocks.getPrice("AAPL");
 console.log(price.currentPrice);
@@ -40,8 +40,11 @@ Most methods resolve to the payload directly, but two families wrap it. The retu
 describe the wrapper, so `.data` / `.documents` type-check natively, no cast.
 
 **1. Tier-gated endpoints return a preview envelope.** The payload is in `data`, and
-`isPreview` tells you whether it was truncated for your tier. On a truncated response
-`totalCount` carries the untruncated size, so you can render "showing N of M".
+`isPreview` tells you whether it was truncated for your tier. `totalCount` carries the
+untruncated size whenever the server knows it: on a truncated response, so you can render
+"showing N of M", and on a paged endpoint such as `politicians.getActivity`, where it is
+the full match count on every tier including PRO. A missing `totalCount` means "count
+`data` yourself", never "zero results".
 
 Affected: `institutional.getFlows` / `getHolders` / `getActivists`, and all five
 `insights` methods.
@@ -135,9 +138,12 @@ keeps working.
 | Option | Values |
 |--------|--------|
 | `limit` | Maximum rows to return. Must be >= 1; values above 1000 are capped server-side. Omit for the full list. |
-| `offset` | Row offset to start from, used with `limit`. Server default is 0. |
-| `sortBy` | `"shares"` (server default), `"valueUsd"`, or `"sharesChangePct"`. |
-| `sortDir` | `"desc"` (server default) or `"asc"`. |
+| `offset` | Row offset to start from. Server default is 0. Requires `limit`. |
+| `sortBy` | `"shares"` (server default), `"valueUsd"`, or `"sharesChangePct"`. Requires `limit`. |
+| `sortDir` | `"desc"` (server default) or `"asc"`. Requires `limit`. |
+
+`limit` is the switch for the whole set. Send `offset`, `sortBy`, or `sortDir` without it
+and the server ignores them, returning the full unsorted list with a 200 and no warning.
 
 ```typescript
 import SentiSense from "sentisense";
@@ -162,7 +168,57 @@ const page = await client.institutional.getHolders("AAPL", "2026-03-31", {
 console.log(`${page.data.holders.length} rows of ${page.data.holderCount}`);
 ```
 
-Paged responses also carry `returnedCount` and `offset` next to the holder rows.
+A response to a request carrying `limit` also has three fields the unbounded response does
+not: `returnedCount` (rows on this page, smaller than your `limit` on the last one),
+`offset` (echoed back), and `notableChanges`, a ticker-wide summary of the quarter's biggest
+position moves so you do not have to scan every page to find them.
+
+```typescript
+const page = await client.institutional.getHolders("AAPL", "2026-03-31", { limit: 100 });
+console.log(`${page.data.returnedCount} of ${page.data.holderCount} holders`);
+for (const mover of page.data.notableChanges?.top ?? []) {
+  console.log(mover.filerName, mover.changeType, mover.sharesChangePct);
+}
+```
+
+Each holder row also carries `entitySlug`, which you can hand straight to
+`institutional.getInstitutionDetail()`, and `cikCount` when the row rolls up several SEC
+filers under one manager. Both are null for filers we have not matched to an institution
+page, so check before building a link.
+
+### Congressional Trading
+
+```typescript
+client.politicians.getActivity({ lookbackDays: 90 })  // Market-wide STOCK Act feed
+client.politicians.getFilings("NVDA")                 // Trades in one stock
+client.politicians.getMembers()                       // Tracked members + trade stats
+client.politicians.getMember("nancy-pelosi")          // One member's profile and trades
+```
+
+#### Paging the activity feed
+
+A 90-day window is routinely well over a thousand disclosures, and without `limit` the
+server returns the first 200 with nothing in the payload to say it stopped. `totalCount` on
+the envelope is the real size on every tier, so size the walk from that rather than from
+`data.length`.
+
+| Option | Values |
+|--------|--------|
+| `lookbackDays` | Days to look back (1-365). Defaults to 90. |
+| `limit` | Rows to return. Must be >= 1; anything above 500 is capped at 500. Omit for the default 200. |
+| `offset` | Row offset to start from. Defaults to 0. Works with or without `limit`. |
+
+```typescript
+const first = await client.politicians.getActivity({ limit: 100 });
+console.log(`${first.data.length} of ${first.totalCount} disclosures`);
+
+for (let offset = 100; offset < (first.totalCount ?? 0); offset += 100) {
+  const page = await client.politicians.getActivity({ limit: 100, offset });
+  for (const trade of page.data) {
+    console.log(trade.politicianName, trade.ticker, trade.transactionType);
+  }
+}
+```
 
 ### Entity Metrics
 
@@ -254,11 +310,15 @@ All errors extend `SentiSenseError` and include `status`, `code`, and `message` 
 
 ```typescript
 const client = new SentiSense({
-  apiKey: "ss_live_YOUR_KEY",  // Get yours at app.sentisense.ai/settings/developer
-  baseUrl: "https://...",      // Default: https://app.sentisense.ai
-  timeout: 30000,              // Default: 30s (in milliseconds)
+  apiKey: process.env.SENTISENSE_API_KEY,  // Get yours at app.sentisense.ai/settings/developer
+  baseUrl: "https://...",                  // Default: https://app.sentisense.ai
+  timeout: 30000,                          // Default: 30s (in milliseconds)
+  maxRetries: 3,                           // Default: 3
 });
 ```
+
+Keep the key in the environment rather than in source. Committing a literal key leaks it
+into git history and into every registry security scan that reads your repo.
 
 ## Get an API Key
 

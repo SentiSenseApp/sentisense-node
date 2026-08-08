@@ -150,6 +150,84 @@ describe("institutional.getHolders", () => {
     expect(result.data.holders).toHaveLength(2);
     expect(result.data.holders.filter((h) => h.changeType === "NEW")).toHaveLength(1);
   });
+
+  /**
+   * Fixture copied from a live paged response. Passing `limit` makes the server add three
+   * fields the unpaged response does not have, and the reason to assert them here is the
+   * access, not the values: every `result.data.X` below is native typed access, so if
+   * `TickerHolders` ever loses one of these fields again, this file stops compiling under
+   * `npm run typecheck` instead of forcing callers into a cast.
+   */
+  it("types the paging fields a limited request adds to the payload", async () => {
+    const row = {
+      filerCik: "0000895421",
+      filerName: "Morgan Stanley",
+      filerCategory: "BANK",
+      shares: 244_475_958,
+      valueUsd: 62_045_554_181,
+      changeType: "INCREASED",
+      sharesChange: 13_990_330,
+      sharesChangePct: 6.07,
+      entitySlug: "Morgan-Stanley",
+      cikCount: 2,
+    };
+    const payload = {
+      ticker: "AAPL",
+      companyName: "APPLE INC",
+      reportDate: "2026-03-31",
+      totalInstitutionalShares: 9_344_335_315,
+      totalInstitutionalValue: 2_367_300_875_553,
+      holderCount: 6044,
+      holders: [row],
+      returnedCount: 1,
+      offset: 5,
+      notableChanges: { count: 1031, top: [row] },
+    };
+    mockFetch.mockResolvedValueOnce(envelope(payload));
+    const result = await client.institutional.getHolders("AAPL", "2026-03-31", {
+      limit: 1,
+      offset: 5,
+    });
+
+    expect(result.data.returnedCount).toBe(1);
+    expect(result.data.offset).toBe(5);
+    // returnedCount is the page; holderCount stays the ticker-wide total.
+    expect(result.data.holderCount).toBe(6044);
+    expect(result.data.notableChanges?.count).toBe(1031);
+    expect(result.data.notableChanges?.top[0].filerName).toBe("Morgan Stanley");
+    // notableChanges.top rows are Holder rows, so they carry the same fields.
+    expect(result.data.notableChanges?.top[0].changeType).toBe("INCREASED");
+  });
+
+  it("types entitySlug and cikCount on holder rows", async () => {
+    const payload = {
+      ticker: "GME",
+      holderCount: 2,
+      holders: [
+        { filerCik: "1", filerName: "Vanguard", entitySlug: "Vanguard", cikCount: null },
+        { filerCik: "2", filerName: "Unmatched Filer", entitySlug: null, cikCount: null },
+      ],
+    };
+    mockFetch.mockResolvedValueOnce(envelope(payload));
+    const result = await client.institutional.getHolders("GME", "2025-12-31");
+
+    // A linkable filer resolves to a slug getInstitutionDetail accepts.
+    expect(result.data.holders[0].entitySlug).toBe("Vanguard");
+    // An unmatched filer sends null, so a caller must check before building a link.
+    expect(result.data.holders[1].entitySlug).toBeNull();
+    // cikCount is null for a single-CIK filer, which is the common case.
+    expect(result.data.holders[0].cikCount).toBeNull();
+  });
+
+  it("leaves the paging fields undefined on an unpaged response", async () => {
+    const payload = { ticker: "GME", holderCount: 352, holders: [] };
+    mockFetch.mockResolvedValueOnce(envelope(payload));
+    const result = await client.institutional.getHolders("GME", "2025-12-31");
+
+    expect(result.data.returnedCount).toBeUndefined();
+    expect(result.data.offset).toBeUndefined();
+    expect(result.data.notableChanges).toBeUndefined();
+  });
 });
 
 describe("institutional.getActivists", () => {

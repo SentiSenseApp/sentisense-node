@@ -40,6 +40,68 @@ describe("politicians.getActivity", () => {
     expect(url).not.toContain("lookbackDays");
   });
 
+  it("sends a bare URL with no query string when called with no options", async () => {
+    // Adding paging options must not change the request an existing caller makes, so
+    // assert the whole URL rather than the absence of individual params.
+    const data = { isPreview: false, previewReason: null, data: [] };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    await client.politicians.getActivity();
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      "https://app.sentisense.ai/api/v1/politicians/activity",
+    );
+  });
+
+  it("sends the same bare URL when called with an empty options object", async () => {
+    const data = { isPreview: false, previewReason: null, data: [] };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    await client.politicians.getActivity({});
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      "https://app.sentisense.ai/api/v1/politicians/activity",
+    );
+  });
+
+  it("passes limit and offset for paging past the default page", async () => {
+    const data = { isPreview: false, previewReason: null, totalCount: 1437, data: [] };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    await client.politicians.getActivity({ limit: 100, offset: 200 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("limit=100");
+    expect(url).toContain("offset=200");
+  });
+
+  it("sends offset=0 as a real value rather than dropping it", async () => {
+    const data = { isPreview: false, previewReason: null, data: [] };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    await client.politicians.getActivity({ limit: 50, offset: 0 });
+    expect(mockFetch.mock.calls[0][0] as string).toContain("offset=0");
+  });
+
+  it("combines paging with the lookback window", async () => {
+    const data = { isPreview: false, previewReason: null, totalCount: 566, data: [] };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    await client.politicians.getActivity({ lookbackDays: 30, limit: 2, offset: 1 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("lookbackDays=30");
+    expect(url).toContain("limit=2");
+    expect(url).toContain("offset=1");
+  });
+
+  it("reads totalCount off a full response, which is how a pager sizes the walk", async () => {
+    // The feed is ~1437 rows and the server returns 200 by default, so data.length is
+    // not the total. totalCount is present here even though isPreview is false.
+    const data = {
+      isPreview: false,
+      previewReason: null,
+      totalCount: 1437,
+      data: [{ ticker: "MPC", transactionType: "SALE" }],
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+    const result = await client.politicians.getActivity({ limit: 1 });
+    expect(result.isPreview).toBe(false);
+    expect(result.totalCount).toBe(1437);
+    expect(result.data).toHaveLength(1);
+  });
+
   it("surfaces option assetMetadata on option trades", async () => {
     const data = {
       isPreview: false,

@@ -1,6 +1,6 @@
 {
   "name": "sentisense",
-  "version": "0.33.0",
+  "version": "0.34.0",
   "description": "Official JavaScript/TypeScript SDK for the SentiSense market intelligence API",
   "author": "SentiSense <support@sentisense.ai>",
   "license": "MIT",
@@ -26,10 +26,16 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    }
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -46,7 +52,7 @@
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.typecheck.json",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {

@@ -1,5 +1,66 @@
 # Changelog
 
+## 0.34.0
+
+### Fixed
+
+- **The package is importable again from an ESM TypeScript project.** The `exports` map
+  hoisted a single `types` entry above the `import` / `require` conditions, so under
+  `module` / `moduleResolution: "NodeNext"` an ESM consumer resolved the CommonJS
+  declarations for the ESM entry point and `new SentiSense()` failed to compile with
+  `TS2351: This expression is not constructable`. That is the first line of the Quick Start,
+  so the package was unusable in that configuration. Types are now declared per condition,
+  pointing at the declaration file that matches each entry point. Bundler-style resolution
+  was unaffected and stays unaffected.
+- **`exports` now includes a `./package.json` subpath.** Tooling that reads a dependency's
+  manifest through its export map (bundler plugins, framework CLIs, some test runners) threw
+  `ERR_PACKAGE_PATH_NOT_EXPORTED` instead of getting the file.
+- **`RateLimitError.retryAfter` can no longer be `NaN` or unbounded.** 0.33.0 clamped
+  `Retry-After` inside the client's own retry loop but handed the raw header value to the
+  error object, so a caller running its own backoff off `error.retryAfter` got `NaN` from an
+  HTTP-date (`setTimeout` fires immediately on `NaN`, turning polite backoff into a hot loop)
+  or a multi-hour wait from an oversized value. It is now clamped to `[0.5, 120]` seconds,
+  and is `undefined` rather than `NaN` when the header is absent or unparseable.
+- **Chart adjustment boundary corrected in the docs.** `GetChartOptions.timeframe` claimed
+  that `"5Y"` and longer are split- and dividend-adjusted. Only `"10Y"` and `"MAX"` are: a
+  `"5Y"` weekly close matches the `"1Y"` daily close for that week's last trading day, while
+  the `"10Y"` bar for the same week is lower by the dividends paid since. Anyone diffing two
+  ranges was reading that gap as a data bug.
+- **`PreviewResponse.totalCount` documented accurately.** It said the field is absent on full
+  PRO responses. It is present whenever the server knows the full size, including on a PRO
+  response from a paged endpoint such as `politicians.getActivity`.
+- **`SentimentSourceTone.mentionShare` and `StockSentiment.socialDominance` units.**
+  `mentionShare` is a whole-number percent that sums to 100 across the array;
+  `socialDominance` is a fraction (0.021 is 2.1%). They look interchangeable and are not.
+- **`examples/news-search.ts` compiles.** It read a `topDocuments` field and passed an
+  `expanded` option, neither of which the API has. `npm run typecheck` now covers `tests/`
+  and `examples/` as well as `src/`, so a wrong signature in either is a build failure
+  rather than something only a reader notices.
+
+### Added
+
+- **Paging and sorting on `institutional.getHolders`.** A widely held ticker is roughly
+  6,000 rows and 1.5 MB per quarter. The new optional options object takes `limit`, `offset`,
+  `sortBy` (`"shares"`, `"valueUsd"`, `"sharesChangePct"`) and `sortDir`. Omitting it sends
+  the original unbounded request, so existing calls are unchanged. Note that `limit` is what
+  activates the rest: sent without it, `offset` and the sort options are ignored server-side.
+- **`TickerHolders.returnedCount`, `.offset` and `.notableChanges`.** A response to a request
+  carrying `limit` returns all three, so a paging caller can size the walk and see the
+  quarter's biggest position moves without scanning every page. All three are optional
+  because the unbounded response omits them. `HolderNotableChanges` is exported.
+- **`Holder.entitySlug` and `Holder.cikCount`.** `entitySlug` goes straight to
+  `institutional.getInstitutionDetail()`; `cikCount` is populated when a row rolls up several
+  SEC filers under one manager. Both are null for filers with no institution page.
+- **Paging on `politicians.getActivity`.** A 90-day window is routinely well over a thousand
+  disclosures and the server returns 200 by default with nothing in the payload to say it
+  stopped. The new optional `limit` and `offset` (type `GetPoliticianActivityOptions`, which
+  extends `GetPoliticiansOptions`) walk the rest; read `totalCount` on the envelope for the
+  real size. Calling with no arguments sends exactly the request it always did.
+- **`StockQuote.reportedCurrency`.** Names the currency the issuer reports in, matching
+  `Fundamentals.reportedCurrency`. Absent means unknown, not USD.
+- **`Document.sourceName`.** Publisher name for a news article, null on social sources where
+  `source` already names the platform. It was on the wire but not on the type.
+
 ## 0.33.0
 
 ### Added

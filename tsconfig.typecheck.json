@@ -1,0 +1,22 @@
+{
+  // Typechecks the surfaces the build config deliberately leaves out.
+  //
+  // tsconfig.json compiles `src` only, and vitest transpiles without typechecking, so a
+  // test or an example could call a method with the wrong signature and nothing in the
+  // toolchain would say so. This config exists so `npm run typecheck` does.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "sourceMap": false,
+    "rootDir": ".",
+    // Examples import the package by name, the way a reader will copy them.
+    "baseUrl": ".",
+    "paths": {
+      "sentisense": ["./src/index.ts"]
+    },
+    "types": ["node"]
+  },
+  "include": ["src", "tests", "examples"],
+  "exclude": ["node_modules", "dist"]
+}

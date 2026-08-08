@@ -42,6 +42,12 @@ export class DeepHistoryUnavailableError extends SentiSenseError {
 }
 
 export class RateLimitError extends SentiSenseError {
+  /**
+   * Seconds to wait before retrying, from the server's `Retry-After` header, clamped to
+   * `[0.5, 120]`. Always either a finite number or `undefined`: an absent header, or one
+   * carrying an HTTP-date instead of a number of seconds, leaves it undefined rather than
+   * `NaN`, so `setTimeout(fn, err.retryAfter * 1000)` can never fire immediately.
+   */
   retryAfter?: number;
 
   constructor(message: string, code?: string, retryAfter?: number) {

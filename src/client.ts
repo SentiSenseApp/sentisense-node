@@ -39,22 +39,32 @@ const MAX_RATE_LIMIT_WAIT_S = 120;
 const RATE_LIMIT_FALLBACK_WAIT_S = 60;
 
 /**
- * Seconds to wait before retrying, from a `Retry-After` header.
+ * A `Retry-After` header as a usable number of seconds, clamped to `[0.5, maxWaitS]`, or
+ * `undefined` when there is no usable value.
  *
- * Clamped to `[0.5, maxWaitS]`. `Retry-After` may legally carry an HTTP-date rather than a
- * number of seconds, in which case `parseInt` yields `NaN`; left unguarded that produced a
+ * `Retry-After` is vendor-controlled and may legally carry an HTTP-date rather than a
+ * number of seconds, in which case parsing yields `NaN`. Left unguarded that produced a
  * `NaN` delay which compared false against every threshold and retried instantly in a busy
- * loop. Anything that is not a finite number falls back to `defaultS`.
+ * loop, and a `NaN` on the error object that silently broke a caller's own backoff.
+ * Anything that is not a finite number is treated as absent.
  */
+function clampRetryAfter(
+  raw: string | null,
+  maxWaitS: number,
+): number | undefined {
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return undefined;
+  return Math.min(Math.max(0.5, parsed), maxWaitS);
+}
+
+/** Same clamp, resolved to `defaultS` when the header gives us nothing to go on. */
 function retryAfterSeconds(
   raw: string | null,
   defaultS: number,
   maxWaitS: number,
 ): number {
-  if (!raw) return defaultS;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) return defaultS;
-  return Math.min(Math.max(0.5, parsed), maxWaitS);
+  return clampRetryAfter(raw, maxWaitS) ?? defaultS;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -275,8 +285,13 @@ export class SentiSense implements APIClient {
       case 404:
         throw new NotFoundError(message, code);
       case 429: {
-        const ra = response.headers.get("Retry-After");
-        throw new RateLimitError(message, code, ra ? parseInt(ra, 10) : undefined);
+        // Same clamp the retry loop uses, so a caller running its own backoff off
+        // `error.retryAfter` gets a number it can pass to setTimeout, or nothing at all.
+        const retryAfter = clampRetryAfter(
+          response.headers.get("Retry-After"),
+          MAX_RATE_LIMIT_WAIT_S,
+        );
+        throw new RateLimitError(message, code, retryAfter);
       }
       default:
         throw new APIError(message, response.status, code);
