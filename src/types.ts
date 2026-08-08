@@ -555,6 +555,21 @@ export interface GetFlowsOptions {
   limit?: number;
 }
 
+/** Paging and sort options for `institutional.getHolders`. */
+export interface GetHoldersOptions {
+  /**
+   * Maximum holder rows to return. Must be >= 1; values above 1000 are capped
+   * server-side. Omit to get the full, unbounded holder list.
+   */
+  limit?: number;
+  /** Row offset to start from, for paging with `limit`. Server default is 0. */
+  offset?: number;
+  /** Sort field. Server default is `"shares"`. */
+  sortBy?: "shares" | "valueUsd" | "sharesChangePct";
+  /** Sort direction. Server default is `"desc"`. */
+  sortDir?: "asc" | "desc";
+}
+
 /** A single institution summary from the discovery list. */
 export interface InstitutionSummary {
   /** SEC Central Index Key of the (rolled-up) institution. */

@@ -125,6 +125,45 @@ client.institutional.getHolders("AAPL", "2025-02-14")
 client.institutional.getActivists("2025-02-14")
 ```
 
+#### Paging the holder list
+
+A widely held ticker returns thousands of rows: a megacap quarter is roughly 6,000
+holders and 1.5 MB on the wire. Pass `limit` unless you really want the whole list.
+Omitting the options object sends the original unbounded request, so existing code
+keeps working.
+
+| Option | Values |
+|--------|--------|
+| `limit` | Maximum rows to return. Must be >= 1; values above 1000 are capped server-side. Omit for the full list. |
+| `offset` | Row offset to start from, used with `limit`. Server default is 0. |
+| `sortBy` | `"shares"` (server default), `"valueUsd"`, or `"sharesChangePct"`. |
+| `sortDir` | `"desc"` (server default) or `"asc"`. |
+
+```typescript
+import SentiSense from "sentisense";
+
+const client = new SentiSense({ apiKey: process.env.SENTISENSE_API_KEY });
+
+// Top 10 holders by position value, largest first
+const top = await client.institutional.getHolders("AAPL", "2026-03-31", {
+  limit: 10,
+  sortBy: "valueUsd",
+  sortDir: "desc",
+});
+for (const holder of top.data.holders) {
+  console.log(holder.filerName, holder.valueUsd);
+}
+
+// Walk the list a page at a time
+const page = await client.institutional.getHolders("AAPL", "2026-03-31", {
+  limit: 100,
+  offset: 100,
+});
+console.log(`${page.data.holders.length} rows of ${page.data.holderCount}`);
+```
+
+Paged responses also carry `returnedCount` and `offset` next to the holder rows.
+
 ### Entity Metrics
 
 ```typescript

@@ -88,6 +88,49 @@ describe("institutional.getHolders", () => {
     expect(url).toContain("reportDate=2025-12-31");
   });
 
+  it("passes limit, offset, sortBy and sortDir when given", async () => {
+    mockFetch.mockResolvedValueOnce(envelope({ ticker: "AAPL", holders: [] }));
+    await client.institutional.getHolders("AAPL", "2025-12-31", {
+      limit: 5,
+      offset: 10,
+      sortBy: "valueUsd",
+      sortDir: "asc",
+    });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("reportDate=2025-12-31");
+    expect(url).toContain("limit=5");
+    expect(url).toContain("offset=10");
+    expect(url).toContain("sortBy=valueUsd");
+    expect(url).toContain("sortDir=asc");
+  });
+
+  it("sends only the options actually supplied, leaving server defaults alone", async () => {
+    mockFetch.mockResolvedValueOnce(envelope({ ticker: "AAPL", holders: [] }));
+    await client.institutional.getHolders("AAPL", "2025-12-31", { limit: 25 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("limit=25");
+    expect(url).not.toContain("offset=");
+    expect(url).not.toContain("sortBy=");
+    expect(url).not.toContain("sortDir=");
+  });
+
+  it("sends offset=0, which is a real value rather than unset", async () => {
+    mockFetch.mockResolvedValueOnce(envelope({ ticker: "AAPL", holders: [] }));
+    await client.institutional.getHolders("AAPL", "2025-12-31", { limit: 5, offset: 0 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("offset=0");
+  });
+
+  it("omits every paging param when options are omitted", async () => {
+    mockFetch.mockResolvedValueOnce(envelope({ ticker: "AAPL", holders: [] }));
+    await client.institutional.getHolders("AAPL", "2025-12-31");
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).not.toContain("limit=");
+    expect(url).not.toContain("offset=");
+    expect(url).not.toContain("sortBy=");
+    expect(url).not.toContain("sortDir=");
+  });
+
   it("nests the holder rows two levels deep, under data.holders", async () => {
     const payload = {
       ticker: "AAPL",

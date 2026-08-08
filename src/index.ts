@@ -105,6 +105,7 @@ export type {
   InstitutionalFlowsResponse,
   Holder,
   TickerHolders,
+  GetHoldersOptions,
   InstitutionSummary,
   InstitutionList,
   InstitutionListResponse,

@@ -1,6 +1,7 @@
 import type { APIClient } from "../client.js";
 import type {
   GetFlowsOptions,
+  GetHoldersOptions,
   Holder,
   InstitutionList,
   InstitutionListResponse,
@@ -46,14 +47,22 @@ export class Institutional {
    * are two levels down: `(await getHolders(t, d)).data.holders`, alongside ticker-level
    * totals like `holderCount`. Free callers get a truncated `holders` array with
    * `isPreview: true`.
+   *
+   * A widely held ticker returns thousands of rows: a megacap quarter is about
+   * 6,000 holders and 1.5 MB. Pass `limit` unless you really want all of them.
+   * Omitting `options` sends the original unbounded request.
+   *
+   * Paged responses also carry `returnedCount` and `offset` alongside the holder
+   * rows, so you can walk the list without re-counting it yourself.
    */
   async getHolders(
     ticker: string,
     reportDate: string,
+    options?: GetHoldersOptions,
   ): Promise<PreviewResponse<TickerHolders>> {
     return this.client.get(
       `/api/v1/institutional/holders/${encodeURIComponent(ticker)}`,
-      { reportDate },
+      { reportDate, ...options },
     );
   }
 
