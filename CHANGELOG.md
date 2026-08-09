@@ -30,7 +30,8 @@
   PRO responses. It is present whenever the server knows the full size, including on a PRO
   response from a paged endpoint such as `politicians.getActivity`.
 - **`SentimentSourceTone.mentionShare` and `StockSentiment.socialDominance` units.**
-  `mentionShare` is a whole-number percent that sums to 100 across the array;
+  `mentionShare` is a whole-number percent, rounded per source, so the array sums to about
+  100 rather than exactly 100 (101 is common and is not a data error);
   `socialDominance` is a fraction (0.021 is 2.1%). They look interchangeable and are not.
 - **`examples/news-search.ts` compiles.** It read a `topDocuments` field and passed an
   `expanded` option, neither of which the API has. `npm run typecheck` now covers `tests/`

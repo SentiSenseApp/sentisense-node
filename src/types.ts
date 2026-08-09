@@ -117,7 +117,11 @@ export interface SentimentSourceTone {
   source: string;
   /** "Bullish" | "Neutral" | "Bearish". */
   direction: string;
-  /** Whole-number percent of this stock's mentions, not a fraction. Sums to 100 across the array. */
+  /**
+   * Whole-number percent of this stock's mentions, not a fraction. Each source's share is
+   * rounded independently, so the array sums to about 100 rather than exactly 100: 101 is
+   * common and is not a data error. Do not use the shares to reconstruct per-source counts.
+   */
   mentionShare: number;
   /** Exact polarity in [-1, 1]. */
   value?: number;
