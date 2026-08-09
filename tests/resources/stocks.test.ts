@@ -134,6 +134,14 @@ describe("stocks.getAISummary", () => {
     expect(url).toContain("/api/v1/stocks/AAPL/ai-summary");
     expect(url).toContain("depth=deep");
   });
+
+  it("drops the deprecated forceRefresh option instead of sending it", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({}));
+    await client.stocks.getAISummary("AAPL", { depth: "deep", forceRefresh: true });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("depth=deep");
+    expect(url).not.toContain("forceRefresh");
+  });
 });
 
 describe("stocks.getShortInterest", () => {

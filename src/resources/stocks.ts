@@ -131,9 +131,17 @@ export class Stocks {
     return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/entities`);
   }
 
-  /** Get AI-generated stock analysis report. Requires PRO tier. */
+  /**
+   * Get AI-generated stock analysis report. Requires PRO tier.
+   *
+   * `depth: "deep"` returns the full curated report and consumes one report view on
+   * metered tiers; the default `"basic"` returns the one-paragraph summary.
+   *
+   * The deprecated `forceRefresh` option is accepted and discarded, not forwarded.
+   */
   async getAISummary(ticker: string, options?: GetAISummaryOptions): Promise<AISummary> {
-    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/ai-summary`, options);
+    const { forceRefresh: _forceRefresh, ...params } = options ?? {};
+    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/ai-summary`, params);
   }
 
   /** Get sentiment/mention metrics breakdown by entity. */

@@ -337,6 +337,11 @@ export interface GetProfileOptions {
 
 export interface GetAISummaryOptions {
   depth?: "basic" | "deep";
+  /**
+   * @deprecated Has no effect and is no longer sent. Reports are curated and served
+   * as published, so there is nothing for a caller to regenerate on demand. Accepted
+   * only so existing code keeps compiling; drop it from your call.
+   */
   forceRefresh?: boolean;
 }
 

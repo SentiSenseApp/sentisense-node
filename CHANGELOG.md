@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.34.1
+
+### Deprecated
+
+- **`GetAISummaryOptions.forceRefresh` is deprecated and is no longer sent.** Stock
+  reports are curated and served as published, so the option never changed the report a
+  caller received. It stays in the type, marked `@deprecated`, so existing code keeps
+  compiling; `getAISummary` now discards it rather than forwarding it. Drop it from your
+  call. `depth` is unaffected.
+
 ## 0.34.0
 
 ### Fixed
