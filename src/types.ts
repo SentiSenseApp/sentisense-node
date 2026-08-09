@@ -1327,3 +1327,119 @@ export interface TrackerSnapshotResponse {
   totalCount?: number;
   data: TrackerSnapshot;
 }
+
+// ── Indexes ─────────────────────────────────────────────────
+
+/** Per-index discovery row returned by `client.indexes.list()`. */
+export interface IndexListing {
+  indexId: string;
+  displayName: string;
+  /** One-sentence summary, suitable for a card subtitle. */
+  description: string;
+  /** Output scale: `"SENTIMENT"` (signed, -1 to +1) or `"PERCENT_0_100"`. Set axis bounds from this, not from the id. */
+  scale: string;
+  /** Access tier: `"free"` or `"pro"`. Every index is `"free"` today; read it rather than assuming. */
+  accessTier?: string;
+  /**
+   * Richest view of this index, which is NOT always the detail route. Market
+   * Mood points at `/api/v2/market-mood`, which carries a phase band, weekly
+   * change, per-signal breakdown and per-sector map that the shared envelope
+   * cannot hold. Every advertised `indexId` still resolves on
+   * {@link Indexes.get}, so a generic client can iterate the listing without
+   * special-casing anything.
+   */
+  canonicalUrl: string;
+}
+
+/** Discovery envelope returned by `client.indexes.list()`. */
+export interface IndexListResponse {
+  indexes: IndexListing[];
+}
+
+/** One entity's row in a basket index's constituent breakdown. */
+export interface IndexConstituent {
+  /** Ontology entity id, resolvable via the entities API. */
+  kbEntityId: string;
+  displayName: string;
+  /** The entity's role in this basket; the role is what carries the weight. */
+  role: string;
+  /** Relative weight on this date. `0` when `staleness` is `"OUT_OF_SEGMENT"`. */
+  weight: number;
+  /** The entity's own reading. */
+  value: number | null;
+  /** Mentions behind that reading in the lookback window. */
+  mentionsCount: number | null;
+  /**
+   * `"FRESH"` (mentioned inside the lookback), `"CARRIED_FORWARD"` (last known
+   * value standing in), `"EXCLUDED"` (no usable reading, renormalized out), or
+   * `"OUT_OF_SEGMENT"` (not in the basket on this date, reported only for
+   * transparency).
+   */
+  staleness: string;
+  /**
+   * Reserved. The API currently returns `null` here on every constituent, so do
+   * not build on it. To get the same number today, compute `weight * value`
+   * over the sum of `weight` across constituents whose `staleness` is not
+   * `"EXCLUDED"`.
+   */
+  contribution: number | null;
+  /** Detail page for the entity, or `null` when there is no resolvable target. */
+  link: string | null;
+}
+
+/**
+ * Latest reading for one index, returned by `client.indexes.get()`.
+ *
+ * Two archetypes share this envelope, and the difference is load-bearing. A
+ * **basket** index (`fed-sentiment`, `ai-sentiment`) weight-averages tracked
+ * entities, so `constituents`, `basketSize`, `coverage` and `totalMentions`
+ * describe how the headline was built. A **composite** index (`market-mood`) is
+ * built from signals rather than entities, so those four are `null` *by
+ * construction*, not because data is missing. Branch on them; never treat
+ * `null` there as an error.
+ */
+export interface IndexSnapshot {
+  indexId: string;
+  displayName: string;
+  /** Date the reading covers, `"YYYY-MM-DD"`. Bucket start for weekly indexes. */
+  asOf: string;
+  /** The headline scalar, on `scale`. */
+  value: number | null;
+  scale: string;
+  /** Constituents that actually contributed. `null` on a composite index. */
+  coverage: number | null;
+  /** Constituents in the basket on this date. `null` on a composite index. */
+  basketSize: number | null;
+  /** Mentions behind the reading. `null` on a composite index. */
+  totalMentions: number | null;
+  /** How the value was computed, and what any `null` fields mean. */
+  methodologyNote: string;
+  /** Per-entity breakdown. `null` on a composite index. */
+  constituents: IndexConstituent[] | null;
+}
+
+/** One point on an index's scalar series. */
+export interface IndexHistoryPoint {
+  /** `"YYYY-MM-DD"`. */
+  date: string;
+  value: number | null;
+}
+
+/**
+ * Historical series returned by `client.indexes.history()`.
+ *
+ * Point spacing follows the index, not the calendar: a weekly index emits one
+ * point per Monday-Sunday bucket, a daily index one per day, and Market Mood
+ * trading days only. Thin or low-coverage buckets are withheld rather than
+ * published, so `history` can be shorter than `days` and can contain gaps. Plot
+ * against `date`; never assume a fixed interval, and never read a missing date
+ * as zero.
+ */
+export interface IndexHistoryResponse {
+  indexId: string;
+  displayName: string;
+  scale: string;
+  /** The window you requested, echoed back. */
+  days: number;
+  history: IndexHistoryPoint[];
+}

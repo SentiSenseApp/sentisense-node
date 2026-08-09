@@ -10,5 +10,9 @@ export class MarketMoodResource {
   }
 
   // TODO: accept a `days` param to control history length (the endpoint supports ?days=N).
-  // TODO: add a sibling `indexes` resource for /api/v1/indexes/{id} (+ /history), e.g. fed-sentiment.
+  //
+  // Market Mood is also reachable through `client.indexes`, which serves it in the shared
+  // index envelope alongside fed-sentiment and ai-sentiment. Use this resource when you want
+  // the phase band, weekly change, per-signal breakdown and per-sector map; use `indexes`
+  // when you want every index to answer the same shape. Both report the same headline number.
 }

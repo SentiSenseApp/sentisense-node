@@ -19,6 +19,7 @@ import { KB } from "./resources/kb.js";
 import { MarketMoodResource } from "./resources/marketMood.js";
 import { MarketSummaryResource } from "./resources/marketSummary.js";
 import { Stocks } from "./resources/stocks.js";
+import { Indexes } from "./resources/indexes.js";
 import { Trackers } from "./resources/trackers.js";
 import type { SentiSenseOptions } from "./types.js";
 import { VERSION } from "./version.js";
@@ -95,6 +96,7 @@ export class SentiSense implements APIClient {
   readonly marketMood: MarketMoodResource;
   readonly marketSummary: MarketSummaryResource;
   readonly kb: KB;
+  readonly indexes: Indexes;
   readonly trackers: Trackers;
   readonly calendar: Calendar;
 
@@ -116,6 +118,7 @@ export class SentiSense implements APIClient {
     this.marketMood = new MarketMoodResource(this);
     this.marketSummary = new MarketSummaryResource(this);
     this.kb = new KB(this);
+    this.indexes = new Indexes(this);
     this.trackers = new Trackers(this);
     this.calendar = new Calendar(this);
   }
