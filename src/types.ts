@@ -924,6 +924,120 @@ export interface GetEarningsCalendarOptions {
   time?: "before_open" | "after_close" | "during_market" | "unknown";
 }
 
+// ── Earnings analysis report ────────────────────────────────
+
+/**
+ * One KPI card on a reported quarter.
+ *
+ * `value` and `yoy` are display strings, already formatted (`"$109.4B"`,
+ * `"+16% YoY"`), not numbers to compute with. `yoy` is absent when the quarter
+ * carries no year-over-year comparison for that line, which is common on
+ * call highlights.
+ */
+export interface EarningsKpiHighlight {
+  label: string;
+  value: string;
+  yoy?: string;
+}
+
+/** A citation backing a reported quarter. */
+export interface EarningsSource {
+  title: string;
+  url: string;
+}
+
+/**
+ * One fiscal quarter of the earnings analysis report, from
+ * `client.earnings.getSummaries()`.
+ *
+ * The wire shape depends on the caller's tier, so branch on the envelope's
+ * `isPreview` rather than on field presence. `fiscalPeriod`, `reportDate`,
+ * `headline`, `hasTranscript`, `generatedAt` and `source` arrive on both tiers.
+ *
+ * PRO adds the bodies: `summaryMd`, the full `kpiHighlights`, `guidance`,
+ * `transcriptSummaryMd`, `transcriptHighlights`, `transcriptGeneratedAt` and
+ * `sources`.
+ *
+ * The FREE preview replaces those bodies with shape: up to two `kpiHighlights`
+ * cards (without `yoy`) plus `kpiHighlightCount`, the section titles in
+ * `summaryTopics` and `transcriptTopics`, and `hasGuidance` with
+ * `guidanceDirection` in place of the guidance language. It never carries a
+ * body, a KPI history, or a guidance figure.
+ *
+ * Absence is explicit: a quarter with no call summary sets `hasTranscript` to
+ * `false` rather than dropping the concept, so a client can say "no call
+ * summary yet" instead of rendering nothing.
+ */
+export interface EarningsQuarter {
+  /** Display fiscal period, e.g. `"Q2 FY2026"`. */
+  fiscalPeriod: string;
+  /** Date the results were reported, ISO calendar day `"YYYY-MM-DD"`. */
+  reportDate: string;
+  /** One-line editorial summary of the quarter. */
+  headline: string;
+  /** True when a summary of the earnings call exists for this quarter. */
+  hasTranscript: boolean;
+  /** When the quarter summary was generated, epoch seconds. */
+  generatedAt: number;
+  /** Provenance of the quarter summary. */
+  source: "press_release" | "transcript";
+
+  /** PRO: markdown body summarizing the reported results. */
+  summaryMd?: string;
+  /** PRO carries the full set; a preview carries up to two cards without `yoy`. */
+  kpiHighlights?: EarningsKpiHighlight[];
+  /** PRO: forward-guidance language as reported. Absent when the quarter carries none. */
+  guidance?: string;
+  /** PRO: markdown body summarizing the call. Absent when `hasTranscript` is false. */
+  transcriptSummaryMd?: string;
+  /** PRO: call-specific highlights. Absent when there is no call summary. */
+  transcriptHighlights?: EarningsKpiHighlight[];
+  /** PRO: when the call summary was generated, epoch seconds. Can post-date `generatedAt`. */
+  transcriptGeneratedAt?: number;
+  /** PRO: citations backing the quarter. */
+  sources?: EarningsSource[];
+
+  /** Preview: how many KPI cards the full quarter carries. */
+  kpiHighlightCount?: number;
+  /** Preview: section titles of the summary, never body text. */
+  summaryTopics?: string[];
+  /** Preview: section titles of the call summary, never body text. */
+  transcriptTopics?: string[];
+  /** Preview: whether the quarter carries guidance at all. */
+  hasGuidance?: boolean;
+  /** Preview: the direction only, in place of the guidance language. */
+  guidanceDirection?: "RAISED" | "CUT" | "HELD" | "MIXED" | null;
+}
+
+/** One company that reported inside the recent window. */
+export interface RecentEarningsEntry {
+  ticker: string;
+  /** Display fiscal period, e.g. `"Q2 FY2026"`. */
+  fiscalPeriod: string;
+  /** Date the results were reported, ISO calendar day `"YYYY-MM-DD"`. */
+  reportDate: string;
+  headline: string;
+  /** True when a summary of the earnings call exists for this quarter. */
+  hasTranscriptSummary: boolean;
+  /** Latest content written for this quarter, epoch seconds. */
+  generatedAt: number;
+}
+
+export interface GetEarningsSummariesOptions {
+  /**
+   * Max quarters returned, 1 to 40. Omitted, the API applies its own default
+   * of 12. A FREE key receives one quarter whatever you pass.
+   */
+  limit?: number;
+}
+
+export interface GetRecentEarningsOptions {
+  /** Look-back window in days, 1 to 31. Omitted, the API applies its own default of 7. */
+  days?: number;
+  /** Max rows returned, 1 to 100. Omitted, the API applies its own default of 50. */
+  limit?: number;
+}
+
 export interface PreviewResponse<T> {
   isPreview: boolean;
   previewReason: "PRO_REQUIRED" | null;

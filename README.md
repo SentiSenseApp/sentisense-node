@@ -263,6 +263,41 @@ client.stocks.getKpis("AAPL")       // Product metrics and segment revenue time-
 client.stocks.listKpiCoverage()     // All tickers with curated KPI data (free, no quota cost)
 ```
 
+### Earnings
+
+The earnings analysis report is the assembled version of a quarter: one object per fiscal period carrying the editorial headline, the KPI cards with year-over-year deltas, the guidance language as management phrased it, and a summary of the earnings call. Pair it with the recent-reporters feed to drive a post-earnings sweep. Both return the preview envelope.
+
+```typescript
+client.earnings.getSummaries("AAPL", { limit: 4 })   // Per-quarter analysis report, newest first. FREE: latest quarter, shaped. PRO: every hydrated quarter in full.
+client.earnings.getRecent({ days: 7, limit: 25 })    // Who reported in the last N days. Full window on every key.
+```
+
+```typescript
+import SentiSense from "sentisense";
+
+const client = new SentiSense({ apiKey: process.env.SENTISENSE_API_KEY });
+
+const res = await client.earnings.getSummaries("AAPL", { limit: 1 });
+const quarter = res.data[0];
+
+if (quarter) {
+  console.log(quarter.fiscalPeriod, quarter.reportDate);
+  console.log(quarter.headline);
+  for (const kpi of quarter.kpiHighlights ?? []) {
+    console.log(`  ${kpi.label}: ${kpi.value} (${kpi.yoy ?? "no YoY"})`);
+  }
+
+  if (res.isPreview) {
+    // Free key: section titles stand in for the bodies.
+    console.log("Summary covers:", quarter.summaryTopics?.join(", "));
+  } else {
+    console.log(quarter.summaryMd);
+  }
+}
+```
+
+The forward-looking half of the family is `client.calendar.getEarnings()`, which covers scheduled dates and consensus EPS rather than results.
+
 ### ETFs (beta)
 
 Composition data is public; the holdings-weighted aggregate views follow the same PRO-with-preview pattern as Analyst/Insider. Aggregates synthesize fund-level views from each constituent's per-stock data, weighted by allocation, with a `coverage` block on every response.

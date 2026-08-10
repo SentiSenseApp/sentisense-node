@@ -9,6 +9,7 @@ import {
 import { Analyst } from "./resources/analyst.js";
 import { Calendar } from "./resources/calendar.js";
 import { Documents } from "./resources/documents.js";
+import { Earnings } from "./resources/earnings.js";
 import { EntityMetrics } from "./resources/entityMetrics.js";
 import { Etfs } from "./resources/etfs.js";
 import { Insider } from "./resources/insider.js";
@@ -99,6 +100,7 @@ export class SentiSense implements APIClient {
   readonly indexes: Indexes;
   readonly trackers: Trackers;
   readonly calendar: Calendar;
+  readonly earnings: Earnings;
 
   constructor(options: SentiSenseOptions = {}) {
     this.apiKey = options.apiKey;
@@ -121,6 +123,7 @@ export class SentiSense implements APIClient {
     this.indexes = new Indexes(this);
     this.trackers = new Trackers(this);
     this.calendar = new Calendar(this);
+    this.earnings = new Earnings(this);
   }
 
   /** @internal */

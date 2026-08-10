@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.36.0
+
+### Added
+
+- **`client.earnings`, a new resource for what a company actually reported.**
+  `getSummaries(ticker, { limit })` returns the per-quarter analysis report, newest first: one
+  `EarningsQuarter` per fiscal period carrying the editorial headline, the KPI cards with
+  year-over-year deltas, the guidance language as management phrased it, and a summary of
+  the earnings call. It answers on the preview envelope, so branch on `isPreview`: a PRO
+  key receives every hydrated quarter in full, a FREE key receives the latest quarter
+  shaped rather than truncated (section titles in `summaryTopics` and `transcriptTopics`,
+  `guidanceDirection` in place of the guidance language, two KPI cards plus
+  `kpiHighlightCount`). A ticker with no stored quarter answers with an empty `data`
+  array rather than a 404, and a quarter can gain its call summary on a later read, so
+  branch on `hasTranscript` and read `transcriptGeneratedAt` rather than assuming a fixed
+  lag.
+
+- **`client.earnings.getRecent({ days, limit })`.** The cross-ticker view of who reported
+  recently, newest first, as `RecentEarningsEntry` rows. Every key receives the full
+  window it asks for. The window is bounded by `reportDate`, so a quarter reported inside
+  it appears even when its call summary lands later. This is the backward-looking feed;
+  `calendar.getEarnings()` remains the forward-looking one.
+
+- New exported types: `EarningsQuarter`, `EarningsKpiHighlight`, `EarningsSource`,
+  `RecentEarningsEntry`, `GetEarningsSummariesOptions` and `GetRecentEarningsOptions`.
+
+## 0.35.0
+
+### Added
+
+- **`client.indexes`**: `list()`, `get(indexId)` and `history(indexId, days)`, with
+  types for the listing, the snapshot, its constituents and the history series. A basket
+  index fills `constituents`, `basketSize`, `coverage` and `totalMentions`; a composite
+  index returns `null` for all four by construction, so check before iterating.
+
 ## 0.34.1
 
 ### Deprecated
