@@ -14,7 +14,7 @@ export class Politicians {
   /**
    * Get recent congressional STOCK Act trading activity across all politicians.
    *
-   * PRO-gated. Free/unauthenticated users receive a preview (top 5 trades)
+   * PRO-gated. Free-tier users receive a preview (top 5 trades)
    * with `isPreview: true` in the response.
    *
    * The feed is longer than one response: a default 90-day window is routinely well over a

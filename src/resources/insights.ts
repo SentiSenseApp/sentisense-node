@@ -97,7 +97,7 @@ export class Insights {
 
   /**
    * Get available insight types for a specific stock.
-   * No authentication required.
+   * API key required.
    *
    * Returns an array of insight type strings (e.g., `["sentiment_shift", "options_activity"]`).
    */

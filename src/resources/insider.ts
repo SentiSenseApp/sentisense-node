@@ -13,7 +13,7 @@ export class Insider {
   /**
    * Get market-wide insider activity: top buys and sells aggregated by ticker.
    *
-   * PRO-gated. Free/unauthenticated users receive a preview (top 5 per direction)
+   * PRO-gated. Free-tier users receive a preview (top 5 per direction)
    * with `isPreview: true` in the response.
    */
   async getActivity(options?: GetInsiderOptions): Promise<PreviewResponse<InsiderActivityResponse>> {
