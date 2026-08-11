@@ -11,15 +11,21 @@ export interface SentiSenseOptions {
 
 export interface StockPrice {
   ticker: string;
-  /** Regular-session price. During RTH: live last trade. Otherwise: most recent RTH close. */
+  /** Regular-session price, delayed 15 minutes. During RTH: the most recent regular-session value. Otherwise: most recent RTH close. */
   currentPrice: number;
   change: number;
   changePercent: number;
   previousClose: number;
   /** Regular-session volume. */
   volume: number;
-  /** Unix timestamp in milliseconds of the price quote. */
+  /** Unix timestamp in milliseconds of when this response was served. Not the age of the price: it tracks the current clock regardless of how old the value is. */
   timestamp: number;
+  /**
+   * Unix timestamp in milliseconds of the market data behind `currentPrice`. Read this for
+   * freshness rather than `timestamp`. Absent outside regular hours, and whenever the upstream
+   * data carries no time of its own, so treat an absent value as unknown age, not as fresh.
+   */
+  priceAsOf?: number;
   /** Extended-hours view (pre-market or after-hours). Null/absent during RTH, overnight, and weekends. */
   extendedHours?: ExtendedHoursInfo | null;
 }
@@ -39,7 +45,7 @@ export interface ExtendedHoursInfo {
 /** Aggregate quote snapshot from GET /api/v1/stocks/{ticker}/quote. */
 export interface StockQuote {
   ticker: string;
-  /** Regular-session price. During RTH: live last trade. Otherwise: most recent RTH close. */
+  /** Regular-session price, delayed 15 minutes. During RTH: the most recent regular-session value. Otherwise: most recent RTH close. */
   currentPrice: number | null;
   change: number | null;
   changePercent: number | null;
@@ -67,7 +73,14 @@ export interface StockQuote {
    * omitted rather than computed in that case, so treat them as possibly absent, not zero.
    */
   reportedCurrency?: string;
+  /** Unix timestamp in milliseconds of when this response was served. Not the age of the price. */
   timestamp: number | null;
+  /**
+   * Unix timestamp in milliseconds of the market data behind `currentPrice`. Read this for
+   * freshness rather than `timestamp`. Absent outside regular hours, and whenever the upstream
+   * data carries no time of its own, so treat an absent value as unknown age, not as fresh.
+   */
+  priceAsOf?: number;
   /** Extended-hours view (pre-market or after-hours). Null/absent during RTH, overnight, and weekends. */
   extendedHours?: ExtendedHoursInfo | null;
 }
