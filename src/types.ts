@@ -28,6 +28,22 @@ export interface StockPrice {
   priceAsOf?: number;
   /** Extended-hours view (pre-market or after-hours). Null/absent during RTH, overnight, and weekends. */
   extendedHours?: ExtendedHoursInfo | null;
+  /**
+   * Listing lifecycle. Absent for an ordinarily listed stock, which is almost every ticker.
+   *
+   * `"DELISTED"` means the company no longer trades publicly and EVERY price field above is
+   * frozen at the last trade before {@link delistedDate}. It is not a live price, so do not
+   * render `changePercent` as a market move.
+   *
+   * `"PENDING_DELISTING"` means a merger or take-private is scheduled but the stock still
+   * trades normally, so the figures above ARE current. Treat it as informational, never as a
+   * data-quality warning.
+   */
+  listingStatus?: 'DELISTED' | 'PENDING_DELISTING';
+  /** ISO date (YYYY-MM-DD) trading stopped. Absent unless `listingStatus` is `DELISTED`. */
+  delistedDate?: string;
+  /** Why it delisted. Absent unless `listingStatus` is `DELISTED`. */
+  delistingReason?: 'acquired' | 'take_private' | 'bankruptcy' | 'exchange_rule' | 'merged';
 }
 
 /**
@@ -130,6 +146,15 @@ export interface StockProfile {
   industry?: string;
   marketCap?: number;
   description?: string;
+  /**
+   * Listing lifecycle. Absent for an ordinarily listed stock. See {@link StockPrice.listingStatus}
+   * for what `"DELISTED"` and `"PENDING_DELISTING"` mean for the rest of the payload.
+   */
+  listingStatus?: 'DELISTED' | 'PENDING_DELISTING';
+  /** ISO date (YYYY-MM-DD) trading stopped. Absent unless `listingStatus` is `DELISTED`. */
+  delistedDate?: string;
+  /** Why it delisted. Absent unless `listingStatus` is `DELISTED`. */
+  delistingReason?: 'acquired' | 'take_private' | 'bankruptcy' | 'exchange_rule' | 'merged';
   [key: string]: unknown;
 }
 

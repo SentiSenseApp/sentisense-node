@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.37.0
+
+### Added
+
+- **Listing lifecycle on `StockPrice` and `StockProfile`: `listingStatus`, `delistedDate`
+  and `delistingReason`.** The same three fields `StockQuote` already declared are now typed
+  on the price and profile responses, so they read without a cast. They are absent for an
+  ordinarily listed stock, which is almost every ticker. `"DELISTED"` means every price
+  field is frozen at the last trade before `delistedDate`, so do not render `changePercent`
+  as a market move; `"PENDING_DELISTING"` means a merger or take-private is scheduled while
+  the stock still trades, so the figures are current.
+
 ## 0.36.0
 
 ### Added

@@ -39,6 +39,38 @@ describe("stocks.getPrice", () => {
     expect(url).toContain("/api/v1/stocks/price");
     expect(url).toContain("ticker=AAPL");
   });
+
+  it("reads the listing lifecycle fields without a cast", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        ticker: "TWTR",
+        currentPrice: 54.2,
+        change: 0,
+        changePercent: 0,
+        previousClose: 54.2,
+        volume: 0,
+        timestamp: 1667174400000,
+        listingStatus: "DELISTED",
+        delistedDate: "2022-10-27",
+        delistingReason: "take_private",
+      }),
+    );
+    const result = await client.stocks.getPrice("TWTR");
+    expect(result.listingStatus).toBe("DELISTED");
+    expect(result.delistedDate).toBe("2022-10-27");
+    expect(result.delistingReason).toBe("take_private");
+  });
+
+  it("leaves the listing lifecycle fields undefined for an ordinarily listed stock", async () => {
+    // The overwhelming majority of responses omit all three keys.
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ticker: "AAPL", currentPrice: 313.33, timestamp: 1754611200000 }),
+    );
+    const result = await client.stocks.getPrice("AAPL");
+    expect(result.listingStatus).toBeUndefined();
+    expect(result.delistedDate).toBeUndefined();
+    expect(result.delistingReason).toBeUndefined();
+  });
 });
 
 describe("stocks.getPrices", () => {
