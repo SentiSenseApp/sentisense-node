@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.40.0
+
+### Added
+
+- **`politicians.getDirectory(options?)`**: discover tracked members of Congress and the page
+  slug identifying each, so you can find who to query without knowing slugs upfront. Summary
+  only, no trade data; use `politicians.getMember(slug)` for filings. Requires an API key but
+  does not consume monthly quota, and is not tier-gated. Filter with `q`, page with `limit`
+  and `offset`. Returns the unwrapped payload, matching `institutional.listInstitutions`.
+
+  Unlike `getMembers`, the directory includes members who have **left Congress**. That roster
+  lists who currently holds office, so a former member was previously reachable only if you
+  already knew their slug.
+
+- **`former` and `servedUntil` on `PoliticianSummary`**: the API has been returning both, but
+  the type omitted them, so TypeScript callers could not read whether a member had left
+  Congress. `former` is true only on a member detail or directory response, since the members
+  roster serves sitting members exclusively.
+
 ## 0.39.0
 
 ### Added

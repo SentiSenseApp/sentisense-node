@@ -892,6 +892,52 @@ export interface PoliticianSummary {
   saleCount: number;
   latestTradeDate: string | null;
   sentiSenseScore: number | null;
+  /**
+   * True for a member who has left Congress. The members roster serves only sitting
+   * members, so this reads true only on a member detail or directory response. Render
+   * the tense accordingly ("Former Senator").
+   */
+  former: boolean;
+  /** Year the member left Congress, e.g. `"2021"`. Null for a sitting member. */
+  servedUntil: string | null;
+}
+
+/** One entry in the member discovery directory: identity and page slug, no trade data. */
+export interface PoliticianDirectoryEntry {
+  urlSlug: string;
+  displayName: string;
+  chamber: "SENATE" | "HOUSE";
+  party: string;
+  state: string;
+  bioguideId: string;
+  imageUrl: string | null;
+  /** True for a member who has left Congress. */
+  former: boolean;
+  /** Year the member left Congress, e.g. `"2021"`. Null for a sitting member. */
+  servedUntil: string | null;
+}
+
+/** The `data` payload of the member discovery directory. */
+export interface PoliticianDirectory {
+  /** Total members matching the filter, before pagination. */
+  totalCount: number;
+  members: PoliticianDirectoryEntry[];
+}
+
+/** Wire envelope for the directory (always full, never a preview). */
+export interface PoliticianDirectoryResponse {
+  isPreview: boolean;
+  previewReason: "PRO_REQUIRED" | null;
+  data: PoliticianDirectory;
+}
+
+export interface GetPoliticianDirectoryOptions {
+  /** Case-insensitive filter across display name, state and slug. */
+  q?: string;
+  /** Page size (default 50, max 200). */
+  limit?: number;
+  /** Pagination offset (default 0). */
+  offset?: number;
 }
 
 /** Detailed politician profile with recent trades and top tickers. */

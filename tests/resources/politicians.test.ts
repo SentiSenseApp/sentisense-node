@@ -182,3 +182,78 @@ describe("politicians.getMember", () => {
     expect(result.data.topTickers).toContain("NVDA");
   });
 });
+
+describe("politicians.getDirectory", () => {
+  it("calls GET /api/v1/politicians/directory and unwraps the envelope", async () => {
+    const data = {
+      isPreview: false,
+      previewReason: null,
+      data: {
+        totalCount: 1,
+        members: [
+          {
+            urlSlug: "Kelly-Loeffler",
+            displayName: "Kelly Loeffler",
+            chamber: "SENATE",
+            party: "Republican",
+            state: "GA",
+            bioguideId: "L000594",
+            imageUrl: null,
+            former: true,
+            servedUntil: "2021",
+          },
+        ],
+      },
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+
+    const result = await client.politicians.getDirectory({ q: "loeffler" });
+    const url = mockFetch.mock.calls[0][0] as string;
+
+    expect(url).toContain("/api/v1/politicians/directory");
+    expect(url).toContain("q=loeffler");
+    expect(result.totalCount).toBe(1);
+    expect(result.members[0].urlSlug).toBe("Kelly-Loeffler");
+  });
+
+  it("preserves the former flag, which is why this endpoint exists", async () => {
+    // getMembers omits members who have left Congress, so if unwrapping dropped these
+    // two fields a caller could not tell a former member from a sitting one anywhere.
+    const data = {
+      isPreview: false,
+      previewReason: null,
+      data: {
+        totalCount: 1,
+        members: [{ urlSlug: "Kelly-Loeffler", former: true, servedUntil: "2021" }],
+      },
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+
+    const result = await client.politicians.getDirectory();
+
+    expect(result.members[0].former).toBe(true);
+    expect(result.members[0].servedUntil).toBe("2021");
+  });
+
+  it("sends a bare URL with no query string when called with no options", async () => {
+    const data = { isPreview: false, previewReason: null, data: { totalCount: 0, members: [] } };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+
+    await client.politicians.getDirectory();
+
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      "https://app.sentisense.ai/api/v1/politicians/directory",
+    );
+  });
+
+  it("passes limit and offset through", async () => {
+    const data = { isPreview: false, previewReason: null, data: { totalCount: 0, members: [] } };
+    mockFetch.mockResolvedValueOnce(jsonResponse(data));
+
+    await client.politicians.getDirectory({ limit: 5, offset: 10 });
+    const url = mockFetch.mock.calls[0][0] as string;
+
+    expect(url).toContain("limit=5");
+    expect(url).toContain("offset=10");
+  });
+});

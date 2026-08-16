@@ -5,6 +5,9 @@ import type {
   PoliticianDetail,
   GetPoliticianActivityOptions,
   GetPoliticiansOptions,
+  GetPoliticianDirectoryOptions,
+  PoliticianDirectory,
+  PoliticianDirectoryResponse,
   PreviewResponse,
 } from "../types.js";
 
@@ -52,9 +55,35 @@ export class Politicians {
   }
 
   /**
+   * Discover tracked members of Congress and the page slug identifying each, so you
+   * can find who to query without knowing slugs upfront.
+   *
+   * Summary only, no trade data; use `getMember` for a member's filings.
+   *
+   * Unlike `getMembers`, this includes members who have **left Congress**, carrying
+   * `former` and `servedUntil`. That roster lists who currently holds office, so a
+   * former member is otherwise reachable only if you already know their slug.
+   *
+   * Requires an API key but does not consume monthly quota (per-minute rate limits
+   * still apply), and is not tier-gated. Returns the unwrapped list payload.
+   */
+  async getDirectory(
+    options?: GetPoliticianDirectoryOptions,
+  ): Promise<PoliticianDirectory> {
+    const resp = await this.client.get<PoliticianDirectoryResponse>(
+      "/api/v1/politicians/directory",
+      { ...options },
+    );
+    return resp.data;
+  }
+
+  /**
    * Get all tracked politicians with trading summary statistics.
    *
    * PRO-gated. Free users receive a preview of the top 5 members.
+   *
+   * Serves only members currently in office. Use `getDirectory` to enumerate
+   * everyone tracked, former members included.
    */
   async getMembers(): Promise<PreviewResponse<PoliticianSummary[]>> {
     return this.client.get("/api/v1/politicians/members");
