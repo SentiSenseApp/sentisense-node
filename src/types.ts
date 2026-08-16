@@ -1611,3 +1611,271 @@ export interface IndexHistoryResponse {
   days: number;
   history: IndexHistoryPoint[];
 }
+
+// ── Screener ─────────────────────────────────────────────────
+
+/** One selectable value of an `ENUM` screener field. */
+export interface ScreenerFieldOption {
+  /** The number a filter carries for this reading. */
+  value: number | null;
+  /** Display copy. */
+  label: string;
+}
+
+/**
+ * One filterable field from `client.screener.fields()`.
+ *
+ * Build a filter UI from this rather than hardcoding the field list, and new
+ * fields appear without an SDK release.
+ *
+ * `type` is `"NUMBER"`, `"ENUM"` or `"STRING"`:
+ *
+ * - `NUMBER` takes a scalar `value` and the comparison ops in `ops`.
+ * - `ENUM` is an ordinal with a fixed set of readings; `options` carries them
+ *   and `ops` is `["EQ"]`.
+ * - `STRING` (ETF universe only) takes `IN` / `NOT_IN` against `values`, which
+ *   is populated from the live universe rather than a static list, so pickers
+ *   stay current.
+ */
+export interface ScreenerFieldDescriptor {
+  /** The name a filter's `fieldName` carries, e.g. `"SENTI_SCORE_7D"`. */
+  name: string;
+  label: string;
+  /** UI grouping, e.g. `"Sentiment"`, `"Analyst"`, `"Technical"`. */
+  group: string;
+  type: "NUMBER" | "ENUM" | "STRING" | (string & {});
+  /** e.g. `"SCORE"`, `"PERCENT"`, `"USD"`. `null` on unitless fields. */
+  unit: string | null;
+  ops: string[];
+  sortable: boolean;
+  /** Suggested input step for a numeric control. */
+  step: number | null;
+  placeholder: string | null;
+  description: string;
+  /** `ENUM` fields only; `null` otherwise. */
+  options: ScreenerFieldOption[] | null;
+  /**
+   * Thresholds worth offering as one-tap presets. On the SentiSense Score
+   * fields these are the band edges (5, 13, 23).
+   */
+  quickValues: string[] | null;
+  /** `STRING` fields only, populated from the live universe; `null` otherwise. */
+  values: string[] | null;
+}
+
+/**
+ * Both field catalogs, returned by `client.screener.fields()`.
+ *
+ * `stock` backs {@link Screener.run}; `etf` backs {@link Screener.runEtfs}. The
+ * two universes do not share a field vocabulary, so a name from one is not
+ * valid in the other.
+ */
+export interface ScreenerFieldCatalog {
+  stock: ScreenerFieldDescriptor[];
+  etf: ScreenerFieldDescriptor[];
+}
+
+/**
+ * One filter leg. Filters are ANDed together; there is no OR, so run two
+ * screens and merge.
+ *
+ * Identify the field with `fieldName`. The curated plans from
+ * `client.screener.screens()` use the older `field` key instead, and both are
+ * accepted on the way in, so read either when inspecting a plan you did not
+ * build yourself.
+ *
+ * Numeric ops take `value`; `IN` / `NOT_IN` take `values` and are only
+ * meaningful on the ETF universe's string fields.
+ */
+export interface ScreenerFilter {
+  fieldName?: string;
+  /** Legacy field key, as emitted by the curated screens. */
+  field?: string;
+  op: "GTE" | "LTE" | "GT" | "LT" | "EQ" | "NEQ" | "IN" | "NOT_IN";
+  value?: number;
+  values?: string[];
+}
+
+/** Sort spec. Nulls sort last regardless of direction. */
+export interface ScreenerSort {
+  fieldName?: string;
+  /** Legacy field key, as emitted by the curated screens. */
+  field?: string;
+  dir: "ASC" | "DESC";
+}
+
+/**
+ * A filter and sort plan. The same shape works for both universes; the endpoint
+ * you call decides which one runs, so `universe` on a plan you pass in is a
+ * no-op.
+ *
+ * `limit` is deliberately not on this object: it rides next to the plan on the
+ * request, because a plan is a stored object and paging is a transport concern.
+ */
+export interface ScreenerPlan {
+  universe?: "STOCK" | "ETF";
+  filters: ScreenerFilter[];
+  sort?: ScreenerSort;
+  /** Present on curated plans; ignored on execution. */
+  intent?: string;
+  /** Present on curated plans; ignored on execution. */
+  summary?: string;
+}
+
+/**
+ * A curated screen from `client.screener.screens()`.
+ *
+ * `plan` round-trips straight back into {@link Screener.run} (or
+ * {@link Screener.runEtfs} when `plan.universe === "ETF"`), so a curated screen
+ * is both a ready-made query and a worked example of the plan shape.
+ *
+ * `id` is stable and safe to persist. `name` and `summary` are display copy and
+ * may be revised. Two conventions in the names are load-bearing: `+` means both
+ * conditions hold, `vs` means the two sides disagree.
+ */
+export interface FeaturedScreen {
+  id: string;
+  name: string;
+  summary: string;
+  plan: ScreenerPlan;
+}
+
+/** Envelope returned by `client.screener.screens()`. */
+export interface ScreenerScreensResponse {
+  screens: FeaturedScreen[];
+}
+
+/**
+ * One matching stock. Every row carries the full field set rather than only the
+ * fields you filtered on, so you can sort or post-process client side without a
+ * second call. A field with no data for that ticker is `null`, and a row
+ * missing the field you filtered on never matches in either direction.
+ *
+ * `sentiSenseScore7D` / `sentiSenseScore1M` are the SentiSense Score, not
+ * sentiment polarity: unbounded, banded at 5 / 13 / 23 either side of zero.
+ */
+export interface ScreenerRow {
+  ticker: string;
+  /** 7-day average SentiSense Score. */
+  sentiSenseScore7D: number | null;
+  /** 1-month average SentiSense Score. */
+  sentiSenseScore1M: number | null;
+  /** 7-day Score minus the 1-month baseline; positive means strengthening. */
+  scoreChange7D: number | null;
+  /** Side of the neutral band the 7-day Score sits on: `1` / `0` / `-1`. */
+  sentimentDirection: number | null;
+  socialDominance: number | null;
+  mentionShare: number | null;
+  mentionVelocity: number | null;
+  dominanceChange: number | null;
+  /** USD. */
+  marketCap: number | null;
+  currentPrice: number | null;
+  changePercent: number | null;
+  change: number | null;
+  volume: number | null;
+  week52High: number | null;
+  week52Low: number | null;
+  /** Signed-negative percent below the 52-week high. */
+  pctOff52wHigh: number | null;
+  /** Signed-positive percent above the 52-week low. */
+  pctOff52wLow: number | null;
+  /** Share of rating analysts saying buy, 0..100. Higher is more bullish. */
+  analystBuyRatioPct: number | null;
+  analystTargetUpsidePct: number | null;
+  analystCount: number | null;
+  analystRatingMomentum30D: number | null;
+  /** Vendor 1-to-5 scale. **INVERTED: 1.0 is strong buy.** */
+  analystRatingMean: number | null;
+  pctOff200dMa: number | null;
+  pctOff50dMa: number | null;
+  /** Ordinal: `1` golden cross, `-1` death cross, `0` neither. */
+  maCrossState: number | null;
+  return1M: number | null;
+  return3M: number | null;
+  return6M: number | null;
+  return1Y: number | null;
+  volatility30D: number | null;
+  /** Daily Score values for the last 7 days, oldest first. */
+  sentisenseScoreBars7D: number[] | null;
+  /** Weekly-grouped Score values across the last 30 days, oldest first. */
+  sentisenseScoreBars30D: number[] | null;
+  /** Daily closes for the last 30 days, oldest first. */
+  priceSparkline30D: number[] | null;
+  /** Epoch seconds. */
+  lastUpdated: number | null;
+}
+
+/**
+ * One matching fund.
+ *
+ * The two Score readings answer different questions.
+ * `constituentsWeightedSentisense` is the holdings-weighted SentiSense Score
+ * across what the fund actually owns, which is usually the one you want;
+ * `directSentisense` is the Score from chatter about the fund ticker itself,
+ * which on a broad index fund is mostly macro noise.
+ */
+export interface EtfScreenerRow {
+  ticker: string;
+  name: string;
+  issuer: string | null;
+  assetClass: string | null;
+  trackedIndex: string | null;
+  /** AUM in USD. */
+  marketCap: number | null;
+  /** Percent points: `0.09` means 0.09%. */
+  expenseRatio: number | null;
+  currentPrice: number | null;
+  changePercent: number | null;
+  priceChange: number | null;
+  volume: number | null;
+  week52High: number | null;
+  week52Low: number | null;
+  pctOff52wHigh: number | null;
+  pctOff52wLow: number | null;
+  weightedAnalystUpside: number | null;
+  weightedConsensusLabel: string | null;
+  weightedInsiderNet30d: number | null;
+  weightedInsiderNet90d: number | null;
+  /** Holdings-weighted SentiSense Score across the fund's constituents. */
+  constituentsWeightedSentisense: number | null;
+  /** SentiSense Score from chatter about the fund ticker itself. */
+  directSentisense: number | null;
+  /** How much of the fund's weight had constituent data behind the weighted Score. */
+  weightCoveredPct: number | null;
+  holdingsCount: number | null;
+  totalKnownHoldings: number | null;
+  /** `true` when the holdings set behind the aggregates is incomplete. */
+  partial: boolean | null;
+  /** Epoch seconds. */
+  lastUpdated: number | null;
+}
+
+/** Request body for both execute endpoints. */
+export interface ScreenerExecuteOptions {
+  plan: ScreenerPlan;
+  /** Optional ticker subset. Omit to screen the whole tracked universe. */
+  tickers?: string[];
+  /** Rows to return. Defaults to 100 server-side, caps at 500. */
+  limit?: number;
+}
+
+/**
+ * Stock screen results.
+ *
+ * `matched` is how many rows the plan matched *before* `limit` was applied, so
+ * truncation is visible: when `matched` exceeds `limit` you are looking at the
+ * top slice under the plan's sort, not the whole answer.
+ */
+export interface ScreenerExecuteResponse {
+  results: ScreenerRow[];
+  matched: number;
+  limit: number;
+}
+
+/** ETF screen results. Same envelope; `matched` is the pre-limit count. */
+export interface EtfScreenerExecuteResponse {
+  results: EtfScreenerRow[];
+  matched: number;
+  limit: number;
+}

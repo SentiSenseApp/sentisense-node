@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.38.0
+
+### Added
+
+- **`client.screener`, a new resource for filtering the tracked universe.** `fields()` returns
+  the full filterable catalog for both universes, `screens()` returns the curated screens
+  shipped in the product, and `run({ plan, tickers, limit })` / `runEtfs({ plan, tickers, limit })`
+  execute a plan against the stock and ETF universes. A plan is `{ filters, sort }` with each
+  filter `{ fieldName, op, value }`, ANDed together. `limit` rides next to the plan on the
+  request body rather than inside it, defaults to 100 and caps at 500; `tickers` is optional and
+  omitting it screens the whole tracked universe.
+- **Results carry `matched`, the pre-limit count**, so truncation is visible, and every row
+  carries the full field set rather than only the fields you filtered on.
+- **A curated `screen.plan` round-trips straight into `run()`** with nothing to rebuild. Those
+  plans identify the field with `field` rather than `fieldName`; both keys are accepted on the
+  way in, and `ScreenerFilter` / `ScreenerSort` type both.
+- **New types**: `ScreenerFieldCatalog`, `ScreenerFieldDescriptor`, `ScreenerFieldOption`,
+  `ScreenerPlan`, `ScreenerFilter`, `ScreenerSort`, `FeaturedScreen`, `ScreenerScreensResponse`,
+  `ScreenerExecuteOptions`, `ScreenerExecuteResponse`, `ScreenerRow`,
+  `EtfScreenerExecuteResponse`, `EtfScreenerRow`.
+
+### Notes
+
+- Three field semantics are documented on the resource because guessing them wrong produces a
+  screen that looks fine and means nothing: `ANALYST_RATING_MEAN` is inverted (1.0 is strong
+  buy, so bullish is `LTE`), `MA_CROSS_STATE` is ordinal (`1` golden cross, `-1` death cross,
+  `0` neither), and `SENTIMENT_DIRECTION` is the sign of the 7-day SentiSense Score with a
+  neutral band of plus-or-minus 5, not a polarity reading.
+- Filter the Score fields on the band edges 5 / 13 / 23. Polarity-scale values like `0.5`
+  behave as "any positive score". Nulls never match in either direction.
+
 ## 0.37.0
 
 ### Added

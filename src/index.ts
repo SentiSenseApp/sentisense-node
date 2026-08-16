@@ -11,6 +11,23 @@ export type {
   GetAnalystMarketActivityOptions,
 } from "./resources/analyst.js";
 
+// Screener types
+export type {
+  EtfScreenerExecuteResponse,
+  EtfScreenerRow,
+  FeaturedScreen,
+  ScreenerExecuteOptions,
+  ScreenerExecuteResponse,
+  ScreenerFieldCatalog,
+  ScreenerFieldDescriptor,
+  ScreenerFieldOption,
+  ScreenerFilter,
+  ScreenerPlan,
+  ScreenerRow,
+  ScreenerScreensResponse,
+  ScreenerSort,
+} from "./resources/screener.js";
+
 export type {
   GetStockInsightsRangeOptions,
   GetLatestInsightsOptions,
