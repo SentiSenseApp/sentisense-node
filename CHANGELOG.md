@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.39.0
+
+### Added
+
+- **`priceAsOf` on `StockPrice` and `StockQuote`**: when the market data behind `currentPrice`
+  is from, in Unix milliseconds. Read it for freshness rather than `timestamp`, which is when
+  the response was served and therefore always reads as now. Absent means unknown age, not fresh.
+
+### Fixed
+
+- `timestamp` is no longer documented as the price's age; it is the serve time of the response.
+
 ## 0.38.0
 
 ### Added
