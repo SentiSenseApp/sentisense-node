@@ -973,6 +973,21 @@ export interface GetPoliticianActivityOptions extends GetPoliticiansOptions {
   offset?: number;
 }
 
+/** Paging over one member's trade history on `getMember`. */
+export interface GetPoliticianMemberOptions {
+  /**
+   * Trades to return. Must be >= 1; the server rejects 0 or negative with HTTP 400
+   * (`invalid_limit`) and caps anything above 500 at 500. Omit for the default 200,
+   * which covers a member's entire history for all but a dozen of them.
+   */
+  limit?: number;
+  /**
+   * Trade offset to start from. Defaults to 0. An offset past the end returns an
+   * empty `recentTrades` array, not an error.
+   */
+  offset?: number;
+}
+
 /** Generic preview wrapper used by PRO-gated endpoints. */
 // ── Calendar ────────────────────────────────────────────────
 

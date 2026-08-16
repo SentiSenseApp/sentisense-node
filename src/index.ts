@@ -89,6 +89,7 @@ export type {
   PoliticianDirectory,
   PoliticianDirectoryResponse,
   GetPoliticianActivityOptions,
+  GetPoliticianMemberOptions,
   GetPoliticiansOptions,
   GetPoliticianDirectoryOptions,
   EarningsEvent,

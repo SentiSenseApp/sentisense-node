@@ -6,6 +6,7 @@ import type {
   GetPoliticianActivityOptions,
   GetPoliticiansOptions,
   GetPoliticianDirectoryOptions,
+  GetPoliticianMemberOptions,
   PoliticianDirectory,
   PoliticianDirectoryResponse,
   PreviewResponse,
@@ -93,10 +94,29 @@ export class Politicians {
    * Get detailed profile for a single politician: summary, recent trades, top tickers.
    *
    * PRO-gated. Free users receive a preview-wrapped response.
+   *
+   * `data.recentTrades` is one page of the member's history, not all of it. Most members
+   * have a few dozen disclosures and arrive complete in the default page; a handful have
+   * thousands. `totalCount` on the envelope is the size of the whole history on every
+   * tier, so page with `limit` and `offset` rather than reading `recentTrades.length` as
+   * the total. `data.profile` and `data.topTickers` describe the whole history whatever
+   * page you ask for, so `profile.totalTrades` does not shrink with a small `limit`.
+   *
+   * ```typescript
+   * const first = await client.politicians.getMember("Ro-Khanna", { limit: 500 });
+   * for (let offset = 500; offset < first.totalCount!; offset += 500) {
+   *   const page = await client.politicians.getMember("Ro-Khanna", { limit: 500, offset });
+   *   // ... page.data.recentTrades
+   * }
+   * ```
    */
-  async getMember(slug: string): Promise<PreviewResponse<PoliticianDetail>> {
+  async getMember(
+    slug: string,
+    options?: GetPoliticianMemberOptions,
+  ): Promise<PreviewResponse<PoliticianDetail>> {
     return this.client.get(
       `/api/v1/politicians/member/${encodeURIComponent(slug)}`,
+      options,
     );
   }
 }

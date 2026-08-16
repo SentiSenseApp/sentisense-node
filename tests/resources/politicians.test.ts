@@ -181,6 +181,81 @@ describe("politicians.getMember", () => {
     expect(url).toContain("/api/v1/politicians/member/nancy-pelosi");
     expect(result.data.topTickers).toContain("NVDA");
   });
+
+  it("sends a bare URL with no query string when called with no options", async () => {
+    // Adding paging options must not change the request an existing caller makes.
+    const detail = {
+      isPreview: false,
+      previewReason: null,
+      data: { profile: {}, recentTrades: [], topTickers: [] },
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(detail));
+    await client.politicians.getMember("nancy-pelosi");
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      "https://app.sentisense.ai/api/v1/politicians/member/nancy-pelosi",
+    );
+  });
+
+  it("passes limit and offset for paging past the default page", async () => {
+    const detail = {
+      isPreview: false,
+      previewReason: null,
+      totalCount: 12159,
+      data: { profile: {}, recentTrades: [], topTickers: [] },
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(detail));
+    await client.politicians.getMember("Ro-Khanna", { limit: 500, offset: 500 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("limit=500");
+    expect(url).toContain("offset=500");
+  });
+
+  it("sends offset=0 as a real value rather than dropping it", async () => {
+    const detail = {
+      isPreview: false,
+      previewReason: null,
+      data: { profile: {}, recentTrades: [], topTickers: [] },
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(detail));
+    await client.politicians.getMember("Ro-Khanna", { limit: 50, offset: 0 });
+    expect(mockFetch.mock.calls[0][0] as string).toContain("offset=0");
+  });
+
+  it("reads totalCount off a full response, which is how a pager sizes the walk", async () => {
+    // The longest history is ~12,159 trades and the server returns 200 by default, so
+    // recentTrades.length is not the total. totalCount is present with isPreview false.
+    const detail = {
+      isPreview: false,
+      previewReason: null,
+      totalCount: 12159,
+      data: {
+        profile: { urlSlug: "Ro-Khanna", totalTrades: 12159 },
+        recentTrades: [{ ticker: "NVDA" }],
+        topTickers: [],
+      },
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(detail));
+    const result = await client.politicians.getMember("Ro-Khanna", { limit: 200 });
+    expect(result.totalCount).toBe(12159);
+    expect(result.data.recentTrades.length).toBeLessThan(result.totalCount!);
+  });
+
+  it("keeps profile counters on the whole history, not the page", async () => {
+    // A profile that shrinks with limit would make paging report the wrong denominator.
+    const detail = {
+      isPreview: false,
+      previewReason: null,
+      totalCount: 12159,
+      data: {
+        profile: { urlSlug: "Ro-Khanna", totalTrades: 12159 },
+        recentTrades: [{ ticker: "NVDA" }],
+        topTickers: [],
+      },
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(detail));
+    const result = await client.politicians.getMember("Ro-Khanna", { limit: 1 });
+    expect(result.data.profile.totalTrades).toBe(12159);
+  });
 });
 
 describe("politicians.getDirectory", () => {

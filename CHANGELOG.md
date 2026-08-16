@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.41.0
+
+### Added
+
+- **`politicians.getMember(slug, options?)`** now takes `limit` and `offset`: `data
+  .recentTrades` is one page of a member's history, and the server returns 200 by default
+  rather than everything. Most members have a few dozen disclosures and still arrive complete
+  in one call; a handful have thousands, and the longest is over 12,000. Read `totalCount` on
+  the envelope for the size of the whole history and page through it. `options` is optional,
+  so calls that omit it send exactly the request they sent before.
+
+  `data.profile` and `data.topTickers` describe the whole history whatever page you ask for,
+  so `profile.totalTrades` does not shrink with a small `limit`.
+
+- **`GetPoliticianMemberOptions`**: the paging options type, exported for callers that build
+  request options separately.
+
 ## 0.40.0
 
 ### Added
