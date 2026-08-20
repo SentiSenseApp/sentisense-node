@@ -235,3 +235,60 @@ describe("stocks.getSentiment", () => {
     expect(mockFetch.mock.calls[0][0] as string).toContain("BRK%20B");
   });
 });
+
+describe("stocks.getOptionsSummary", () => {
+  it("calls the per-ticker options summary endpoint and upper-cases the symbol", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: { asOf: "2026-08-18" } }),
+    );
+    const result = await client.stocks.getOptionsSummary("nvda");
+    expect(mockFetch.mock.calls[0][0]).toContain("/api/v1/stocks/NVDA/options/summary");
+    expect(result.data?.asOf).toBe("2026-08-18");
+  });
+
+  it("reads a null data payload as no coverage rather than an error", async () => {
+    // An uncovered or unknown ticker answers 200 with a null payload, not a 404.
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: null }),
+    );
+    const result = await client.stocks.getOptionsSummary("ZZZZ");
+    expect(result.data).toBeNull();
+    expect(result.isPreview).toBe(false);
+  });
+
+  it("types the positioning reading as a number and the contract side as a string", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: {
+          asOf: "2026-08-18",
+          sentiment: -0.42,
+          latest: { date: "2026-08-18", callVol: 900000, putVol: 700000, pcVol: 0.78 },
+          context: { ivRank1y: 62.1 },
+          oiWalls: { expiry: "2026-08-21", maxPain: 175, callWalls: [{ strike: 200, oi: 42100 }] },
+          unusual: [{ contract: "NVDA260821C00200000", type: "call", strike: 200, premium: 27500000 }],
+        },
+      }),
+    );
+    const result = await client.stocks.getOptionsSummary("NVDA");
+    expect(result.data?.sentiment).toBe(-0.42);
+    expect(result.data?.latest?.pcVol).toBe(0.78);
+    expect(result.data?.context?.ivRank1y).toBe(62.1);
+    expect(result.data?.oiWalls?.callWalls?.[0].strike).toBe(200);
+    expect(result.data?.unusual?.[0].type).toBe("call");
+  });
+
+  it("leaves omitted readings undefined rather than zero", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        data: { asOf: "2026-08-18", latest: { date: "2026-08-18" }, context: {} },
+      }),
+    );
+    const result = await client.stocks.getOptionsSummary("NVDA");
+    expect(result.data?.latest?.pcVol).toBeUndefined();
+    expect(result.data?.context?.ivRank1y).toBeUndefined();
+  });
+});

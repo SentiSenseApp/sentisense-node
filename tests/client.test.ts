@@ -86,6 +86,51 @@ describe("SentiSense client", () => {
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers["User-Agent"]).toMatch(/^sentisense-node\//);
   });
+
+  it("appends userAgentSuffix to the User-Agent", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(["AAPL"]));
+
+    const client = new SentiSense({ userAgentSuffix: "my-bot/1.4 agent/research-desk" });
+    await client.stocks.list();
+
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.headers["User-Agent"]).toMatch(
+      /^sentisense-node\/\d+\.\d+\.\d+ my-bot\/1\.4 agent\/research-desk$/,
+    );
+  });
+
+  it("appends userAgentSuffix on POST requests too", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ results: [], matched: 0, limit: 100 }));
+
+    const client = new SentiSense({ userAgentSuffix: "my-bot/1.4" });
+    await client.screener.run({ plan: { filters: [] } });
+
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.headers["User-Agent"]).toContain(" my-bot/1.4");
+  });
+
+  it("ignores an empty userAgentSuffix", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(["AAPL"]));
+
+    const client = new SentiSense({ userAgentSuffix: "   " });
+    await client.stocks.list();
+
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.headers["User-Agent"]).toMatch(/^sentisense-node\/\d+\.\d+\.\d+$/);
+  });
+
+  it("collapses newlines in userAgentSuffix so it cannot end the header block", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(["AAPL"]));
+
+    const client = new SentiSense({ userAgentSuffix: "my-bot/1.4\r\nX-Injected: yes" });
+    await client.stocks.list();
+
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.headers["User-Agent"]).toBe(
+      init.headers["User-Agent"].replace(/[\r\n]/g, ""),
+    );
+    expect(init.headers["User-Agent"]).toContain("my-bot/1.4 X-Injected: yes");
+  });
 });
 
 describe("error handling", () => {

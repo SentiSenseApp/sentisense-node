@@ -20,6 +20,7 @@ import type {
   KpiTypeEntry,
   MarketStatus,
   MetricsBreakdown,
+  OptionsSummary,
   PreviewResponse,
   SimilarStock,
   ShortInterest,
@@ -259,6 +260,33 @@ export class Stocks {
   async getKpiTypes(ticker: string): Promise<KpiTypeEntry[]> {
     return this.client.get(
       `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/kpis/types`,
+    );
+  }
+
+  /**
+   * Get the end-of-day options dossier for one stock or ETF: the session's aggregate, its
+   * percentile context, the open-interest wall structure with max pain, and the contracts
+   * whose volume ran far ahead of their open interest.
+   *
+   * End of day, not live. `asOf` is the prior trading session and the data refreshes the
+   * following morning, so this is positioning, not a quote feed.
+   *
+   * **`data` is `null` for a ticker outside the covered universe**, which is the most
+   * actively optioned US names plus the tracked ETFs, and for a covered ticker with no
+   * snapshot yet. An unknown symbol behaves the same way rather than answering 404, so treat
+   * a null as "no coverage", never as an error. A covered ticker still building its baseline
+   * returns its raw readings with the percentiles omitted.
+   *
+   * Percentiles compare a ticker to its own trailing history, never to another ticker, so an
+   * ETF's readings are not comparable with a single stock's.
+   *
+   * Tiering: a PRO key always receives the full dossier. A FREE key receives it for the first
+   * ten calls each calendar month and a headline-only preview after that, with `isPreview`
+   * true; calls that return a null `data` never spend that allowance.
+   */
+  async getOptionsSummary(ticker: string): Promise<PreviewResponse<OptionsSummary | null>> {
+    return this.client.get(
+      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/options/summary`,
     );
   }
 }

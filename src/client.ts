@@ -85,6 +85,7 @@ export class SentiSense implements APIClient {
   private apiKey: string | undefined;
   private timeout: number;
   private maxRetries: number;
+  private userAgent: string;
 
   readonly stocks: Stocks;
   readonly documents: Documents;
@@ -109,6 +110,12 @@ export class SentiSense implements APIClient {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
+    // A header value cannot carry CR/LF, so collapse them rather than letting a caller's
+    // string decide where the header block ends.
+    const suffix = options.userAgentSuffix?.replace(/[\r\n]+/g, " ").trim();
+    this.userAgent = suffix
+      ? `sentisense-node/${VERSION} ${suffix}`
+      : `sentisense-node/${VERSION}`;
 
     this.stocks = new Stocks(this);
     this.documents = new Documents(this);
@@ -142,7 +149,7 @@ export class SentiSense implements APIClient {
 
     // User-Agent is only set in Node.js (browsers disallow it)
     if (typeof process !== "undefined" && process.versions?.node) {
-      headers["User-Agent"] = `sentisense-node/${VERSION}`;
+      headers["User-Agent"] = this.userAgent;
     }
 
     let delayMs = 0;
@@ -232,7 +239,7 @@ export class SentiSense implements APIClient {
     }
 
     if (typeof process !== "undefined" && process.versions?.node) {
-      headers["User-Agent"] = `sentisense-node/${VERSION}`;
+      headers["User-Agent"] = this.userAgent;
     }
 
     const controller = new AbortController();

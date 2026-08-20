@@ -1,6 +1,6 @@
 {
   "name": "sentisense",
-  "version": "0.41.0",
+  "version": "0.42.0",
   "description": "Official JavaScript/TypeScript SDK for the SentiSense market intelligence API",
   "author": "SentiSense <support@sentisense.ai>",
   "license": "MIT",
@@ -20,6 +20,7 @@
     "sentiment",
     "api",
     "sdk",
+    "cli",
     "trading",
     "institutional",
     "13f"
@@ -36,6 +37,9 @@
       }
     },
     "./package.json": "./package.json"
+  },
+  "bin": {
+    "sentisense": "./dist/cli.cjs"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

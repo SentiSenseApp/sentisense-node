@@ -26,6 +26,85 @@ console.log(price.currentPrice);
 const flows = await client.institutional.getFlows();
 ```
 
+## CLI
+
+The same package ships a command line tool. Nothing to install:
+
+```bash
+npx -y sentisense@latest quote NVDA
+```
+
+Every endpoint needs a key, so set one first. Either works:
+
+```bash
+export SENTISENSE_API_KEY=<your key>
+# or store it once, owner-readable only, at ~/.config/sentisense/config.json
+npx -y sentisense@latest auth <your key>
+
+npx -y sentisense@latest health
+```
+
+Get a key at [app.sentisense.ai/get-api-key](https://app.sentisense.ai/get-api-key).
+
+### Commands
+
+| Command | What you get |
+|---------|--------------|
+| `auth [key]` | Store a key, show what is configured, or `--remove` it |
+| `health` | Reachability, key validity, latency, and the resolved base URL |
+| `quote <ticker>...` | Price, day range, 52-week range, market cap, P/E. One request per ticker |
+| `sentiment <ticker>` | SentiSense Score, tone, attention, per-source breakdown, `--days N` history |
+| `mood` | Composite market sentiment, the signals behind it, and the sector map |
+| `analysts <ticker>` | Consensus, price target band, recent upgrades and downgrades |
+| `earnings [ticker]` | Forward calendar with no ticker, per-quarter analysis with one |
+| `insiders <ticker>` | Filed Form 4 transactions, including whether they were pre-planned |
+| `insights <ticker>` | Generated signals, filterable by `--urgency` and `--type` |
+| `congress [ticker]` | Congressional disclosures, market-wide or for one symbol |
+| `news [ticker]` | Clustered news stories with impact and tone |
+| `flows [ticker]` | Institutional 13F flows, or one ticker's holders and notable changes |
+| `options <ticker>` | End-of-day options positioning, IV rank, walls, unusual contracts |
+| `screen --filter ...` | Screen the universe on Score, analyst, technical, and price fields |
+
+Run `sentisense help <command>` for its flags and examples.
+
+### Output
+
+Readable in a terminal, plain text when piped, and exact API JSON on request:
+
+```bash
+npx -y sentisense@latest quote NVDA              # terminal layout
+npx -y sentisense@latest quote NVDA | cat        # plain text, no escape codes
+npx -y sentisense@latest quote NVDA --json | jq  # the API response untouched
+```
+
+`--json` prints what the API returned, envelope and all, so `isPreview` and `totalCount` stay
+visible. For `quote` that is the exact quote response for one ticker, and an object keyed by
+ticker for several. `--full` widens any command. `--no-color` and `NO_COLOR` drop the colour,
+`--plain` and `--pretty` force a layout, and `--debug` prints stack traces.
+
+Commands spend requests on the answer, not on decoration: `quote` looks up the company name
+only for the terminal layout, so piped and `--json` output cost one request per ticker. When
+something supplementary does not come back, such as the Score history behind a sparkline, the
+command still prints its answer and exits 0 with a `note:` line on stderr, so stdout stays
+clean for a pipe and the gap is never silent.
+
+### Exit codes
+
+Failures print two lines to stderr, what went wrong and what to do about it, and exit with a
+code you can branch on. The CLI does not retry, so a 5 is yours to handle.
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | API error or unexpected failure |
+| 2 | Bad usage: unknown command, flag, or missing argument |
+| 3 | Missing or rejected API key |
+| 4 | No data for that symbol or identifier |
+| 5 | Rate limited |
+| 6 | Network failure or timeout |
+
+Research data, not investment advice.
+
 ## Features
 
 - Full TypeScript support with detailed type definitions
@@ -107,6 +186,7 @@ client.stocks.getChart("AAPL", { timeframe: "6M" })     // OHLCV chart data
 client.stocks.getMarketStatus()                         // Market open/closed
 client.stocks.getFundamentals("AAPL")                   // Financial data
 client.stocks.getShortInterest("GME")                   // Short interest
+client.stocks.getOptionsSummary("NVDA")                // End-of-day options dossier
 client.stocks.getAISummary("AAPL", { depth: "deep" })   // AI report (PRO)
 ```
 
@@ -398,8 +478,22 @@ const client = new SentiSense({
   baseUrl: "https://...",                  // Default: https://app.sentisense.ai
   timeout: 30000,                          // Default: 30s (in milliseconds)
   maxRetries: 3,                           // Default: 3
+  userAgentSuffix: "my-bot/1.4",           // Default: none
 });
 ```
+
+| Option | Default | What it does |
+|--------|---------|--------------|
+| `apiKey` | none | Sent as `X-SentiSense-API-Key`. Required by every endpoint. |
+| `baseUrl` | `https://app.sentisense.ai` | Override for a non-production host. |
+| `timeout` | `30000` | Per-request timeout in milliseconds. |
+| `maxRetries` | `3` | Retries on 429 and 5xx, honouring `Retry-After`. Set `0` to fail fast. |
+| `userAgentSuffix` | none | Appended to the User-Agent, after `sentisense-node/{version}`. |
+
+`userAgentSuffix` is how you say what is calling on top of the SDK, so your traffic is legible
+in your own logs and in ours. A tool name and version works (`"my-bot/1.4"`), optionally with
+an agent label (`"my-bot/1.4 agent/research-desk"`). Node only, since browsers set the header
+themselves. Newlines are collapsed and an empty value is ignored.
 
 Keep the key in the environment rather than in source. Committing a literal key leaks it
 into git history and into every registry security scan that reads your repo.

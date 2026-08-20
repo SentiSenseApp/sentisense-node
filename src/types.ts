@@ -5,6 +5,17 @@ export interface SentiSenseOptions {
   baseUrl?: string;
   timeout?: number;
   maxRetries?: number;
+  /**
+   * Extra token appended to the `User-Agent`, after `sentisense-node/{version}`.
+   *
+   * Use it to say what is calling on top of the SDK, so your traffic is legible in your own
+   * logs and in ours: a tool name and version (`"my-bot/1.4"`), and optionally an agent
+   * label (`"agent/research-desk"`). Node only, since browsers set the header themselves.
+   *
+   * Carriage returns and newlines are collapsed to spaces before the header is built, and an
+   * empty or whitespace-only value is ignored.
+   */
+  userAgentSuffix?: string;
 }
 
 // ── Stocks ──────────────────────────────────────────────────
@@ -410,6 +421,115 @@ export interface GetFundamentalsOptions {
   fiscalYear?: number;
 }
 
+// ── Options Intelligence ────────────────────────────────────
+
+/**
+ * One session's aggregate options activity for a ticker.
+ *
+ * Every field is optional because the response omits anything it cannot compute rather than
+ * sending a null, so check for presence rather than comparing against `null`. Ratio and
+ * implied-volatility fields drop out first: `pcVol` is absent when call volume is zero.
+ */
+export interface OptionsAggregate {
+  /** Session date, ISO calendar day `"YYYY-MM-DD"`. */
+  date?: string;
+  callVol?: number;
+  putVol?: number;
+  callOi?: number;
+  putOi?: number;
+  /** Put/call volume ratio. */
+  pcVol?: number;
+  /** Put/call open-interest ratio. */
+  pcOi?: number;
+  /** Volume-weighted implied volatility. */
+  vwIv?: number;
+  /** At-the-money implied volatility. */
+  atmIv?: number;
+  /** `iv25p - iv25c`: positive means puts are bid up relative to calls. */
+  skew25d?: number;
+  /** Roughly 60-day and 90-day at-the-money implied volatility: the term structure. */
+  atmIv60?: number;
+  atmIv90?: number;
+  /** Raw 25-delta call and put implied volatilities. */
+  iv25c?: number;
+  iv25p?: number;
+  netDelta?: number;
+  notionalVol?: number;
+  contracts?: number;
+}
+
+/**
+ * Percentile context for {@link OptionsAggregate}, against that ticker's own trailing
+ * history rather than against other tickers.
+ *
+ * A percentile whose window holds too few observations is omitted while the baseline builds,
+ * which is why a covered ticker can answer with readings and no percentiles.
+ */
+export interface OptionsContext {
+  pcVolPctl1y?: number;
+  pcVolPctl5y?: number;
+  pcOiPctl1y?: number;
+  /** Where today's at-the-money implied volatility sits in its own trailing year. */
+  ivRank1y?: number;
+  skewPctl1y?: number;
+  observations1y?: number;
+}
+
+/** One open-interest concentration at a strike. */
+export interface OptionsWall {
+  strike?: number;
+  oi?: number;
+}
+
+/** Open-interest wall structure for the dossier's expiry, up to three walls a side. */
+export interface OptionsOiWalls {
+  expiry?: string;
+  maxPain?: number;
+  callWalls?: OptionsWall[];
+  putWalls?: OptionsWall[];
+}
+
+/** A contract whose session volume far exceeds its open interest: fresh positioning. */
+export interface OptionsUnusualContract {
+  /** Exchange-style option symbol, e.g. `"NVDA260821C00200000"`. */
+  contract?: string;
+  /** Side of the contract. Arrives lower case (`"call"` / `"put"`), so compare case-insensitively. */
+  type?: string;
+  strike?: number;
+  expiry?: string;
+  /** Days to expiry. */
+  dte?: number;
+  volume?: number;
+  oi?: number;
+  volOiRatio?: number;
+  premium?: number;
+}
+
+/**
+ * The options dossier for one stock or ETF, from `client.stocks.getOptionsSummary()`.
+ *
+ * End of day, not live: it describes the latest completed session and refreshes the
+ * following morning.
+ */
+export interface OptionsSummary {
+  /** Session the dossier describes, ISO calendar day. */
+  asOf?: string;
+  /**
+   * Positioning lean for the session, roughly -1 to 1, negative for put-heavy.
+   *
+   * A number on the wire, not a label. Sampled across several tickers to confirm that,
+   * because the field name reads like it could carry a word.
+   */
+  sentiment?: number;
+  /** Today's aggregate. */
+  latest?: OptionsAggregate;
+  /** Percentiles of `latest` against this ticker's own history. */
+  context?: OptionsContext;
+  oiWalls?: OptionsOiWalls;
+  /** Top contracts by premium. */
+  unusual?: OptionsUnusualContract[];
+}
+
 // ── Documents & News ────────────────────────────────────────
 
 export type DocumentSource = "news" | "reddit" | "x" | "substack" | "youtube";
@@ -541,6 +661,20 @@ export interface Quarter {
   value: string;
   label: string;
   reportDate: string;
+  /**
+   * True while this quarter's 13F filing window is still open, which is the 45 days after
+   * quarter end.
+   *
+   * Read it before you pick a quarter to query. The list leads with the current quarter, so
+   * the newest entry is pending for six weeks of every quarter, and a holders request against
+   * a pending quarter answers `200` with few rows or none: correct server behaviour, and
+   * indistinguishable from "this stock has no institutional owners" unless you checked here
+   * first. For a complete picture take the newest quarter with `pending` false.
+   *
+   * Typed optional so existing object literals keep compiling; the API sends the key on
+   * every row.
+   */
+  pending?: boolean;
 }
 
 export interface InstitutionalFlow {
@@ -850,8 +984,14 @@ export interface CongressTrade {
   firstName: string;
   lastName: string;
   chamber: "SENATE" | "HOUSE";
-  party: string;
-  state: string;
+  /**
+   * Party affiliation, or `null` when the disclosure carries none. Nulls are uncommon but
+   * real on the ticker-scoped feed, so build a label from what is present rather than
+   * interpolating this directly.
+   */
+  party: string | null;
+  /** Two-letter state, or `null` when the disclosure carries none. Same caveat as `party`. */
+  state: string | null;
   bioguideId: string;
   imageUrl: string | null;
   ticker: string;
