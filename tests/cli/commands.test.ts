@@ -562,13 +562,10 @@ describe("auth", () => {
 });
 
 describe("User-Agent attribution", () => {
-  it("stamps the CLI on every request", async () => {
+  it("stamps the CLI on every request, with no comment when nothing was volunteered", async () => {
     const result = await run(["quote", "NVDA", "--plain"], {
       env: KEYED,
-      fetch: routeFetch([
-        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
-        [/\/stocks\/NVDA\/profile/, PROFILE_NVDA],
-      ]),
+      fetch: routeFetch([[/\/stocks\/NVDA\/quote/, QUOTE_NVDA]]),
     });
     const headers = result.inits[0].headers as Record<string, string>;
     expect(headers["User-Agent"]).toBe(`sentisense-node/${VERSION} sentisense-cli/${VERSION}`);
@@ -577,14 +574,37 @@ describe("User-Agent attribution", () => {
   it("adds the agent label when one is configured", async () => {
     const result = await run(["quote", "NVDA", "--agent", "research desk", "--plain"], {
       env: KEYED,
-      fetch: routeFetch([
-        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
-        [/\/stocks\/NVDA\/profile/, PROFILE_NVDA],
-      ]),
+      fetch: routeFetch([[/\/stocks\/NVDA\/quote/, QUOTE_NVDA]]),
     });
     const headers = result.inits[0].headers as Record<string, string>;
     expect(headers["User-Agent"]).toBe(
-      `sentisense-node/${VERSION} sentisense-cli/${VERSION} agent/research-desk`,
+      `sentisense-node/${VERSION} sentisense-cli/${VERSION} (agent/research-desk)`,
+    );
+  });
+
+  it("adds the skill slug as a bare token in the comment", async () => {
+    const result = await run(["quote", "NVDA", "--skill", "stock-analysis", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/stocks\/NVDA\/quote/, QUOTE_NVDA]]),
+    });
+    const headers = result.inits[0].headers as Record<string, string>;
+    expect(headers["User-Agent"]).toBe(
+      `sentisense-node/${VERSION} sentisense-cli/${VERSION} (stock-analysis)`,
+    );
+  });
+
+  it("carries both identities in one comment, slug first", async () => {
+    const result = await run(["mood", "--plain"], {
+      env: {
+        ...KEYED,
+        SENTISENSE_SKILL: "stock-analysis",
+        SENTISENSE_AGENT_NAME: "research-desk",
+      },
+      fetch: routeFetch([[/market-mood/, MOOD]]),
+    });
+    const headers = result.inits[0].headers as Record<string, string>;
+    expect(headers["User-Agent"]).toBe(
+      `sentisense-node/${VERSION} sentisense-cli/${VERSION} (stock-analysis; agent/research-desk)`,
     );
   });
 
@@ -594,7 +614,72 @@ describe("User-Agent attribution", () => {
       fetch: routeFetch([[/market-mood/, MOOD]]),
     });
     const headers = result.inits[0].headers as Record<string, string>;
-    expect(headers["User-Agent"]).toContain("agent/nightly");
+    expect(headers["User-Agent"]).toContain("(agent/nightly)");
+  });
+
+  it("cannot be talked into a second comment or an extra product token", async () => {
+    const result = await run(["mood", "--plain"], {
+      env: {
+        ...KEYED,
+        SENTISENSE_SKILL: "evil) (x",
+        SENTISENSE_AGENT_NAME: "a;b) real-agent/9.9 (",
+      },
+      fetch: routeFetch([[/market-mood/, MOOD]]),
+    });
+    const ua = (result.inits[0].headers as Record<string, string>)["User-Agent"];
+    expect(ua).toBe(
+      `sentisense-node/${VERSION} sentisense-cli/${VERSION} (evil-x; agent/ab-real-agent9.9)`,
+    );
+    expect(ua.match(/\(/g)).toHaveLength(1);
+    expect(ua.match(/\)/g)).toHaveLength(1);
+  });
+
+  it("sends the identity through the SDK User-Agent and adds no header of its own", async () => {
+    const bare = await run(["mood", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/market-mood/, MOOD]]),
+    });
+    const identified = await run(["mood", "--plain"], {
+      env: { ...KEYED, SENTISENSE_SKILL: "stock-analysis" },
+      fetch: routeFetch([[/market-mood/, MOOD]]),
+    });
+
+    const before = bare.inits[0].headers as Record<string, string>;
+    const after = identified.inits[0].headers as Record<string, string>;
+    // Same header set, one header changed: the identity has exactly one way in.
+    expect(Object.keys(after).sort()).toEqual(Object.keys(before).sort());
+    expect(after["User-Agent"]).not.toBe(before["User-Agent"]);
+    expect(
+      Object.entries(after).filter(([key, value]) => before[key] !== value),
+    ).toEqual([["User-Agent", after["User-Agent"]]]);
+  });
+
+  it("stores both identities and reports them back", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sentisense-identity-"));
+    try {
+      await run(
+        ["auth", "ssk_live_abcdefgh1234", "--agent", "desk", "--skill", "stock-analysis", "--plain"],
+        { env: {}, configDir: dir },
+      );
+      expect(readConfig(dir)).toEqual({
+        apiKey: "ssk_live_abcdefgh1234",
+        agentName: "desk",
+        skill: "stock-analysis",
+      });
+
+      const shown = await run(["auth", "--plain"], { env: {}, configDir: dir });
+      expect(shown.stdout).toContain("skill:   stock-analysis");
+
+      const used = await run(["mood", "--plain"], {
+        env: {},
+        configDir: dir,
+        fetch: routeFetch([[/market-mood/, MOOD]]),
+      });
+      const headers = used.inits[0].headers as Record<string, string>;
+      expect(headers["User-Agent"]).toContain("(stock-analysis; agent/desk)");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("sends the API key header", async () => {
@@ -641,6 +726,14 @@ describe("help and version", () => {
     const result = await run(["quote", "--help"], { env: {}, fetch: fetchMock });
     expect(result.code).toBe(0);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("frames the identity fields as optional in the main help", async () => {
+    const result = await run([], {});
+    expect(result.stdout).toContain("Saying who is calling (optional):");
+    expect(result.stdout).toContain("SENTISENSE_AGENT_NAME");
+    expect(result.stdout).toContain("SENTISENSE_SKILL");
+    expect(result.stdout).toContain("Nothing needs them");
   });
 
   it("only advertises the disclaimer once, in the main help", async () => {

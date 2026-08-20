@@ -6,10 +6,11 @@ import { doc, field, fields } from "../render/doc.js";
 export const authCommand: CommandDef = {
   name: "auth",
   summary: "Store an API key, show what is configured, or remove it",
-  usage: "sentisense auth [<key>] [--agent <name>] [--remove]",
+  usage: "sentisense auth [<key>] [--agent <name>] [--skill <slug>] [--remove]",
   examples: [
     "sentisense auth $SENTISENSE_API_KEY",
     "sentisense auth --agent research-desk",
+    "sentisense auth --skill stock-analysis --agent research-desk",
     "sentisense auth",
     "sentisense auth --remove",
   ],
@@ -17,8 +18,10 @@ export const authCommand: CommandDef = {
     "Settings live in config.json under $SENTISENSE_CONFIG_DIR, $XDG_CONFIG_HOME/sentisense,",
     "or ~/.config/sentisense, written owner-readable only (0600).",
     "The key is never printed back in full, and never has to be pasted into a command again.",
-    "An agent name is optional. When set, it rides along in the User-Agent so your own",
-    "traffic is easy to tell apart from everything else calling the API.",
+    "Two optional labels say who is calling: --agent is what your agent calls itself, and",
+    "--skill is the slug of the skill driving it. When set, they ride along in the",
+    "User-Agent, so usage can be understood and the tools improved. Both are voluntary and",
+    "nothing needs them to work.",
   ],
   flags: {
     remove: { type: "boolean", describe: "Delete the stored settings" },
@@ -39,14 +42,16 @@ export const authCommand: CommandDef = {
 
     const key = args.positionals[0];
     const agent = typeof args.flags.agent === "string" ? args.flags.agent : undefined;
+    const skill = typeof args.flags.skill === "string" ? args.flags.skill : undefined;
     const baseUrl = typeof args.flags["base-url"] === "string" ? args.flags["base-url"] : undefined;
 
-    if (key || agent || baseUrl) {
+    if (key || agent || skill || baseUrl) {
       const stored = readConfig(dir);
       const next = {
         ...stored,
         ...(key ? { apiKey: key } : {}),
         ...(agent ? { agentName: agent } : {}),
+        ...(skill ? { skill } : {}),
         ...(baseUrl ? { baseUrl } : {}),
       };
       writeConfig(dir, next);
@@ -55,6 +60,7 @@ export const authCommand: CommandDef = {
           path,
           apiKey: next.apiKey ? maskKey(next.apiKey) : null,
           agentName: next.agentName ?? null,
+          skill: next.skill ?? null,
           baseUrl: next.baseUrl ?? null,
         },
         doc: doc(
@@ -64,6 +70,7 @@ export const authCommand: CommandDef = {
             items: fields(
               next.apiKey ? field("api key", maskKey(next.apiKey)) : undefined,
               next.agentName ? field("agent", next.agentName) : undefined,
+              next.skill ? field("skill", next.skill) : undefined,
               next.baseUrl ? field("base url", next.baseUrl) : undefined,
             ),
           },
@@ -80,6 +87,7 @@ export const authCommand: CommandDef = {
         apiKey: resolved ? maskKey(resolved) : null,
         apiKeySource: context.apiKeySource,
         agentName: context.agentName ?? null,
+        skill: context.skill ?? null,
         baseUrl: context.baseUrl ?? null,
       },
       doc: doc(
@@ -90,6 +98,7 @@ export const authCommand: CommandDef = {
             field("source", resolved ? context.apiKeySource : "none"),
             field("config", path),
             context.agentName ? field("agent", context.agentName) : undefined,
+            context.skill ? field("skill", context.skill) : undefined,
             context.baseUrl ? field("base url", context.baseUrl) : undefined,
           ),
         },

@@ -5,12 +5,14 @@ import { join } from "node:path";
 /**
  * The stored CLI settings.
  *
- * Deliberately small: a key, an optional agent label for attribution, and an optional base
- * URL for anyone pointing the CLI somewhere other than production.
+ * Deliberately small: a key, two optional identity labels the caller chooses to send, and an
+ * optional base URL for anyone pointing the CLI somewhere other than production.
  */
 export interface CliConfig {
   apiKey?: string;
   agentName?: string;
+  /** Slug of the skill driving the CLI. Voluntary, and only ever what the caller set. */
+  skill?: string;
   baseUrl?: string;
 }
 
@@ -52,6 +54,7 @@ export function readConfig(dir: string): CliConfig {
     const config: CliConfig = {};
     if (typeof raw.apiKey === "string") config.apiKey = raw.apiKey;
     if (typeof raw.agentName === "string") config.agentName = raw.agentName;
+    if (typeof raw.skill === "string") config.skill = raw.skill;
     if (typeof raw.baseUrl === "string") config.baseUrl = raw.baseUrl;
     return config;
   } catch {

@@ -68,6 +68,12 @@ export function mainHelp(): string {
     "",
     'Run "sentisense help <command>" for flags, examples, and exit codes.',
     "",
+    "Saying who is calling (optional):",
+    "  SENTISENSE_AGENT_NAME=<name>   what your agent calls itself",
+    "  SENTISENSE_SKILL=<slug>        the skill driving it",
+    "  Set either and requests carry that identity, so usage can be understood and the",
+    "  tools improved. Nothing needs them, and nothing is inferred when they are absent.",
+    "",
     "Research data, not investment advice.",
   ];
   return `${lines.join("\n")}\n`;

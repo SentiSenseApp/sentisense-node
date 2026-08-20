@@ -88,6 +88,25 @@ something supplementary does not come back, such as the Score history behind a s
 command still prints its answer and exits 0 with a `note:` line on stderr, so stdout stays
 clean for a pipe and the gap is never silent.
 
+### Saying who is calling
+
+If you set `SENTISENSE_AGENT_NAME` (what your agent is called) and `SENTISENSE_SKILL` (the
+slug of the skill driving it), requests carry that identity, so usage can be understood and
+the tools improved. Both are optional, never required, and nothing is inferred when they are
+absent.
+
+```bash
+export SENTISENSE_AGENT_NAME=research-desk
+export SENTISENSE_SKILL=stock-analysis
+npx -y sentisense@latest quote NVDA
+# User-Agent: sentisense-node/0.44.0 sentisense-cli/0.44.0 (stock-analysis; agent/research-desk)
+```
+
+Either can also be a flag (`--agent`, `--skill`) or a stored setting
+(`sentisense auth --agent research-desk --skill stock-analysis`), resolved flag first, then
+environment, then config. Values are reduced to letters, digits, dot, underscore and hyphen,
+and capped at 32 characters, so nothing you set can reshape the header.
+
 ### Exit codes
 
 Failures print two lines to stderr, what went wrong and what to do about it, and exit with a

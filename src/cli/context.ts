@@ -14,6 +14,8 @@ export interface ResolvedContext {
   baseUrlSource: Source;
   agentName?: string;
   agentSource: Source;
+  skill?: string;
+  skillSource: Source;
 }
 
 export interface ContextInputs {
@@ -47,6 +49,7 @@ export function resolveContext({ flags, env, configDir }: ContextInputs): Resolv
   const key = pick(flagString(flags, "api-key"), env.SENTISENSE_API_KEY, stored.apiKey);
   const base = pick(flagString(flags, "base-url"), env.SENTISENSE_BASE_URL, stored.baseUrl);
   const agent = pick(flagString(flags, "agent"), env.SENTISENSE_AGENT_NAME, stored.agentName);
+  const skill = pick(flagString(flags, "skill"), env.SENTISENSE_SKILL, stored.skill);
 
   return {
     configDir: dir,
@@ -56,6 +59,8 @@ export function resolveContext({ flags, env, configDir }: ContextInputs): Resolv
     baseUrlSource: base.source,
     agentName: agent.value,
     agentSource: agent.source,
+    skill: skill.value,
+    skillSource: skill.source,
   };
 }
 
@@ -65,21 +70,61 @@ export function effectiveBaseUrl(context: ResolvedContext): string {
   return context.baseUrl ?? DEFAULT_BASE_URL;
 }
 
-/** Header-safe agent label: one token, no spaces, nothing exotic. */
-export function sanitizeAgent(name: string): string {
-  return name.trim().replace(/\s+/g, "-").replace(/[^A-Za-z0-9._-]/g, "");
+/** Longest identity that reaches the header. Long enough to be recognisable, short enough to be a label. */
+const MAX_IDENTITY = 32;
+
+/**
+ * Reduces a caller-supplied identity to something that cannot restructure the header.
+ *
+ * Only `[A-Za-z0-9._-]` survives. That matters more than it looks: the identities are placed
+ * inside a parenthesized User-Agent comment, so a stray parenthesis or semicolon would end
+ * the comment early and let anything after it read as a separate product token. Runs of
+ * whitespace collapse to a single hyphen first, which keeps a two-word name readable without
+ * ever letting a space through, since a space would split one identity into two tokens.
+ */
+export function sanitizeIdentity(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^A-Za-z0-9._-]/g, "")
+    // Runs of hyphens, and any left dangling at an edge, are what removing the surrounding
+    // punctuation leaves behind. They also stop a slug matching the name it was meant to be,
+    // which is the entire point of sending one.
+    .replace(/-{2,}/g, "-")
+    .slice(0, MAX_IDENTITY)
+    .replace(/^-+|-+$/g, "");
 }
 
 /**
- * What the CLI adds to the SDK's own User-Agent, so calls made through the CLI are
- * distinguishable from calls made through the library, and an agent that names itself is
- * distinguishable from one that does not.
+ * What the CLI adds to the SDK's own User-Agent.
+ *
+ * `sentisense-cli/{version}` is always there, so a call made through the CLI is
+ * distinguishable from one made through the library. Anything the caller volunteers about
+ * itself rides in a single parenthesized comment after it:
+ *
+ * ```
+ * sentisense-cli/1.0.0
+ * sentisense-cli/1.0.0 (my-skill)
+ * sentisense-cli/1.0.0 (agent/research-desk)
+ * sentisense-cli/1.0.0 (my-skill; agent/research-desk)
+ * ```
+ *
+ * The skill slug leads, on its own, as a bare token. Both details are load-bearing: it is
+ * read as a whole token, and only inside the comment, so a slug written any other way in the
+ * header is simply not seen. Neither identity is required and nothing is inferred when they
+ * are absent, which is why the no-identity form carries no comment at all rather than an
+ * empty one.
  */
 export function userAgentSuffix(context: ResolvedContext): string {
-  const parts = [`sentisense-cli/${VERSION}`];
-  const agent = context.agentName ? sanitizeAgent(context.agentName) : "";
-  if (agent) parts.push(`agent/${agent}`);
-  return parts.join(" ");
+  const product = `sentisense-cli/${VERSION}`;
+  const slug = sanitizeIdentity(context.skill ?? "");
+  const agent = sanitizeIdentity(context.agentName ?? "");
+
+  const comment: string[] = [];
+  if (slug) comment.push(slug);
+  if (agent) comment.push(`agent/${agent}`);
+
+  return comment.length === 0 ? product : `${product} (${comment.join("; ")})`;
 }
 
 export interface ClientOptions {

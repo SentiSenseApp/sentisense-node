@@ -7,7 +7,7 @@ import {
   createClient,
   effectiveBaseUrl,
   resolveContext,
-  sanitizeAgent,
+  sanitizeIdentity,
   userAgentSuffix,
 } from "../../src/cli/context.js";
 import { MissingKeyError } from "../../src/cli/errors.js";
@@ -91,6 +91,32 @@ describe("resolveContext precedence", () => {
     expect(fromConfig.agentName).toBe("config-agent");
   });
 
+  it("resolves the skill slug flag first, then environment, then config", () => {
+    const dir = tempDir();
+    writeConfig(dir, { skill: "config-skill" });
+
+    expect(
+      resolveContext({ flags: {}, env: {}, configDir: dir }).skill,
+    ).toBe("config-skill");
+    expect(
+      resolveContext({ flags: {}, env: { SENTISENSE_SKILL: "env-skill" }, configDir: dir }).skill,
+    ).toBe("env-skill");
+
+    const fromFlag = resolveContext({
+      flags: { skill: "flag-skill" },
+      env: { SENTISENSE_SKILL: "env-skill" },
+      configDir: dir,
+    });
+    expect(fromFlag.skill).toBe("flag-skill");
+    expect(fromFlag.skillSource).toBe("flag");
+  });
+
+  it("reports no skill when nothing supplies one", () => {
+    const context = resolveContext({ flags: {}, env: {}, configDir: tempDir() });
+    expect(context.skill).toBeUndefined();
+    expect(context.skillSource).toBe("default");
+  });
+
   it("ignores a whitespace-only environment value", () => {
     const dir = tempDir();
     writeConfig(dir, { apiKey: "from_config" });
@@ -109,18 +135,71 @@ describe("resolveContext precedence", () => {
 });
 
 describe("userAgentSuffix", () => {
-  it("always names the CLI", () => {
-    const context = resolveContext({ flags: {}, env: {}, configDir: tempDir() });
-    expect(userAgentSuffix(context)).toBe(`sentisense-cli/${VERSION}`);
+  const suffix = (flags: Record<string, string>) =>
+    userAgentSuffix(resolveContext({ flags, env: {}, configDir: tempDir() }));
+
+  it("carries no comment when the caller volunteered nothing", () => {
+    expect(suffix({})).toBe(`sentisense-cli/${VERSION}`);
   });
 
-  it("adds the agent label when one is configured", () => {
-    const context = resolveContext({ flags: { agent: "research desk" }, env: {}, configDir: tempDir() });
-    expect(userAgentSuffix(context)).toBe(`sentisense-cli/${VERSION} agent/research-desk`);
+  it("puts a lone skill slug in the comment as a bare token", () => {
+    expect(suffix({ skill: "stock-analysis" })).toBe(
+      `sentisense-cli/${VERSION} (stock-analysis)`,
+    );
   });
 
-  it("keeps the label header-safe", () => {
-    expect(sanitizeAgent("my agent!! v2")).toBe("my-agent-v2");
+  it("puts a lone agent name in the comment under its own key", () => {
+    expect(suffix({ agent: "research desk" })).toBe(
+      `sentisense-cli/${VERSION} (agent/research-desk)`,
+    );
+  });
+
+  it("leads with the slug and follows with the agent when both are set", () => {
+    expect(suffix({ skill: "stock-analysis", agent: "research desk" })).toBe(
+      `sentisense-cli/${VERSION} (stock-analysis; agent/research-desk)`,
+    );
+  });
+
+  it("uses one comment, never two", () => {
+    const value = suffix({ skill: "stock-analysis", agent: "research-desk" });
+    expect(value.match(/\(/g)).toHaveLength(1);
+    expect(value.match(/\)/g)).toHaveLength(1);
+  });
+});
+
+describe("sanitizeIdentity", () => {
+  it("keeps a slug that is already a single token untouched", () => {
+    expect(sanitizeIdentity("stock-analysis")).toBe("stock-analysis");
+    expect(sanitizeIdentity("v2.1_beta")).toBe("v2.1_beta");
+  });
+
+  it("collapses whitespace rather than letting a space split the token", () => {
+    expect(sanitizeIdentity("my agent!! v2")).toBe("my-agent-v2");
+  });
+
+  it("strips the characters that would close the comment early", () => {
+    // Without this, everything after the injected bracket would read as its own product
+    // token instead of as part of the identity.
+    expect(sanitizeIdentity("evil) (x")).toBe("evil-x");
+    expect(sanitizeIdentity("a;b")).toBe("ab");
+    expect(sanitizeIdentity("(nested)")).toBe("nested");
+  });
+
+  it("caps the length", () => {
+    expect(sanitizeIdentity("a".repeat(100))).toHaveLength(32);
+  });
+
+  it("leaves no separator dangling at either edge", () => {
+    // A slug is matched by name, so a stray hyphen is the difference between being recorded
+    // and not being recorded.
+    expect(sanitizeIdentity("(stock-analysis)")).toBe("stock-analysis");
+    expect(sanitizeIdentity("a;b) real-agent/9.9 (")).toBe("ab-real-agent9.9");
+    expect(sanitizeIdentity("a - b")).toBe("a-b");
+  });
+
+  it("drops a value that is nothing but punctuation", () => {
+    expect(sanitizeIdentity("()")).toBe("");
+    expect(sanitizeIdentity("   ")).toBe("");
   });
 });
 

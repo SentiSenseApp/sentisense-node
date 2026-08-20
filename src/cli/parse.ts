@@ -35,7 +35,12 @@ export const GLOBAL_FLAGS: FlagSpecs = {
   agent: {
     type: "string",
     placeholder: "name",
-    describe: "Label this call in the User-Agent",
+    describe: "Name your agent in the User-Agent, if you want to",
+  },
+  skill: {
+    type: "string",
+    placeholder: "slug",
+    describe: "Name the skill driving this call, if you want to",
   },
 };
 
