@@ -1,6 +1,7 @@
 import type { CommandDef } from "../command.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import { direction, fixed, signed } from "../render/num.js";
+import { rejectPositionals } from "../ticker.js";
 
 /**
  * Local narrowing for the mood payload.
@@ -52,7 +53,10 @@ export const moodCommand: CommandDef = {
     "46-55 neutral, 56-70 optimism, 71-85 greed, 86-100 extreme greed.",
   ],
   flags: {},
-  async run({ client, full }) {
+  async run({ args, client, full }) {
+    // Market Mood is one index, not a per-ticker reading, so a symbol here is a
+    // misunderstanding worth naming rather than ignoring.
+    rejectPositionals(args, "mood");
     const payload = await client().marketMood.get();
     const market = readMarket(payload);
     const sectors = readSectors(payload);

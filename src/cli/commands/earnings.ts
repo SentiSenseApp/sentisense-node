@@ -1,6 +1,12 @@
 import type { GetEarningsCalendarOptions } from "../../types.js";
 import type { CommandDef } from "../command.js";
 import { CliUsageError } from "../errors.js";
+import {
+  EMPTY_VERIFY_NOTE,
+  EMPTY_VERIFY_NOTE_2,
+  optionalTicker,
+  verifyTickerOnEmpty,
+} from "../ticker.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import { dateFromSeconds, fixed, truncate } from "../render/num.js";
 
@@ -18,14 +24,18 @@ export const earningsCommand: CommandDef = {
   examples: [
     "sentisense earnings",
     "sentisense earnings --week next",
-    "sentisense earnings NVDA",
-    "sentisense earnings NVDA --limit 4 --full",
+    "sentisense earnings AAPL",
+    "sentisense earnings AAPL --limit 4 --full",
   ],
   notes: [
     "With no ticker this is the forward calendar: who reports, when, and the consensus EPS.",
     "With a ticker it is the backward-looking analysis: one entry per reported quarter with",
     "the editorial headline, and on a PRO key the written summary and guidance language.",
     "A free key sees the current week of the calendar and the latest quarter of the analysis.",
+    "Coverage of the per-ticker analysis is not the whole market, so a tracked company can",
+    "have no stored quarter yet.",
+    EMPTY_VERIFY_NOTE,
+    EMPTY_VERIFY_NOTE_2,
   ],
   flags: {
     week: { type: "string", placeholder: "this|next", describe: "Calendar window shorthand" },
@@ -36,7 +46,8 @@ export const earningsCommand: CommandDef = {
   },
   async run({ args, client, full }) {
     const api = client();
-    const ticker = args.positionals[0]?.toUpperCase();
+    const ticker = optionalTicker(args, "earnings");
+    const notes: string[] = [];
 
     if (ticker) {
       const limit = typeof args.flags.limit === "number" ? args.flags.limit : undefined;
@@ -45,6 +56,10 @@ export const earningsCommand: CommandDef = {
         limit === undefined ? undefined : { limit },
       );
       const quarters = envelope.data ?? [];
+      if (quarters.length === 0) {
+        const note = await verifyTickerOnEmpty(api, ticker);
+        if (note) notes.push(note);
+      }
       const blocks: Block[] = [
         {
           kind: "head",
@@ -112,7 +127,7 @@ export const earningsCommand: CommandDef = {
         });
       }
 
-      return { json: envelope, doc: doc(...blocks) };
+      return { json: envelope, doc: doc(...blocks), notes };
     }
 
     const week = typeof args.flags.week === "string" ? args.flags.week : undefined;

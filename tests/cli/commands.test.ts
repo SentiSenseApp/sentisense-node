@@ -10,6 +10,7 @@ import {
   SENTIMENT_NVDA,
   routeFetch,
   run,
+  type Route,
 } from "./harness.js";
 import { readConfig } from "../../src/cli/config.js";
 import { latestSettledQuarter } from "../../src/cli/commands/flows.js";
@@ -284,7 +285,10 @@ describe("command wiring", () => {
   it("congress reads one ticker's filings when given a symbol", async () => {
     const result = await run(["congress", "NVDA", "--plain"], {
       env: KEYED,
-      fetch: routeFetch([[/politicians\/filings\/NVDA/, preview([])]]),
+      fetch: routeFetch([
+        [/politicians\/filings\/NVDA/, preview([])],
+        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
+      ]),
     });
     expect(result.code).toBe(0);
     expect(url(result, "/politicians/filings/NVDA")).toBeDefined();
@@ -408,20 +412,24 @@ describe("command wiring", () => {
     expect(result.stdout).toContain("NVDA260821C00200000");
   });
 
-  it("options exits 0 when a ticker is outside the covered universe", async () => {
+  it("options exits 0 when a real ticker is outside the covered universe", async () => {
     // An empty result is not a failure, and it matches how an empty window behaves on every
-    // other command.
+    // other command. The ticker is verified first so a typo does not land here.
     const envelope = { isPreview: false, previewReason: null, data: null };
-    const result = await run(["options", "ZZZZ", "--plain"], {
+    const routes: Route[] = [
+      [/options\/summary/, envelope],
+      [/\/stocks\/KO\/quote/, { ...QUOTE_NVDA, ticker: "KO" }],
+    ];
+    const result = await run(["options", "KO", "--plain"], {
       env: KEYED,
-      fetch: routeFetch([[/options\/summary/, envelope]]),
+      fetch: routeFetch(routes),
     });
     expect(result.code).toBe(0);
-    expect(result.stdout).toBe("No options coverage for ZZZZ.\n");
+    expect(result.stdout).toBe("No options coverage for KO.\n");
 
-    const asJson = await run(["options", "ZZZZ", "--json"], {
+    const asJson = await run(["options", "KO", "--json"], {
       env: KEYED,
-      fetch: routeFetch([[/options\/summary/, envelope]]),
+      fetch: routeFetch(routes),
     });
     expect(JSON.parse(asJson.stdout)).toEqual(envelope);
     expect(asJson.code).toBe(0);
@@ -799,5 +807,202 @@ describe("degraded supplementary calls", () => {
     expect(result.code).toBe(0);
     expect(result.stdout).toContain("target mean:");
     expect(result.stderr).toBe("note: rating history unavailable, showing the consensus without it\n");
+  });
+});
+
+describe("surplus tickers", () => {
+  // Silently answering a two-ticker question with one ticker's data is the worst kind of
+  // wrong: confident, plausible, and about the wrong company.
+  const SINGLE = [
+    "sentiment",
+    "analysts",
+    "earnings",
+    "insiders",
+    "insights",
+    "congress",
+    "news",
+    "flows",
+    "options",
+  ];
+
+  for (const name of SINGLE) {
+    it(`${name} rejects a second ticker instead of dropping it`, async () => {
+      const fetchMock = routeFetch([]);
+      const result = await run([name, "NVDA", "AAPL"], { env: KEYED, fetch: fetchMock });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain(`${name} takes one ticker, and got 2`);
+      expect(result.stderr).toContain("run it once per ticker");
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  }
+
+  it("quote still takes as many tickers as it is given", async () => {
+    const result = await run(["quote", "NVDA", "AAPL", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
+        [/\/stocks\/AAPL\/quote/, { ...QUOTE_NVDA, ticker: "AAPL" }],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("NVDA");
+    expect(result.stdout).toContain("AAPL");
+  });
+
+  it("names the command that has no ticker to take", async () => {
+    for (const name of ["mood", "health", "screen"]) {
+      const fetchMock = routeFetch([]);
+      const result = await run([name, "NVDA"], { env: KEYED, fetch: fetchMock });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain(`${name} takes no ticker`);
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  });
+
+  it("still reports a missing ticker separately from a surplus one", async () => {
+    const result = await run(["sentiment"], { env: KEYED });
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("sentiment needs a ticker");
+  });
+});
+
+describe("unknown ticker verification on an empty result", () => {
+  const EMPTY: Array<[string, string[], Route]> = [
+    ["insiders", ["insiders", "TICKER"], [/insider\/trades\/TICKER/, preview([])]],
+    ["insights", ["insights", "TICKER"], [/insights\/stock\/TICKER/, preview([])]],
+    ["earnings", ["earnings", "TICKER"], [/TICKER\/earnings-summaries/, preview([])]],
+    ["congress", ["congress", "TICKER"], [/politicians\/filings\/TICKER/, preview([])]],
+    ["news", ["news", "TICKER"], [/documents\/stories\/ticker\/TICKER/, []]],
+    [
+      "options",
+      ["options", "TICKER"],
+      [/stocks\/TICKER\/options\/summary/, { isPreview: false, previewReason: null, data: null }],
+    ],
+  ];
+
+  function withTicker(route: Route, ticker: string): Route {
+    return [new RegExp(route[0].source.replace("TICKER", ticker)), route[1]];
+  }
+
+  for (const [name, argv, route] of EMPTY) {
+    it(`${name} exits 4 when the empty result was a symbol that does not exist`, async () => {
+      // The endpoint answers 200 with nothing, exactly as it would for a real company with a
+      // quiet window, so only the follow-up lookup can tell the two apart.
+      const result = await run(
+        argv.map((token) => (token === "TICKER" ? "ZZZZZZ" : token)).concat("--plain"),
+        {
+          env: KEYED,
+          fetch: routeFetch([withTicker(route, "ZZZZZZ")]),
+        },
+      );
+      expect(result.code).toBe(4);
+      expect(result.stderr).toContain('unknown ticker "ZZZZZZ"');
+      expect(result.stderr).toContain("canonical tickers");
+    });
+
+    it(`${name} exits 0 when the empty result was a real but quiet symbol`, async () => {
+      const result = await run(
+        argv.map((token) => (token === "TICKER" ? "KO" : token)).concat("--plain"),
+        {
+          env: KEYED,
+          fetch: routeFetch([
+            withTicker(route, "KO"),
+            [/\/stocks\/KO\/quote/, { ...QUOTE_NVDA, ticker: "KO" }],
+          ]),
+        },
+      );
+      expect(result.code).toBe(0);
+      expect(result.stderr).toBe("");
+    });
+  }
+
+  it("spends the verification call only on the empty path", async () => {
+    const result = await run(["insiders", "NVDA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [
+          /insider\/trades\/NVDA/,
+          preview([
+            {
+              ticker: "NVDA",
+              companyName: "NVIDIA Corporation",
+              insiderName: "A Director",
+              insiderTitle: "Director",
+              insiderRelation: "DIRECTOR",
+              officer: false,
+              director: true,
+              tenPctOwner: false,
+              transactionDate: "2026-08-14",
+              filedDate: "2026-08-16",
+              transactionCode: "S",
+              transactionType: "SELL",
+              securityTitle: "Common Stock",
+              sharesTransacted: 12000,
+              pricePerShare: 180.2,
+              totalValue: 2162400,
+              sharesOwnedAfter: 40000,
+              directOwnership: true,
+              rule10b51: true,
+            },
+          ]),
+        ],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.urls).toHaveLength(1);
+  });
+
+  it("keeps the answer and notes the gap when verification itself fails", async () => {
+    // A failed check is not evidence either way, so it must not turn an answered command
+    // into a failure.
+    const result = await run(["insiders", "KO", "--plain"], {
+      env: KEYED,
+      fetch: vi.fn(async (input: unknown) => {
+        if (String(input).includes("/quote")) throw new TypeError("fetch failed");
+        return new Response(JSON.stringify(preview([])), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stderr).toContain("could not verify KO");
+  });
+
+  it("does not verify anything on the market-wide feeds", async () => {
+    const result = await run(["congress", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/politicians\/activity/, preview([])]]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.urls.some((candidate) => candidate.includes("/quote"))).toBe(false);
+  });
+});
+
+describe("examples demonstrate features that actually return data", () => {
+  it("earnings shows a ticker that has stored quarters", async () => {
+    // Verified live: the per-ticker analysis has no stored quarter for every tracked name,
+    // so an example has to name one that does or it demos an empty feature.
+    const result = await run(["help", "earnings"], {});
+    expect(result.stdout).toContain("sentisense earnings AAPL");
+    expect(result.stdout).not.toContain("sentisense earnings NVDA");
+  });
+
+  it("insights names a signal type that live data actually carries", async () => {
+    const result = await run(["help", "insights"], {});
+    expect(result.stdout).toContain("--type institutional_position_change");
+    expect(result.stdout).not.toContain("insider_buy_signal");
+  });
+
+  it("insights tells the reader where real type names come from", async () => {
+    const result = await run(["help", "insights"], {});
+    expect(result.stdout).toContain("rather than guessing a name");
+  });
+
+  it("commands that verify an empty result say so in their help", async () => {
+    for (const name of ["insiders", "insights", "earnings", "congress", "news", "flows", "options"]) {
+      const result = await run(["help", name], {});
+      expect(result.stdout).toContain("An empty result verifies the ticker before reporting no data");
+    }
   });
 });

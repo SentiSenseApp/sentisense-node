@@ -5,6 +5,7 @@ import { maskKey } from "../config.js";
 import { createClient, effectiveBaseUrl } from "../context.js";
 import { EXIT, KEY_URL } from "../errors.js";
 import { doc, field } from "../render/doc.js";
+import { rejectPositionals } from "../ticker.js";
 
 interface Probe {
   ok: boolean;
@@ -48,7 +49,8 @@ export const healthCommand: CommandDef = {
     "Exits 3 when the key is missing or rejected, 6 when the host cannot be reached.",
   ],
   flags: {},
-  async run({ context }) {
+  async run({ args, context }) {
+    rejectPositionals(args, "health");
     const baseUrl = effectiveBaseUrl(context);
 
     const anonymous = createClient(context, { anonymous: true });

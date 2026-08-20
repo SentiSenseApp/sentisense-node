@@ -1,5 +1,5 @@
 import type { CommandDef } from "../command.js";
-import { CliUsageError } from "../errors.js";
+import { EMPTY_VERIFY_NOTE, EMPTY_VERIFY_NOTE_2, oneTicker, verifyTickerOnEmpty } from "../ticker.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import { humanize, truncate } from "../render/num.js";
 
@@ -17,25 +17,27 @@ export const insidersCommand: CommandDef = {
     "The plan column says whether the trade was under a confirmed pre-arranged 10b5-1 plan,",
     "which is the difference between a scheduled sale and a discretionary one.",
     "A free key sees the top few transactions; a PRO key sees the window you asked for.",
+    EMPTY_VERIFY_NOTE,
+    EMPTY_VERIFY_NOTE_2,
   ],
   flags: {
     days: { type: "number", placeholder: "N", describe: "Look-back window, 1 to 365 (default 90)" },
   },
   async run({ args, client, full }) {
-    const ticker = args.positionals[0]?.toUpperCase();
-    if (!ticker) {
-      throw new CliUsageError(
-        "insiders needs a ticker.",
-        "for example: sentisense insiders NVDA",
-      );
-    }
+    const ticker = oneTicker(args, "insiders");
     const lookbackDays = typeof args.flags.days === "number" ? args.flags.days : undefined;
 
-    const envelope = await client().insider.getTrades(
+    const api = client();
+    const notes: string[] = [];
+    const envelope = await api.insider.getTrades(
       ticker,
       lookbackDays === undefined ? undefined : { lookbackDays },
     );
     const trades = envelope.data ?? [];
+    if (trades.length === 0) {
+      const note = await verifyTickerOnEmpty(api, ticker);
+      if (note) notes.push(note);
+    }
     const shown = full ? trades : trades.slice(0, 15);
 
     const buys = trades.filter((trade) => trade.transactionType === "BUY");
@@ -91,6 +93,6 @@ export const insidersCommand: CommandDef = {
       });
     }
 
-    return { json: envelope, doc: doc(...blocks) };
+    return { json: envelope, doc: doc(...blocks), notes };
   },
 };

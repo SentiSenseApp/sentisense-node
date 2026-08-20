@@ -4,6 +4,7 @@ import { CliUsageError } from "../errors.js";
 import { flagList } from "../parse.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import { direction, fixed, humanize, percent, signed, truncate } from "../render/num.js";
+import { rejectPositionals } from "../ticker.js";
 
 const OPS = ["GTE", "LTE", "GT", "LT", "EQ", "NEQ", "IN", "NOT_IN"] as const;
 type Op = (typeof OPS)[number];
@@ -88,6 +89,9 @@ export const screenCommand: CommandDef = {
     etf: { type: "boolean", describe: "Screen the ETF universe" },
   },
   async run({ args, client, full }) {
+    // A screen is described entirely by flags, so a bare symbol means someone wanted
+    // --tickers and would otherwise have it silently dropped.
+    rejectPositionals(args, "screen");
     const api = client();
     const etf = args.flags.etf === true;
 

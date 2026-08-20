@@ -2,6 +2,12 @@ import type { Quarter } from "../../types.js";
 import type { CommandDef } from "../command.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import { humanize, percent, truncate } from "../render/num.js";
+import {
+  EMPTY_VERIFY_NOTE,
+  EMPTY_VERIFY_NOTE_2,
+  optionalTicker,
+  verifyTickerOnEmpty,
+} from "../ticker.js";
 
 const DEFAULT_ROWS = 10;
 
@@ -38,7 +44,9 @@ export const flowsCommand: CommandDef = {
     "market. With a ticker it is that stock's institutional ownership and the quarter's",
     "notable position changes, since flows are only published market-wide.",
     "13F filings land up to 45 days after quarter end, so a still-open quarter shows only",
-    "early filers and says so.",
+    "early filers and says so, and a ticker reads the newest quarter that has closed.",
+    EMPTY_VERIFY_NOTE,
+    EMPTY_VERIFY_NOTE_2,
   ],
   flags: {
     limit: { type: "number", placeholder: "N", describe: `Rows per side (default ${DEFAULT_ROWS})` },
@@ -46,7 +54,8 @@ export const flowsCommand: CommandDef = {
   },
   async run({ args, client, full }) {
     const api = client();
-    const ticker = args.positionals[0]?.toUpperCase();
+    const ticker = optionalTicker(args, "flows");
+    const notes: string[] = [];
     const limit = typeof args.flags.limit === "number" ? args.flags.limit : DEFAULT_ROWS;
     const quarter = typeof args.flags.quarter === "string" ? args.flags.quarter : undefined;
 
@@ -70,6 +79,10 @@ export const flowsCommand: CommandDef = {
       });
       const data = envelope.data;
       const holders = data?.holders ?? [];
+      if (holders.length === 0) {
+        const note = await verifyTickerOnEmpty(api, ticker);
+        if (note) notes.push(note);
+      }
 
       const blocks: Block[] = [
         {
@@ -137,7 +150,7 @@ export const flowsCommand: CommandDef = {
         });
       }
 
-      return { json: envelope, doc: doc(...blocks) };
+      return { json: envelope, doc: doc(...blocks), notes };
     }
 
     const envelope = await api.institutional.getFlows(quarter, { limit });

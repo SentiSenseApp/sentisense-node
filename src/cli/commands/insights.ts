@@ -1,6 +1,7 @@
 import type { GetInsightsOptions } from "../../types.js";
 import type { CommandDef } from "../command.js";
 import { CliUsageError } from "../errors.js";
+import { EMPTY_VERIFY_NOTE, EMPTY_VERIFY_NOTE_2, oneTicker, verifyTickerOnEmpty } from "../ticker.js";
 import { cell, doc, field, fields, type Block, type Tone } from "../render/doc.js";
 import { dateFromSeconds, percent, truncate } from "../render/num.js";
 
@@ -17,25 +18,23 @@ export const insightsCommand: CommandDef = {
   examples: [
     "sentisense insights NVDA",
     "sentisense insights NVDA --urgency high",
-    "sentisense insights NVDA --type insider_buy_signal --full",
+    "sentisense insights NVDA --type institutional_position_change --full",
   ],
   notes: [
     "Signals are generated observations about filings, flows, and attention, ordered by",
     "urgency then confidence. They describe what the data shows, not what to do about it.",
     "A free key sees the top three; a PRO key sees the whole list.",
+    "Signal types vary by ticker and over time, so take --type from what a plain run reports",
+    "rather than guessing a name.",
+    EMPTY_VERIFY_NOTE,
+    EMPTY_VERIFY_NOTE_2,
   ],
   flags: {
     urgency: { type: "string", placeholder: "level", describe: "Filter to low, medium, or high" },
     type: { type: "string", placeholder: "name", describe: "Filter to one signal type" },
   },
   async run({ args, client, full }) {
-    const ticker = args.positionals[0]?.toUpperCase();
-    if (!ticker) {
-      throw new CliUsageError(
-        "insights needs a ticker.",
-        "for example: sentisense insights NVDA",
-      );
-    }
+    const ticker = oneTicker(args, "insights");
     const urgency = typeof args.flags.urgency === "string" ? args.flags.urgency : undefined;
     if (urgency && !["low", "medium", "high"].includes(urgency)) {
       throw new CliUsageError(
@@ -48,11 +47,17 @@ export const insightsCommand: CommandDef = {
       ...(typeof args.flags.type === "string" ? { insightType: args.flags.type } : {}),
     };
 
-    const envelope = await client().insights.stock(
+    const api = client();
+    const notes: string[] = [];
+    const envelope = await api.insights.stock(
       ticker,
       Object.keys(options).length > 0 ? options : undefined,
     );
     const insights = envelope.data ?? [];
+    if (insights.length === 0) {
+      const note = await verifyTickerOnEmpty(api, ticker);
+      if (note) notes.push(note);
+    }
     const shown = full ? insights : insights.slice(0, 8);
 
     const blocks: Block[] = [
@@ -111,6 +116,6 @@ export const insightsCommand: CommandDef = {
       });
     }
 
-    return { json: envelope, doc: doc(...blocks) };
+    return { json: envelope, doc: doc(...blocks), notes };
   },
 };

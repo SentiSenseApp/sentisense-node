@@ -44,6 +44,23 @@ export class CliUsageError extends Error {
   }
 }
 
+/**
+ * A symbol the API does not know.
+ *
+ * Distinct from {@link NotFoundError} because it is something the CLI concluded rather than
+ * something the server said: most endpoints answer an unknown symbol with an empty `200`, so
+ * this is raised after a verification lookup on an empty result.
+ */
+export class UnknownTickerError extends Error {
+  ticker: string;
+
+  constructor(ticker: string) {
+    super(`unknown ticker "${ticker}".`);
+    this.name = "UnknownTickerError";
+    this.ticker = ticker;
+  }
+}
+
 /** No key was resolved from a flag, the environment, or the config file. */
 export class MissingKeyError extends Error {
   constructor() {
@@ -77,6 +94,16 @@ function classify(error: unknown): ErrorReport {
       lines: [
         "error: no API key configured.",
         `next: run "sentisense auth <key>", or set SENTISENSE_API_KEY. Get a key at ${KEY_URL}`,
+      ],
+    };
+  }
+
+  if (error instanceof UnknownTickerError) {
+    return {
+      exitCode: EXIT.NOT_FOUND,
+      lines: [
+        `error: ${error.message}`,
+        "next: check the symbol. Use canonical tickers, for example GOOGL rather than GOOG and BRK.B rather than BRK-B.",
       ],
     };
   }

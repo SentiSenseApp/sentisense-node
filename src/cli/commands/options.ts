@@ -1,6 +1,6 @@
 import type { OptionsWall } from "../../types.js";
 import type { CommandDef } from "../command.js";
-import { CliUsageError } from "../errors.js";
+import { EMPTY_VERIFY_NOTE, EMPTY_VERIFY_NOTE_2, oneTicker, verifyTickerOnEmpty } from "../ticker.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import { direction, fixed, humanize, signed } from "../render/num.js";
 
@@ -30,27 +30,29 @@ export const optionsCommand: CommandDef = {
     "End of day, not live: readings describe the latest completed session and refresh the",
     "following morning. Percentiles are against that ticker's own trailing history, so they",
     "compare a stock to its past self, never to another stock.",
-    "Coverage is the most actively optioned names plus the tracked ETFs. A ticker outside",
-    "that set reports no coverage and exits 0, the same as any other empty result.",
+    "Coverage is the most actively optioned names plus the tracked ETFs. A real ticker",
+    "outside that set reports no coverage and exits 0, the same as any other empty result.",
+    EMPTY_VERIFY_NOTE,
+    EMPTY_VERIFY_NOTE_2,
     "A free key gets the full dossier for the first ten calls each month, then a headline",
     "preview. Calls that return no dossier do not count against that.",
   ],
   flags: {},
   async run({ args, client, full }) {
-    const ticker = args.positionals[0]?.toUpperCase();
-    if (!ticker) {
-      throw new CliUsageError("options needs a ticker.", "for example: sentisense options NVDA");
-    }
+    const ticker = oneTicker(args, "options");
 
-    const envelope = await client().stocks.getOptionsSummary(ticker);
+    const api = client();
+    const envelope = await api.stocks.getOptionsSummary(ticker);
     const data = envelope.data;
 
     // No coverage is an empty result, not a failure, so it exits 0 like an empty window on
     // any other command. The exact envelope still goes out under --json.
     if (!data) {
+      const note = await verifyTickerOnEmpty(api, ticker);
       return {
         json: envelope,
         doc: doc({ kind: "text", text: `No options coverage for ${ticker}.` }),
+        notes: note ? [note] : undefined,
       };
     }
 

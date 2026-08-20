@@ -1,6 +1,12 @@
 import type { CongressTrade, PreviewResponse } from "../../types.js";
 import type { CommandDef } from "../command.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
+import {
+  EMPTY_VERIFY_NOTE,
+  EMPTY_VERIFY_NOTE_2,
+  optionalTicker,
+  verifyTickerOnEmpty,
+} from "../ticker.js";
 import { truncate } from "../render/num.js";
 
 export const congressCommand: CommandDef = {
@@ -18,6 +24,8 @@ export const congressCommand: CommandDef = {
     "disclosure date is part of the picture. The delay column carries it in days.",
     "Amounts are the filed ranges, never exact figures: that is how the filings work.",
     "A free key sees a short preview of either feed.",
+    EMPTY_VERIFY_NOTE,
+    EMPTY_VERIFY_NOTE_2,
   ],
   flags: {
     days: { type: "number", placeholder: "N", describe: "Look-back window, 1 to 365 (default 90)" },
@@ -25,7 +33,8 @@ export const congressCommand: CommandDef = {
   },
   async run({ args, client, full }) {
     const api = client();
-    const ticker = args.positionals[0]?.toUpperCase();
+    const ticker = optionalTicker(args, "congress");
+    const notes: string[] = [];
     const lookbackDays = typeof args.flags.days === "number" ? args.flags.days : undefined;
     const limit = typeof args.flags.limit === "number" ? args.flags.limit : undefined;
 
@@ -46,6 +55,10 @@ export const congressCommand: CommandDef = {
     }
 
     const trades = envelope.data ?? [];
+    if (ticker && trades.length === 0) {
+      const note = await verifyTickerOnEmpty(api, ticker);
+      if (note) notes.push(note);
+    }
     const shown = full ? trades : trades.slice(0, 20);
 
     const blocks: Block[] = [
@@ -106,6 +119,6 @@ export const congressCommand: CommandDef = {
       });
     }
 
-    return { json: envelope, doc: doc(...blocks) };
+    return { json: envelope, doc: doc(...blocks), notes };
   },
 };

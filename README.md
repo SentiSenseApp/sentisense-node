@@ -56,7 +56,7 @@ Get a key at [app.sentisense.ai/get-api-key](https://app.sentisense.ai/get-api-k
 | `sentiment <ticker>` | SentiSense Score, tone, attention, per-source breakdown, `--days N` history |
 | `mood` | Composite market sentiment, the signals behind it, and the sector map |
 | `analysts <ticker>` | Consensus, price target band, recent upgrades and downgrades |
-| `earnings [ticker]` | Forward calendar with no ticker, per-quarter analysis with one |
+| `earnings [ticker]` | Forward calendar with no ticker, per-quarter analysis with one (`earnings AAPL`) |
 | `insiders <ticker>` | Filed Form 4 transactions, including whether they were pre-planned |
 | `insights <ticker>` | Generated signals, filterable by `--urgency` and `--type` |
 | `congress [ticker]` | Congressional disclosures, market-wide or for one symbol |

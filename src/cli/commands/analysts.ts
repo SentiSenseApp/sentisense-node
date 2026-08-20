@@ -1,5 +1,5 @@
 import type { CommandDef } from "../command.js";
-import { CliUsageError } from "../errors.js";
+import { oneTicker } from "../ticker.js";
 import { cell, doc, field, fields, type Block, type Tone } from "../render/doc.js";
 import { direction, fixed, money, signedPercent } from "../render/num.js";
 
@@ -29,13 +29,7 @@ export const analystsCommand: CommandDef = {
     days: { type: "number", placeholder: "N", describe: "Days of rating history (default 90)" },
   },
   async run({ args, client, full }) {
-    const ticker = args.positionals[0]?.toUpperCase();
-    if (!ticker) {
-      throw new CliUsageError(
-        "analysts needs a ticker.",
-        "for example: sentisense analysts NVDA",
-      );
-    }
+    const ticker = oneTicker(args, "analysts");
     const lookbackDays = typeof args.flags.days === "number" ? args.flags.days : undefined;
 
     const api = client();

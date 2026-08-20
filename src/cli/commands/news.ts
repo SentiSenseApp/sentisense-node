@@ -1,6 +1,12 @@
 import type { Story } from "../../types.js";
 import type { CommandDef } from "../command.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
+import {
+  EMPTY_VERIFY_NOTE,
+  EMPTY_VERIFY_NOTE_2,
+  optionalTicker,
+  verifyTickerOnEmpty,
+} from "../ticker.js";
 import { dateFromSeconds, fixed, signed, truncate } from "../render/num.js";
 
 const DEFAULT_LIMIT = 10;
@@ -20,6 +26,8 @@ export const newsCommand: CommandDef = {
     "the size column is how many sources picked it up and impact ranks how much it moved.",
     "Tone is the average sentiment across the cluster, between -1 and 1.",
     "--days only applies to the market-wide feed.",
+    EMPTY_VERIFY_NOTE,
+    EMPTY_VERIFY_NOTE_2,
   ],
   flags: {
     limit: { type: "number", placeholder: "N", describe: `Stories to return (default ${DEFAULT_LIMIT})` },
@@ -27,13 +35,19 @@ export const newsCommand: CommandDef = {
   },
   async run({ args, client, full }) {
     const api = client();
-    const ticker = args.positionals[0]?.toUpperCase();
+    const ticker = optionalTicker(args, "news");
+    const notes: string[] = [];
     const limit = typeof args.flags.limit === "number" ? args.flags.limit : DEFAULT_LIMIT;
     const days = typeof args.flags.days === "number" ? args.flags.days : undefined;
 
     const stories: Story[] = ticker
       ? await api.documents.getStoriesByTicker(ticker, { limit })
       : await api.documents.getStories({ limit, ...(days === undefined ? {} : { days }) });
+
+    if (ticker && stories.length === 0) {
+      const note = await verifyTickerOnEmpty(api, ticker);
+      if (note) notes.push(note);
+    }
 
     const blocks: Block[] = [
       {
@@ -102,6 +116,6 @@ export const newsCommand: CommandDef = {
       });
     }
 
-    return { json: stories, doc: doc(...blocks) };
+    return { json: stories, doc: doc(...blocks), notes };
   },
 };

@@ -1,6 +1,7 @@
 import type { PreviewResponse, ServingMetric, StockSentiment } from "../../types.js";
 import type { CommandDef } from "../command.js";
 import { CliUsageError } from "../errors.js";
+import { oneTicker } from "../ticker.js";
 import { cell, doc, field, fields, type Block, type Tone } from "../render/doc.js";
 import { fixed, humanize, percent, signed } from "../render/num.js";
 
@@ -43,13 +44,7 @@ export const sentimentCommand: CommandDef = {
     days: { type: "number", placeholder: "N", describe: `Days of Score history (default ${DEFAULT_DAYS})` },
   },
   async run({ args, client, full }) {
-    const ticker = args.positionals[0]?.toUpperCase();
-    if (!ticker) {
-      throw new CliUsageError(
-        "sentiment needs a ticker.",
-        "for example: sentisense sentiment NVDA",
-      );
-    }
+    const ticker = oneTicker(args, "sentiment");
     const days = typeof args.flags.days === "number" ? args.flags.days : DEFAULT_DAYS;
     if (days < 1) {
       throw new CliUsageError("--days must be at least 1.", "for example: --days 30");
