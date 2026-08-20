@@ -31,7 +31,11 @@ export const newsCommand: CommandDef = {
   ],
   flags: {
     limit: { type: "number", placeholder: "N", describe: `Stories to return (default ${DEFAULT_LIMIT})` },
-    days: { type: "number", placeholder: "N", describe: "Look-back window, market-wide feed only" },
+    days: {
+      type: "number",
+      placeholder: "N",
+      describe: "Look-back window in days, market-wide feed only",
+    },
   },
   async run({ args, client, full }) {
     const api = client();
@@ -40,9 +44,14 @@ export const newsCommand: CommandDef = {
     const limit = typeof args.flags.limit === "number" ? args.flags.limit : DEFAULT_LIMIT;
     const days = typeof args.flags.days === "number" ? args.flags.days : undefined;
 
+    // The market-wide feed takes its look-back in hours, so a day count is converted here
+    // rather than passed through. The ticker feed has no look-back window at all.
     const stories: Story[] = ticker
       ? await api.documents.getStoriesByTicker(ticker, { limit })
-      : await api.documents.getStories({ limit, ...(days === undefined ? {} : { days }) });
+      : await api.documents.getStories({
+          limit,
+          ...(days === undefined ? {} : { filterHours: days * 24 }),
+        });
 
     if (ticker && stories.length === 0) {
       const note = await verifyTickerOnEmpty(api, ticker);

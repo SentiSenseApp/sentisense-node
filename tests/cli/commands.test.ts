@@ -324,6 +324,45 @@ describe("command wiring", () => {
     expect(result.stdout).toContain("Chip demand keeps climbing");
   });
 
+  // The market-wide feed reads its look-back in hours, so --days has to be converted or the
+  // window silently stays at the default.
+  it("news turns --days into the hours the market-wide feed reads", async () => {
+    const result = await run(["news", "--days", "2", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/documents\/stories\?/, []]]),
+    });
+    expect(result.code).toBe(0);
+    const requested = url(result, "/documents/stories");
+    expect(requested).toContain("filterHours=48");
+    expect(requested).not.toContain("days=");
+  });
+
+  it("news without --days asks for no window at all", async () => {
+    const result = await run(["news", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/documents\/stories\?/, []]]),
+    });
+    expect(result.code).toBe(0);
+    const requested = url(result, "/documents/stories");
+    expect(requested).toContain("limit=10");
+    expect(requested).not.toContain("filterHours=");
+    expect(requested).not.toContain("days=");
+  });
+
+  it("news on a ticker sends no window, which that feed does not take", async () => {
+    const result = await run(["news", "NVDA", "--days", "2", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/documents\/stories\/ticker\/NVDA/, []],
+        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    const requested = url(result, "/documents/stories/ticker/NVDA");
+    expect(requested).not.toContain("filterHours=");
+    expect(requested).not.toContain("days=");
+  });
+
   it("flows with no ticker reads the market-wide quarter", async () => {
     const result = await run(["flows", "--plain"], {
       env: KEYED,

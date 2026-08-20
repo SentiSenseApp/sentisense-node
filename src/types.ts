@@ -646,8 +646,13 @@ export interface GetBySourceOptions {
 
 export interface GetStoriesOptions {
   limit?: number;
+  /**
+   * Accepted by the endpoint but ignored, so it does not narrow the window. Use
+   * `filterHours` for the look-back, and pass `days * 24` if you are thinking in days.
+   */
   days?: number;
   offset?: number;
+  /** Look-back window in hours, for example 48 for the last two days. */
   filterHours?: number;
 }
 
