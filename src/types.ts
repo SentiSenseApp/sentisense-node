@@ -86,6 +86,11 @@ export interface StockQuote {
   marketCap: number | null;
   peRatio: number | null;
   epsTTM: number | null;
+  /**
+   * Trailing dividend yield as a fraction, not as percentage points: 0.031 is a 3.1% yield.
+   * This differs from {@link StockQuote.changePercent}, which is already in percentage points.
+   * Null for a stock that pays no dividend.
+   */
   dividendYield: number | null;
   /** 200-day simple moving average of daily closes. Null when fewer than 200 trading days of history exist. */
   movingAverage200Day: number | null;

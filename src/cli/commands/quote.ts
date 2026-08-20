@@ -7,7 +7,7 @@ import {
   fixed,
   humanize,
   money,
-  percent,
+  ratioPercent,
   signed,
   signedPercent,
   timestamp,
@@ -52,7 +52,8 @@ function single(row: Row, full: boolean): Block[] {
         field("Mkt cap", humanize(quote.marketCap)),
         field("P/E", fixed(quote.peRatio)),
         field("EPS TTM", fixed(quote.epsTTM)),
-        field("Div yield", percent(quote.dividendYield, 2)),
+        // A ratio, unlike `changePercent` and the other percentages in the same payload.
+        field("Div yield", ratioPercent(quote.dividendYield)),
         field(
           "52w",
           `${fixed(quote.week52Low)} to ${fixed(quote.week52High)}`,

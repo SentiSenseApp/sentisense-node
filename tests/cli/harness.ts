@@ -116,7 +116,9 @@ export const QUOTE_NVDA = {
   marketCap: 4440000000000,
   peRatio: 58.2,
   epsTTM: 3.13,
-  dividendYield: 0.03,
+  // A fraction, and small enough that rounding it to two decimals as if it were already a
+  // percentage would print "0.00%". Held here so the quote snapshots keep catching that.
+  dividendYield: 0.001287,
   movingAverage200Day: 152.4,
   timestamp: 1787169600000,
   priceAsOf: 1787169600000,

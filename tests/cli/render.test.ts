@@ -7,7 +7,7 @@ import {
   routeFetch,
   run,
 } from "./harness.js";
-import { sparkline } from "../../src/cli/render/num.js";
+import { percent, ratioPercent, sparkline } from "../../src/cli/render/num.js";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -53,7 +53,7 @@ describe("quote rendering", () => {
       Mkt cap:   4.44T
       P/E:       58.20
       EPS TTM:   3.13
-      Div yield: 0.03%
+      Div yield: 0.13%
       52w:       86.62 to 184.48
       price as of 2026-08-19 20:00 UTC
       "
@@ -72,7 +72,7 @@ describe("quote rendering", () => {
     expect(result.stdout).toMatchInlineSnapshot(`
       "NVDA  NVIDIA Corporation                               $182.14  +1.83 (+1.02%)
       Open 180.30   High 183.02   Low 179.88   Volume 4.2M   Prev close 180.31
-      Mkt cap 4.44T   P/E 58.20   EPS TTM 3.13   Div yield 0.03%   52w 86.62 to 184.48
+      Mkt cap 4.44T   P/E 58.20   EPS TTM 3.13   Div yield 0.13%   52w 86.62 to 184.48
       price as of 2026-08-19 20:00 UTC
       "
     `);
@@ -295,5 +295,40 @@ describe("sparkline", () => {
 
   it("renders nothing for an empty series", () => {
     expect(sparkline([])).toBe("");
+  });
+});
+
+describe("ratioPercent", () => {
+  it("scales a fraction to percentage points exactly once", () => {
+    expect(ratioPercent(0.031)).toBe("3.10%");
+  });
+
+  it("keeps a small yield visible instead of rounding it to zero", () => {
+    expect(ratioPercent(0.001287)).toBe("0.13%");
+  });
+
+  it("prints a plain zero only for a true zero", () => {
+    expect(ratioPercent(0)).toBe("0.00%");
+  });
+
+  it("widens the decimals rather than let a real value read as zero", () => {
+    expect(ratioPercent(0.00001)).toBe("0.001%");
+  });
+
+  it("keeps the sign on a negative ratio", () => {
+    expect(ratioPercent(-0.031)).toBe("-3.10%");
+  });
+
+  it("reports an absent value as absent rather than as zero", () => {
+    expect(ratioPercent(null)).toBe("n/a");
+    expect(ratioPercent(undefined)).toBe("n/a");
+    expect(ratioPercent(Number.NaN)).toBe("n/a");
+  });
+});
+
+describe("percent", () => {
+  it("leaves a value that is already percentage points alone", () => {
+    expect(percent(3.1, 2)).toBe("3.10%");
+    expect(percent(34.49, 2)).toBe("34.49%");
   });
 });

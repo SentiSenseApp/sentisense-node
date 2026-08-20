@@ -43,8 +43,41 @@ export function signedPercent(value: unknown, decimals = 2): string {
   return `${value > 0 ? "+" : ""}${value.toFixed(decimals)}%`;
 }
 
+/**
+ * Percentage points to a percentage: 3.1 becomes "3.1%".
+ *
+ * The input is already in percentage points, which is how most of the API's `...Percent` and
+ * `...Pct` fields arrive. A value that is a fraction needs {@link ratioPercent} instead.
+ */
 export function percent(value: unknown, decimals = 1): string {
   return isNum(value) ? `${value.toFixed(decimals)}%` : ABSENT;
+}
+
+/** Past this many decimals a yield is indistinguishable from zero and the widening stops. */
+const MAX_RATIO_DECIMALS = 6;
+
+/**
+ * A fraction to a percentage: 0.031 becomes "3.10%".
+ *
+ * A few fields arrive as a ratio rather than as percentage points, `dividendYield` among them.
+ * Naming the unit in the formatter keeps the conversion in one place instead of leaving each
+ * call site to remember which convention its field follows.
+ *
+ * Small yields are real money, so a value that would round away at `decimals` is given more of
+ * them: 0.001287 prints "0.13%" rather than "0.00%". Only a true zero prints a plain "0.00%".
+ */
+export function ratioPercent(value: unknown, decimals = 2): string {
+  if (!isNum(value)) return ABSENT;
+  const scaled = value * 100;
+  let places = decimals;
+  while (
+    scaled !== 0 &&
+    places < MAX_RATIO_DECIMALS &&
+    Number(scaled.toFixed(places)) === 0
+  ) {
+    places += 1;
+  }
+  return `${scaled.toFixed(places)}%`;
 }
 
 export function money(value: unknown, decimals = 2): string {
