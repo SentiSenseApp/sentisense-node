@@ -114,10 +114,63 @@ describe("exit codes", () => {
     expect(result.code).toBe(EXIT.NETWORK);
   });
 
-  it("exits 1 on a server error", async () => {
+  it("exits 1 on a server error, and points at the service", async () => {
     const result = await run(["quote", "NVDA"], { env: KEYED, fetch: statusFetch(500) });
     expect(result.code).toBe(EXIT.ERROR);
     expect(result.stderr).toContain("request failed (500)");
+    expect(result.stderr).toContain("sentisense health");
+  });
+
+  it("blames the input, not the service, when the API rejects the request", async () => {
+    // The one class of failure retrying cannot fix, so sending the caller to check the
+    // service wastes their time.
+    const result = await run(["screen", "--filter", "FOOBAR:GTE:10"], {
+      env: KEYED,
+      fetch: vi.fn(async () =>
+        errorResponse(400, {
+          error: "invalid_field",
+          message: "Unknown filter field 'FOOBAR' for the stock universe.",
+        }),
+      ),
+    });
+    expect(result.code).toBe(EXIT.ERROR);
+    expect(result.stderr).toContain("the API rejected the request (400)");
+    // The server's own message is the specific part, so it has to survive intact.
+    expect(result.stderr).toContain("Unknown filter field 'FOOBAR'");
+    expect(result.stderr).toContain("check the flags and values you passed");
+    expect(result.stderr).toContain('sentisense help screen');
+    expect(result.stderr).not.toContain("sentisense health");
+  });
+
+  it("names the command the caller actually ran in the hint", async () => {
+    const result = await run(["insiders", "NVDA"], {
+      env: KEYED,
+      fetch: vi.fn(async () => errorResponse(422, { message: "lookbackDays out of range" })),
+    });
+    expect(result.stderr).toContain('sentisense help insiders');
+  });
+
+  it("treats every other 4xx as the caller's input too", async () => {
+    for (const status of [400, 405, 409, 415, 422]) {
+      const result = await run(["mood"], { env: KEYED, fetch: statusFetch(status) });
+      expect(result.code).toBe(EXIT.ERROR);
+      expect(result.stderr).toContain(`the API rejected the request (${status})`);
+      expect(result.stderr).not.toContain("sentisense health");
+    }
+  });
+
+  it("keeps the service hint for every 5xx", async () => {
+    for (const status of [500, 502, 503]) {
+      const result = await run(["mood"], { env: KEYED, fetch: statusFetch(status) });
+      expect(result.code).toBe(EXIT.ERROR);
+      expect(result.stderr).toContain("sentisense health");
+    }
+  });
+
+  it("documents where a rejected request lands in the exit-code table", async () => {
+    const result = await run(["help", "screen"], {});
+    expect(result.stdout).toContain("1  API error, including a request the API rejected as invalid");
+    expect(result.stdout).toContain("2  bad usage, caught before any request was sent");
   });
 
   it("keeps every message to two lines unless --debug asks for more", async () => {

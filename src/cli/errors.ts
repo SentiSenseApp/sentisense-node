@@ -23,8 +23,8 @@ export const EXIT = {
 
 export const EXIT_TABLE: Array<[number, string]> = [
   [EXIT.OK, "success"],
-  [EXIT.ERROR, "API error or unexpected failure"],
-  [EXIT.USAGE, "bad usage: unknown command, flag, or missing argument"],
+  [EXIT.ERROR, "API error, including a request the API rejected as invalid"],
+  [EXIT.USAGE, "bad usage, caught before any request was sent"],
   [EXIT.AUTH, "missing or rejected API key"],
   [EXIT.NOT_FOUND, "no data for that symbol or identifier"],
   [EXIT.RATE_LIMIT, "rate limited"],
@@ -79,15 +79,19 @@ export interface ErrorReport {
  *
  * Both go to stderr, so a caller piping stdout still gets clean output or clean JSON.
  */
-export function describeError(error: unknown, debug: boolean): ErrorReport {
-  const report = classify(error);
+export function describeError(
+  error: unknown,
+  debug: boolean,
+  command?: string,
+): ErrorReport {
+  const report = classify(error, command);
   if (debug && error instanceof Error && error.stack) {
     report.lines.push(error.stack);
   }
   return report;
 }
 
-function classify(error: unknown): ErrorReport {
+function classify(error: unknown, command?: string): ErrorReport {
   if (error instanceof MissingKeyError) {
     return {
       exitCode: EXIT.AUTH,
@@ -161,6 +165,24 @@ function classify(error: unknown): ErrorReport {
         ],
       };
     }
+    // A 4xx that got this far is the request itself being wrong: an unknown field, a value
+    // out of range, a malformed date. Sending the caller to check the service wastes their
+    // time on the one class of failure that retrying cannot fix. The server's own message is
+    // usually specific, so the hint's job is only to say where to look next.
+    //
+    // The exit code stays 1 rather than 2 on purpose: 2 means the CLI rejected the input
+    // before spending anything, and that distinction is worth keeping.
+    if (error.status !== undefined && error.status >= 400 && error.status < 500) {
+      const help = command ? `sentisense help ${command}` : "sentisense --help";
+      return {
+        exitCode: EXIT.ERROR,
+        lines: [
+          `error: the API rejected the request (${error.status}): ${error.message}`,
+          `next: check the flags and values you passed. Run "${help}" for the accepted fields and examples.`,
+        ],
+      };
+    }
+
     return {
       exitCode: EXIT.ERROR,
       lines: [

@@ -123,7 +123,7 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
     return result.exitCode ?? EXIT.OK;
   } catch (error) {
     const debug = argv.includes("--debug");
-    const report = describeError(error, debug);
+    const report = describeError(error, debug, name);
     for (const line of report.lines) io.stderr(`${line}\n`);
     return report.exitCode;
   }
