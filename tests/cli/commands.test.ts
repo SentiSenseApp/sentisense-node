@@ -244,6 +244,59 @@ describe("command wiring", () => {
     expect(result.stdout).toContain("10b5-1");
   });
 
+  it("insiders excludes code-F tax withholding from the sold total", async () => {
+    const base = {
+      ticker: "NVDA",
+      companyName: "NVIDIA Corporation",
+      insiderName: "An Officer",
+      insiderTitle: "President",
+      insiderRelation: "OFFICER",
+      officer: true,
+      director: false,
+      tenPctOwner: false,
+      transactionDate: "2026-08-14",
+      filedDate: "2026-08-16",
+      securityTitle: "Common Stock",
+      sharesOwnedAfter: 40000,
+      directOwnership: true,
+      rule10b51: false,
+    };
+    const result = await run(["insiders", "NVDA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [
+          /insider\/trades\/NVDA/,
+          preview([
+            {
+              ...base,
+              transactionCode: "S",
+              transactionType: "SELL",
+              sharesTransacted: 1000,
+              pricePerShare: 100,
+              totalValue: 100000,
+            },
+            {
+              ...base,
+              transactionCode: "F",
+              transactionType: "SELL",
+              securityTitle: "Tax Withholding",
+              sharesTransacted: 9000,
+              pricePerShare: 100,
+              totalValue: 900000,
+            },
+          ]),
+        ],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    // The sold headline carries only the open-market sale; the code-F dollars
+    // land in a separate withheld figure and the row is labeled, not colored.
+    expect(result.stdout).toMatch(/sold:\s+100k/);
+    expect(result.stdout).toMatch(/withheld:\s+900k/);
+    expect(result.stdout).not.toMatch(/sold:\s+1\.0?0?m/i);
+    expect(result.stdout).toContain("TAX-W");
+  });
+
   it("insights passes the urgency filter through", async () => {
     const result = await run(["insights", "NVDA", "--urgency", "high", "--plain"], {
       env: KEYED,

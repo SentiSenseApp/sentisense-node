@@ -14,6 +14,9 @@ export const insidersCommand: CommandDef = {
   ],
   notes: [
     "Rows are individual filed transactions, newest first, not a net total.",
+    "The bought/sold figures count open-market rows only. Form 4 code F rows (shares withheld",
+    "to cover taxes on vesting) arrive typed SELL but are mechanical withholding, not a decision",
+    "to sell, so they are excluded from sold and shown separately as withheld.",
     "The plan column says whether the trade was under a confirmed pre-arranged 10b5-1 plan,",
     "which is the difference between a scheduled sale and a discretionary one.",
     "A free key sees the top few transactions; a PRO key sees the window you asked for.",
@@ -40,19 +43,24 @@ export const insidersCommand: CommandDef = {
     }
     const shown = full ? trades : trades.slice(0, 15);
 
+    const isWithholding = (row: (typeof trades)[number]) => row.transactionCode === "F";
     const buys = trades.filter((trade) => trade.transactionType === "BUY");
-    const sells = trades.filter((trade) => trade.transactionType === "SELL");
+    const sells = trades.filter((trade) => trade.transactionType === "SELL" && !isWithholding(trade));
+    const withheld = trades.filter(isWithholding);
     const sum = (rows: typeof trades) => rows.reduce((total, row) => total + (row.totalValue || 0), 0);
+
+    const headline = [
+      field("trades", String(trades.length)),
+      field("bought", humanize(sum(buys)), buys.length > 0 ? "up" : undefined),
+      field("sold", humanize(sum(sells)), sells.length > 0 ? "down" : undefined),
+    ];
+    if (withheld.length > 0) headline.push(field("withheld", humanize(sum(withheld))));
 
     const blocks: Block[] = [
       {
         kind: "head",
         title: field("ticker", ticker),
-        right: fields(
-          field("trades", String(trades.length)),
-          field("bought", humanize(sum(buys)), buys.length > 0 ? "up" : undefined),
-          field("sold", humanize(sum(sells)), sells.length > 0 ? "down" : undefined),
-        ),
+        right: fields(...headline),
       },
     ];
 
@@ -68,8 +76,12 @@ export const insidersCommand: CommandDef = {
           cell(truncate(trade.insiderName, full ? 40 : 22)),
           cell(truncate(trade.insiderTitle ?? "", full ? 40 : 18)),
           cell(
-            trade.transactionType,
-            trade.transactionType === "BUY" ? "up" : trade.transactionType === "SELL" ? "down" : undefined,
+            isWithholding(trade) ? "TAX-W" : trade.transactionType,
+            !isWithholding(trade) && trade.transactionType === "BUY"
+              ? "up"
+              : !isWithholding(trade) && trade.transactionType === "SELL"
+                ? "down"
+                : undefined,
           ),
           cell(humanize(trade.sharesTransacted, 1)),
           cell(humanize(trade.totalValue)),
