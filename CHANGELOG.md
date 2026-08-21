@@ -1,5 +1,68 @@
 # Changelog
 
+## 0.46.0
+
+### Changed
+
+- **`insiders` no longer counts tax withholding as selling.** Form 4 code `F` rows (shares
+  withheld by the issuer to cover taxes at vest) arrive typed `SELL` but are mechanical, not a
+  decision to sell. The `sold:` headline now sums open-market sales only; withholding shows as
+  its own `withheld:` figure when present, and those rows read `TAX-W` in the table instead of
+  a red `SELL`. `--json` is unchanged: it remains the exact API response, every row as filed.
+
+## 0.45.0
+
+### Fixed
+
+- **`news --days N` now sends the parameter the API actually reads**, so the flag narrows the
+  market-wide window as documented instead of being silently ignored. A short window can be
+  legitimately empty; the command says so rather than widening it behind your back.
+- **Dividend yield no longer renders 100x too small for fractional values.** A 2.89% yield
+  displayed as 0.03%. Ratio-scaled fields and percent-scaled fields are now formatted by what
+  the API serves, not by one shared assumption.
+- Rejected-request hints (HTTP 400) now point at the caller's input rather than blaming the
+  service, and exit 1, keeping the documented split: 1 means the API rejected the request,
+  2 means the CLI refused the input before any request was sent.
+
+## 0.44.0
+
+### Added
+
+- **Voluntary caller identity.** Set `SENTISENSE_SKILL` (the slug of the skill driving the
+  tool) and `SENTISENSE_AGENT_NAME` (what your agent is called) and requests carry that
+  identity in the User-Agent comment, as in `(stock-analysis; agent/research-desk)`. Both are
+  optional, resolved flag first (`--skill`, `--agent`), then environment, then stored config
+  (`auth --skill ... --agent ...`). Values are sanitized to a safe character set and capped at
+  32 characters, so nothing you set can reshape the header.
+
+## 0.43.0
+
+### Changed
+
+- **Surplus tickers are rejected, not dropped.** Single-ticker commands given two symbols exit
+  2 with a message naming both, instead of silently answering for the first one.
+- **Unknown tickers exit 4.** A command returning an empty result now verifies the symbol
+  exists before exiting, so a typo reads as "no such symbol" rather than "no data".
+- Help examples corrected to commands that answer with live data.
+
+## 0.42.0
+
+### Added
+
+- **A command line interface, in this same package.** `npx -y sentisense quote NVDA` and
+  thirteen siblings: `auth`, `health`, `quote`, `sentiment`, `mood`, `analysts`, `earnings`,
+  `insiders`, `insights`, `congress`, `news`, `flows`, `options`, `screen`. Three output
+  modes: a readable terminal layout, plain text when piped, and `--json` for the exact API
+  response, envelope included. Stable exit codes 0 through 6, documented in the README. Keys
+  come from `SENTISENSE_API_KEY` or a stored config at `~/.config/sentisense/` (mode 600,
+  `auth --remove` to delete).
+- **`stocks.getOptionsSummary(ticker)`**: the end-of-day options dossier as an SDK method.
+- **`userAgentSuffix` client option**: append your tool's own identity to the User-Agent.
+
+### Fixed
+
+- `CongressTrade.party` and `state` are typed nullable, matching rows the wire actually serves.
+
 ## 0.41.0
 
 ### Added
