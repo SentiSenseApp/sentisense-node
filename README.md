@@ -117,12 +117,12 @@ If you set `SENTISENSE_AGENT_NAME` (what your agent is called) and `SENTISENSE_S
 
 ```bash
 export SENTISENSE_AGENT_NAME=research-desk
-export SENTISENSE_SKILL=stock-analysis
+export SENTISENSE_SKILL=us-stocks-analysis
 npx -y sentisense@latest quote NVDA
-# User-Agent: sentisense-node/{version} sentisense-cli/{version} (stock-analysis; agent/research-desk)
+# User-Agent: sentisense-node/{version} sentisense-cli/{version} (us-stocks-analysis; agent/research-desk)
 ```
 
-Either can also be a flag (`--agent`, `--skill`) or a stored setting (`sentisense auth --agent research-desk --skill stock-analysis`), resolved flag first, then environment, then config. Values are reduced to letters, digits, dot, underscore and hyphen, and capped at 32 characters, so nothing you set can reshape the header.
+Either can also be a flag (`--agent`, `--skill`) or a stored setting (`sentisense auth --agent research-desk --skill us-stocks-analysis`), resolved flag first, then environment, then config. Values are reduced to letters, digits, dot, underscore and hyphen, and capped at 32 characters, so nothing you set can reshape the header.
 
 Research data, not investment advice.
 
