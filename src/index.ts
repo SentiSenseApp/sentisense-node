@@ -106,6 +106,7 @@ export type {
   StockPrice,
   StockQuote,
   StockDetail,
+  StockSocialDominance,
   SimilarStock,
   StockImage,
   StockProfile,

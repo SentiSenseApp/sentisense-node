@@ -133,11 +133,34 @@ export interface StockQuote {
   extendedHours?: ExtendedHoursInfo | null;
 }
 
+export interface StockSocialDominance {
+  value: number;
+  rank: number;
+  percentile: number;
+}
+
+/**
+ * Stock with company name and entity metadata.
+ *
+ * The API names the company in two fields: `simpleName` is the short display name
+ * ("Agilent") and `companyName` is the legal name ("Agilent Technologies, Inc.").
+ */
 export interface StockDetail {
   ticker: string;
+  /**
+   * @deprecated The API never sends this field. It is filled from `simpleName` so
+   * older code keeps working; read `simpleName` or `companyName` instead.
+   */
   name: string;
+  /** Short display name, e.g. "Agilent". */
+  simpleName: string;
+  /** Legal name, e.g. "Agilent Technologies, Inc.". */
+  companyName: string;
   kbEntityId?: string;
   urlSlug?: string;
+  /** Brand hex colour. Null for roughly two thirds of the universe. */
+  brandColor?: string | null;
+  socialDominance?: StockSocialDominance | null;
 }
 
 export interface SimilarStock {

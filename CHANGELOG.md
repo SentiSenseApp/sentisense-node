@@ -2,6 +2,17 @@
 
 ## 0.47.0
 
+### Fixed
+
+- **`stocks.listDetailed()` and `stocks.listPopularDetailed()` now carry the company names
+  they promised.** The API returns `simpleName` ("Agilent") and `companyName` ("Agilent
+  Technologies, Inc."), but `StockDetail` only declared a `name` field that the API has never
+  sent, so every row read `undefined` and anything touching `.name` threw. `simpleName` and
+  `companyName` are now declared, and `name` is filled from `simpleName` so existing code
+  reads a name instead of crashing. `brandColor` and `socialDominance` were also already in
+  the response and previously undeclared; both are now typed, and the new
+  `StockSocialDominance` type is exported.
+
 ### Added
 
 - **Options Intelligence, most of it new to the SDK.** `client.options.getOverview()` returns the

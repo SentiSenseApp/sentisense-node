@@ -350,3 +350,58 @@ describe("stocks.getOptionsHistory", () => {
     expect(result.data.window).toBe("1y");
   });
 });
+
+describe("stocks.listDetailed / listPopularDetailed", () => {
+  // The API sends simpleName and companyName and has never sent `name`. Before this
+  // was backfilled, every row came back with name === undefined and callers reading
+  // `.name` crashed. Keep both endpoints honest.
+  const wireRow = {
+    ticker: "A",
+    simpleName: "Agilent",
+    companyName: "Agilent Technologies, Inc.",
+    kbEntityId: "kb/company/107",
+    urlSlug: "Agilent-Technologies-Inc",
+    brandColor: null,
+    socialDominance: { value: 0.00022, rank: 730, percentile: 28.87 },
+  };
+
+  it("backfills the legacy name alias from simpleName", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([wireRow]));
+    const [row] = await client.stocks.listDetailed();
+    expect(row.name).toBe("Agilent");
+    expect(row.simpleName).toBe("Agilent");
+    expect(row.companyName).toBe("Agilent Technologies, Inc.");
+  });
+
+  it("carries brandColor and socialDominance through", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([wireRow]));
+    const [row] = await client.stocks.listDetailed();
+    expect(row.brandColor).toBeNull();
+    expect(row.socialDominance).toEqual({ value: 0.00022, rank: 730, percentile: 28.87 });
+  });
+
+  it("falls back to companyName when simpleName is absent", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse([{ ticker: "A", companyName: "Agilent Technologies, Inc." }]),
+    );
+    const [row] = await client.stocks.listDetailed();
+    expect(row.name).toBe("Agilent Technologies, Inc.");
+  });
+
+  it("does not overwrite a name the API does send", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse([{ ticker: "A", name: "Explicit", simpleName: "Agilent" }]),
+    );
+    const [row] = await client.stocks.listDetailed();
+    expect(row.name).toBe("Explicit");
+  });
+
+  it("backfills on listPopularDetailed too", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse([{ ticker: "AAPL", simpleName: "Apple", companyName: "Apple Inc." }]),
+    );
+    const [row] = await client.stocks.listPopularDetailed();
+    expect(row.name).toBe("Apple");
+    expect(mockFetch.mock.calls[0][0]).toContain("/api/v1/stocks/popular/detailed");
+  });
+});

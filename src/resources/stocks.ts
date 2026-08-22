@@ -36,6 +36,20 @@ import type {
   StockQuote,
 } from "../types.js";
 
+/**
+ * Fill the legacy `name` alias from the fields the API actually sends.
+ *
+ * `/stocks/detailed` and `/stocks/popular/detailed` return `simpleName` and
+ * `companyName`; they have never sent `name`. Callers reading `.name` got
+ * `undefined`, so it is backfilled here rather than left to crash.
+ */
+function withLegacyName(rows: StockDetail[]): StockDetail[] {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map((row) =>
+    row && !row.name ? { ...row, name: row.simpleName || row.companyName || "" } : row,
+  );
+}
+
 export class Stocks {
   constructor(private client: APIClient) {}
 
@@ -44,9 +58,10 @@ export class Stocks {
     return this.client.get("/api/v1/stocks");
   }
 
-  /** List all stocks with name, kbEntityId, urlSlug. */
+  /** List all stocks with company names, kbEntityId, urlSlug. */
   async listDetailed(): Promise<StockDetail[]> {
-    return this.client.get("/api/v1/stocks/detailed");
+    const rows = await this.client.get<StockDetail[]>("/api/v1/stocks/detailed");
+    return withLegacyName(rows);
   }
 
   /** Get popular ticker symbols. */
@@ -56,7 +71,8 @@ export class Stocks {
 
   /** Get popular stocks with details. */
   async listPopularDetailed(): Promise<StockDetail[]> {
-    return this.client.get("/api/v1/stocks/popular/detailed");
+    const rows = await this.client.get<StockDetail[]>("/api/v1/stocks/popular/detailed");
+    return withLegacyName(rows);
   }
 
   /** Get real-time price for a single ticker. */
