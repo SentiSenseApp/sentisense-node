@@ -19,6 +19,7 @@ import { Institutional } from "./resources/institutional.js";
 import { KB } from "./resources/kb.js";
 import { MarketMoodResource } from "./resources/marketMood.js";
 import { MarketSummaryResource } from "./resources/marketSummary.js";
+import { Options } from "./resources/options.js";
 import { Screener } from "./resources/screener.js";
 import { Stocks } from "./resources/stocks.js";
 import { Indexes } from "./resources/indexes.js";
@@ -104,6 +105,7 @@ export class SentiSense implements APIClient {
   readonly calendar: Calendar;
   readonly earnings: Earnings;
   readonly screener: Screener;
+  readonly options: Options;
 
   constructor(options: SentiSenseOptions = {}) {
     this.apiKey = options.apiKey;
@@ -134,6 +136,7 @@ export class SentiSense implements APIClient {
     this.calendar = new Calendar(this);
     this.earnings = new Earnings(this);
     this.screener = new Screener(this);
+    this.options = new Options(this);
   }
 
   /** @internal */

@@ -535,6 +535,144 @@ export interface OptionsSummary {
   unusual?: OptionsUnusualContract[];
 }
 
+/** Trailing window for `client.stocks.getOptionsHistory()`. */
+export type OptionsHistoryWindow = "1y" | "2y" | "5y";
+
+export interface GetOptionsHistoryOptions {
+  /**
+   * Trailing window. Omitted, the API applies its own default of `"1y"`, and any
+   * unrecognised value clamps to `"1y"` rather than erroring.
+   *
+   * `"5y"` means "everything stored", which is currently a little over two years, so
+   * `"5y"` and `"2y"` can answer with nearly the same series. Read the window actually
+   * served off `OptionsHistory.window` rather than assuming you got what you asked for:
+   * a FREE key always receives `"1y"` whatever it requests.
+   */
+  window?: OptionsHistoryWindow;
+}
+
+/**
+ * The daily-aggregate time series for one stock or ETF, from
+ * `client.stocks.getOptionsHistory()`.
+ *
+ * **Unlike `getOptionsSummary`, this never answers with a null payload.** A ticker
+ * outside the covered universe, an unknown symbol, and a covered ticker with nothing
+ * stored yet all return this object with an empty `series`, so read the array's length
+ * rather than null-checking the payload.
+ */
+export interface OptionsHistory {
+  ticker?: string;
+  /**
+   * Window the server actually served, which is not always the one you asked for: an
+   * unrecognised request clamps to `"1y"`, and so does any request on a FREE key.
+   */
+  window?: string;
+  /** Ascending by date, oldest first. Same shape as the dossier's `latest` aggregate. */
+  series?: OptionsAggregate[];
+}
+
+/**
+ * One ticker's row on the market-wide options radar, from `client.options.getOverview()`.
+ *
+ * Every percentile here is against **that ticker's own trailing history**, never against
+ * the rest of the board, so a row's `ivRank1y` says this name's implied volatility is high
+ * for itself and says nothing about whether it is high next to another name's.
+ *
+ * A covered ticker whose baseline is still building (roughly 60 sessions, plus a liquidity
+ * floor) carries its raw readings with the percentiles and `interestScore` omitted, so
+ * absent scores mean "not enough history yet", not "nothing interesting".
+ */
+export interface OptionsOverviewRow {
+  ticker?: string;
+  /** Company name, or the fund name on an ETF row. Absent when unmapped. */
+  name?: string;
+  /**
+   * Sector on a stock row. On an **ETF row this carries the fund's asset class**
+   * (`"Equity"`, `"Bond"`, `"Commodity"`, ...) rather than a sector, so do not feed the two
+   * boards' values into one sector breakdown.
+   */
+  sector?: string;
+  /** Session this row describes, ISO calendar day. */
+  asOf?: string;
+  /** Options-implied positioning lean, roughly -1 to 1, negative for put-heavy. */
+  sentiment?: number;
+  /** Composite 0-100 blend of how extreme this row's readings are. Omitted while the baseline builds. */
+  interestScore?: number;
+  /** Put/call volume ratio for the session. */
+  pcVol?: number;
+  /** Percentile (0-100) of `pcVol` within this ticker's own trailing year. */
+  pcVolPctl1y?: number;
+  /** At-the-money implied volatility as a fraction, so `0.42` is 42%. */
+  atmIv?: number;
+  /** Where `atmIv` sits in this ticker's own trailing-year range, 0-100. */
+  ivRank1y?: number;
+  /** `iv25p - iv25c`, on the same scale as the IVs: `0.03` is three IV points. */
+  skew25d?: number;
+  /** Percentile (0-100) of `skew25d` within this ticker's own trailing year. */
+  skewPctl1y?: number;
+  /** Premium traded this session: volume times mark times 100. */
+  notionalVol?: number;
+  /** Signed change of `atmIv` against its ~20-session mean. Rank "biggest IV moves" by absolute value. */
+  ivMove20?: number;
+  /** Trailing-1y observation count, which is what drives the building-baseline state. */
+  observations1y?: number;
+  /** Unusually-active contracts this session. */
+  unusualCount?: number;
+  /** Largest volume/open-interest multiple among them. Absent when `unusualCount` is 0. */
+  maxVolOiRatio?: number;
+  /** Largest premium among them. Absent when `unusualCount` is 0. */
+  maxUnusualPremium?: number;
+  /** Side of the single heaviest open-interest wall, `"call"` or `"put"`. */
+  wallSide?: string;
+  /** Strike of that wall. */
+  wallStrike?: number;
+  /** That wall's share of its own side's open interest, 0 to 1. */
+  wallShare?: number;
+}
+
+/**
+ * The market-wide options radar, from `client.options.getOverview()`.
+ *
+ * **Two separately-ranked boards, never one.** `rows` is the covered stock universe and
+ * `etfRows` is the covered ETF universe, each already sorted by `interestScore` descending
+ * with unscored building-baseline rows last. Concatenating them produces a ranking that
+ * means nothing, because every reading behind the score is a percentile of that ticker's
+ * own past: an ETF's 90th percentile and a single stock's 90th percentile are measured
+ * against different histories.
+ *
+ * The aggregates split the same way. `medianIvRank`, `marketPcVol`, `extremeCount` and
+ * `coverageCount` describe the stock board only; the four `etf`-prefixed fields describe
+ * the ETF board and are omitted entirely when a build has no ETF rows.
+ *
+ * End of day, not live: `asOf` is the latest completed session.
+ */
+export interface OptionsOverview {
+  /** Session the build describes, ISO calendar day. */
+  asOf?: string;
+  /** Median `ivRank1y` across the stock board. */
+  medianIvRank?: number;
+  /** Median put/call volume ratio across the stock board. */
+  marketPcVol?: number;
+  /** Stock rows reading as extreme today, out of `coverageCount`. */
+  extremeCount?: number;
+  /** Full size of the stock board, which stays the full number even on a truncated FREE response. */
+  coverageCount?: number;
+  /** The stock board, ranked. FREE keys receive the top 25; the envelope's `totalCount` carries the full size. */
+  rows?: OptionsOverviewRow[];
+  /** The ETF board, ranked independently. Omitted entirely when a build has no ETF rows. */
+  etfRows?: OptionsOverviewRow[];
+  /** Median `ivRank1y` across the ETF board. */
+  etfMedianIvRank?: number;
+  /** Median put/call volume ratio across the ETF board. */
+  etfMarketPcVol?: number;
+  /** ETF rows reading as extreme today, out of `etfCoverageCount`. */
+  etfExtremeCount?: number;
+  /** Full size of the ETF board, which stays the full number even on a truncated FREE response. */
+  etfCoverageCount?: number;
+  /** Full ETF board size on a FREE response, mirroring what the envelope's `totalCount` does for stocks. */
+  etfTotalCount?: number;
+}
+
 // ── Documents & News ────────────────────────────────────────
 
 export type DocumentSource = "news" | "reddit" | "x" | "substack" | "youtube";

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.47.0
+
+### Added
+
+- **Options Intelligence, most of it new to the SDK.** `client.options.getOverview()` returns the
+  market-wide radar, and `client.stocks.getOptionsHistory(ticker, { window })` returns a name's
+  daily aggregates as a time series over `1y`, `2y` or `5y`. `client.stocks.getOptionsSummary` is
+  unchanged.
+- New exported types: `OptionsOverview`, `OptionsOverviewRow`, `OptionsHistory`,
+  `OptionsHistoryWindow`, `GetOptionsHistoryOptions`.
+
+Two behaviours worth knowing before you chart any of it. The radar's `rows` and `etfRows` are
+separately-ranked boards and must not be merged, because every reading behind a row's score is a
+percentile of that ticker's own history rather than of the board. And `getOptionsHistory` reports
+an uncovered ticker as an empty `series`, not as the `null` payload `getOptionsSummary` uses, so
+read the array's length there.
+
 ## 0.46.0
 
 ### Changed

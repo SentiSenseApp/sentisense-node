@@ -15,11 +15,13 @@ import type {
   GetImagesOptions,
   GetMetricsBreakdownOptions,
   GetProfileOptions,
+  GetOptionsHistoryOptions,
   GetSimilarOptions,
   KpiCoverageResponse,
   KpiTypeEntry,
   MarketStatus,
   MetricsBreakdown,
+  OptionsHistory,
   OptionsSummary,
   PreviewResponse,
   SimilarStock,
@@ -287,6 +289,33 @@ export class Stocks {
   async getOptionsSummary(ticker: string): Promise<PreviewResponse<OptionsSummary | null>> {
     return this.client.get(
       `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/options/summary`,
+    );
+  }
+
+  /**
+   * Get the daily options aggregates for one stock or ETF as a time series, oldest first.
+   * Use it to chart how a reading has trended: implied volatility, put/call flow, skew.
+   *
+   * Each element has the same shape as the dossier's `latest` aggregate, so a chart built
+   * off `getOptionsSummary` reads this series without a second mapping.
+   *
+   * **A null payload is not how this one reports no coverage.** Unlike
+   * {@link Stocks.getOptionsSummary}, an uncovered ticker, an unknown symbol and a covered
+   * ticker with nothing stored yet all answer with a populated object whose `series` is
+   * empty. Check the array's length, not the payload.
+   *
+   * The window served is not always the window requested: an unrecognised value clamps to
+   * `"1y"` rather than erroring, and a FREE key always receives `"1y"`. Read `data.window`
+   * for what you actually got. `"5y"` means all stored history, currently a little over two
+   * years, so it can answer with nearly the same series as `"2y"`.
+   */
+  async getOptionsHistory(
+    ticker: string,
+    options?: GetOptionsHistoryOptions,
+  ): Promise<PreviewResponse<OptionsHistory>> {
+    return this.client.get(
+      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/options/history`,
+      options,
     );
   }
 }

@@ -211,6 +211,7 @@ client.stocks.getMarketStatus()                         // Market open/closed
 client.stocks.getFundamentals("AAPL")                   // Financial data
 client.stocks.getShortInterest("GME")                   // Short interest
 client.stocks.getOptionsSummary("NVDA")                 // End-of-day options dossier
+client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // Daily options aggregates over time
 client.stocks.getAISummary("AAPL", { depth: "deep" })   // AI report (PRO)
 ```
 
@@ -385,6 +386,20 @@ client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" }
 ```
 
 Available metric types: `mentions`, `sentiment`, `sentisense`, `social_dominance`, `creators`.
+
+### Options
+
+End-of-day options positioning: where implied volatility, put/call flow and skew are unusual today, and how a name's readings have trended.
+
+```typescript
+client.options.getOverview()                            // Market-wide radar, ranked
+client.stocks.getOptionsSummary("NVDA")                 // One name's full dossier
+client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // That name's daily series
+```
+
+The radar carries two separately-ranked boards: `data.rows` for stocks and `data.etfRows` for ETFs. Keep them apart. Every reading behind a row's `interestScore` is a percentile of that ticker's own trailing history, so a ranking built across both boards compares numbers measured against different baselines. The aggregates split the same way, with the `etf`-prefixed fields describing the ETF board alone.
+
+A row whose baseline is still building carries its raw readings with the percentiles and `interestScore` omitted, which means "not enough history yet" rather than "nothing interesting". `getOptionsSummary` reports an uncovered ticker as a `null` payload; `getOptionsHistory` reports it as an empty `series` instead, so check the array rather than null-checking there.
 
 ### Market mood & knowledge base
 

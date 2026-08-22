@@ -292,3 +292,61 @@ describe("stocks.getOptionsSummary", () => {
     expect(result.data?.context?.ivRank1y).toBeUndefined();
   });
 });
+
+describe("stocks.getOptionsHistory", () => {
+  it("calls the per-ticker history endpoint and upper-cases the symbol", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: { ticker: "NVDA", window: "1y", series: [{ date: "2025-08-14", atmIv: 0.42 }] },
+      }),
+    );
+    const result = await client.stocks.getOptionsHistory("nvda");
+    expect(mockFetch.mock.calls[0][0]).toContain("/api/v1/stocks/NVDA/options/history");
+    expect(result.data.series?.[0].atmIv).toBe(0.42);
+  });
+
+  it("sends the requested window as a query parameter", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: { ticker: "NVDA", window: "2y", series: [] },
+      }),
+    );
+    await client.stocks.getOptionsHistory("NVDA", { window: "2y" });
+    expect(mockFetch.mock.calls[0][0]).toContain("window=2y");
+  });
+
+  it("reports no coverage as an empty series, never as a null payload", async () => {
+    // The contrast with getOptionsSummary is the whole point: that one answers null for an
+    // uncovered ticker, this one answers a populated object with nothing in it. A caller
+    // that null-checks here waits for a null that never arrives and reads an empty chart as
+    // a live one.
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: { ticker: "ZZZZ", window: "1y", series: [] },
+      }),
+    );
+    const result = await client.stocks.getOptionsHistory("ZZZZ");
+    expect(result.data).not.toBeNull();
+    expect(result.data.series).toEqual([]);
+  });
+
+  it("reports the window actually served, which need not be the one requested", async () => {
+    // An unrecognised window clamps to 1y instead of erroring, and a free key is held at 1y
+    // whatever it asks for, so the echoed window is the only honest label for a chart axis.
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: { ticker: "NVDA", window: "1y", series: [{ date: "2025-08-14" }] },
+      }),
+    );
+    const result = await client.stocks.getOptionsHistory("NVDA", { window: "5y" });
+    expect(result.data.window).toBe("1y");
+  });
+});
