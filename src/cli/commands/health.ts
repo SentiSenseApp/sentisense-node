@@ -103,9 +103,7 @@ export const healthCommand: CommandDef = {
             ),
             field(
               "api key",
-              keyState.ok
-                ? `ok (${context.apiKey ? maskKey(context.apiKey) : ""})`
-                : keyState.detail,
+              keyState.ok ? `ok (via ${context.apiKeySource})` : keyState.detail,
               keyState.ok ? "up" : "down",
             ),
             field("latency", latency === undefined ? "n/a" : `${latency} ms`),

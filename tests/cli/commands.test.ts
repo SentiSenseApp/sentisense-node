@@ -619,6 +619,21 @@ describe("health", () => {
     expect(result.code).toBe(6);
     expect(result.stdout).toContain("unreachable");
   });
+
+  it("never prints any characters of the key, in plain or json output", async () => {
+    const key = "ssk_live_abcdefgh1234";
+    for (const flag of ["--plain", "--json"]) {
+      const result = await run(["health", flag], {
+        env: { SENTISENSE_API_KEY: key },
+        fetch: routeFetch([[/market-status/, MARKET_STATUS]]),
+      });
+      expect(result.code).toBe(0);
+      for (let i = 0; i + 4 <= key.length; i++) {
+        expect(result.stdout).not.toContain(key.slice(i, i + 4));
+        expect(result.stderr).not.toContain(key.slice(i, i + 4));
+      }
+    }
+  });
 });
 
 describe("auth", () => {
@@ -630,8 +645,9 @@ describe("auth", () => {
         configDir: dir,
       });
       expect(saved.code).toBe(0);
-      expect(saved.stdout).toContain("ssk_...1234");
+      expect(saved.stdout).toContain("hidden (21 chars)");
       expect(saved.stdout).not.toContain("abcdefgh");
+      expect(saved.stdout).not.toContain("1234");
       expect(readConfig(dir)).toEqual({ apiKey: "ssk_live_abcdefgh1234", agentName: "desk" });
 
       const shown = await run(["auth", "--plain"], { env: {}, configDir: dir });

@@ -87,6 +87,8 @@ export function clearConfig(dir: string): boolean {
 
 /** `ssk_live_1234...cdef`. Enough to recognise a key, never enough to use one. */
 export function maskKey(key: string): string {
-  if (key.length <= 8) return "*".repeat(key.length);
-  return `${key.slice(0, 4)}...${key.slice(-4)}`;
+  // Reveal nothing from the key itself: even a prefix/suffix fingerprint can land in
+  // logs, transcripts, or CI output. Length + the separately-reported source is enough
+  // to tell which key is configured.
+  return `hidden (${key.length} chars)`;
 }

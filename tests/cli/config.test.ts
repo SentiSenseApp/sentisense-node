@@ -106,11 +106,16 @@ describe("clearConfig", () => {
 });
 
 describe("maskKey", () => {
-  it("shows the ends and nothing else", () => {
-    expect(maskKey("ssk_live_abcdefgh1234")).toBe("ssk_...1234");
+  it("reveals length only", () => {
+    expect(maskKey("ssk_live_abcdefgh1234")).toBe("hidden (21 chars)");
+    expect(maskKey("short")).toBe("hidden (5 chars)");
   });
 
-  it("hides a short value entirely", () => {
-    expect(maskKey("short")).toBe("*****");
+  it("never contains any substring of the key", () => {
+    const key = "ssk_live_abcdefgh1234";
+    const masked = maskKey(key);
+    for (let i = 0; i + 4 <= key.length; i++) {
+      expect(masked).not.toContain(key.slice(i, i + 4));
+    }
   });
 });
