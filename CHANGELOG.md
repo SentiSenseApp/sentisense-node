@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.47.2
+
+### Changed
+
+- Copyright holder in `LICENSE` updated to the current legal entity. No code or API changes.
+
 ## 0.47.0
 
 ### Fixed
