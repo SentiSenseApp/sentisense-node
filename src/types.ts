@@ -194,6 +194,13 @@ export interface StockProfile {
   delistedDate?: string;
   /** Why it delisted. Absent unless `listingStatus` is `DELISTED`. */
   delistingReason?: 'acquired' | 'take_private' | 'bankruptcy' | 'exchange_rule' | 'merged';
+  /**
+   * For a tracked ETF ticker, the curated landscape card image for the fund: the
+   * same value returned by {@link EtfInfo.imageUrl}. Separate from `logoUrl` and
+   * `iconUrl`, which are square branding marks. Absent when no curated image is
+   * assigned, and for ordinary stocks.
+   */
+  imageUrl?: string | null;
   [key: string]: unknown;
 }
 

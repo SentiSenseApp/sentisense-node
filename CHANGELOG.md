@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.48.0
+
+### Added
+
+- `EtfInfo.imageUrl`: the curated landscape card image for a fund, returned by the ETF
+  listing. It is a wide presentation image rather than a square logo mark, so it suits a
+  list row or a profile header. Null when a fund has no curated image.
+- `StockProfile.imageUrl`: the same image on a tracked ETF ticker's profile. Distinct from
+  `logoUrl` and `iconUrl`, which stay square branding marks.
+
+### Fixed
+
+- The exported `VERSION` constant had drifted behind `package.json` and reported `0.47.1`
+  from the 0.47.2 release, so the version the client sent in its User-Agent understated the
+  installed release. Both are back in step.
+
 ## 0.47.2
 
 ### Changed

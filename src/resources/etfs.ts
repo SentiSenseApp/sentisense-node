@@ -9,6 +9,12 @@ export interface EtfInfo {
   issuer: string | null;
   trackedIndex: string | null;
   assetClass: string | null;
+  /**
+   * Curated landscape card image for the fund, suitable for a list row or a
+   * profile header. Distinct from a square logo mark. Null when the fund has no
+   * curated image assigned.
+   */
+  imageUrl: string | null;
 }
 
 export interface EtfHolding {
