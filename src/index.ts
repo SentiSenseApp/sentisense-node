@@ -7,8 +7,19 @@ export type {
   AnalystEstimate,
   AnalystEarningsSurprise,
   AnalystEstimatesResponse,
+  AnalystNote,
+  AnalystFirmRating,
+  AnalystCoverageAnalyst,
+  AnalystCoverageFirm,
+  AnalystCoverage,
+  AnalystFirmTenure,
+  AnalystCoverageBookEntry,
+  AnalystProfile,
+  AnalystCall,
   GetAnalystActionsOptions,
   GetAnalystMarketActivityOptions,
+  GetAnalystCoverageOptions,
+  GetAnalystCallsOptions,
 } from "./resources/analyst.js";
 
 // Screener types

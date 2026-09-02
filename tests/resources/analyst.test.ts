@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import SentiSense from "../../src/index.js";
+import SentiSense, { NotFoundError } from "../../src/index.js";
 
 const mockFetch = vi.fn();
 
@@ -55,6 +55,309 @@ describe("analyst.marketActivity", () => {
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/analyst/activity");
     expect(url).toContain("lookbackDays=7");
+  });
+});
+
+function errorResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("analyst.coverage", () => {
+  it("uppercases the ticker and leaves the window to the server when unset", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: { coverage: [] } }),
+    );
+    await client.analyst.coverage("amd");
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/analyst/AMD/coverage");
+    expect(url).not.toContain("lookbackDays");
+  });
+
+  it("forwards lookbackDays", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: { coverage: [] } }),
+    );
+    await client.analyst.coverage("AMD", { lookbackDays: 180 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("lookbackDays=180");
+  });
+
+  it("keeps the response-level counts when a free key truncates the rows", async () => {
+    // The counts describe the whole window, so they must survive the 5-row truncation.
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        data: {
+          ticker: "NVDA",
+          windowDays: 365,
+          asOf: "2026-09-01",
+          firmCount: 41,
+          ratingOnlyFirmCount: 6,
+          namedAnalystCount: 27,
+          noteCount: 97,
+          attributedNoteCount: 53,
+          unattributedNoteCount: 44,
+          attributionNote: "Publishers name the individual analyst on some notes and not others.",
+          coverage: [
+            {
+              firm: "DA Davidson",
+              analysts: [
+                {
+                  slug: "gil-luria",
+                  name: "Gil Luria",
+                  noteCount: 3,
+                  firstNote: "2025-09-22",
+                  lastNote: "2026-08-27",
+                  latestPriceTarget: 300.0,
+                },
+              ],
+              noteCount: 3,
+              attributedNoteCount: 3,
+              unattributedNoteCount: 0,
+              firstNote: "2025-09-22",
+              lastNote: "2026-08-27",
+              latestNote: {
+                publishedDate: "2026-08-27",
+                analyst: "Gil Luria",
+                priceTarget: 300.0,
+                adjPriceTarget: 300.0,
+                priceWhenPosted: 225.64,
+                newsTitle: "DA Davidson Reiterates Buy Rating on NVIDIA",
+                newsUrl: "https://example.com/note",
+                newsPublisher: "StreetInsider",
+              },
+              firmRating: {
+                rating: "Buy",
+                priorRating: "Buy",
+                actionType: "REITERATE",
+                date: "2026-08-27",
+              },
+            },
+          ],
+        },
+      }),
+    );
+    const result = await client.analyst.coverage("NVDA");
+    expect(result.isPreview).toBe(true);
+    expect(result.previewReason).toBe("PRO_REQUIRED");
+    expect(result.data.coverage).toHaveLength(1);
+    expect(result.data.firmCount).toBe(41);
+    expect(result.data.ratingOnlyFirmCount).toBe(6);
+    // The named analyst carries the slug that addresses profile() and calls().
+    expect(result.data.coverage[0].analysts[0].slug).toBe("gil-luria");
+  });
+
+  it("returns a rating-only firm as an ordinary row with no note", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: {
+          ticker: "NVDA",
+          firmCount: 1,
+          ratingOnlyFirmCount: 1,
+          coverage: [
+            {
+              firm: "Citigroup",
+              analysts: [],
+              noteCount: 0,
+              attributedNoteCount: 0,
+              unattributedNoteCount: 0,
+              firstNote: null,
+              lastNote: null,
+              latestNote: null,
+              firmRating: {
+                rating: "Buy",
+                priorRating: "Buy",
+                actionType: "REITERATE",
+                date: "2026-08-27",
+              },
+            },
+          ],
+        },
+      }),
+    );
+    const row = (await client.analyst.coverage("NVDA")).data.coverage[0];
+    expect(row.noteCount).toBe(0);
+    expect(row.latestNote).toBeNull();
+    expect(row.firmRating?.rating).toBe("Buy");
+  });
+
+  it("keeps an unattributed note rather than dropping it", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: {
+          ticker: "NVDA",
+          coverage: [
+            {
+              firm: "Deutsche Bank",
+              analysts: [],
+              noteCount: 1,
+              attributedNoteCount: 0,
+              unattributedNoteCount: 1,
+              firstNote: "2025-11-20",
+              lastNote: "2025-11-20",
+              latestNote: {
+                publishedDate: "2025-11-20",
+                analyst: null,
+                priceTarget: 215.0,
+                adjPriceTarget: 215.0,
+                priceWhenPosted: 186.52,
+                newsTitle: "Nvidia price target raised",
+                newsUrl: "https://example.com/note",
+                newsPublisher: "TheFly",
+              },
+              firmRating: null,
+            },
+          ],
+        },
+      }),
+    );
+    const row = (await client.analyst.coverage("NVDA")).data.coverage[0];
+    expect(row.analysts).toEqual([]);
+    expect(row.noteCount).toBe(1);
+    expect(row.latestNote?.analyst).toBeNull();
+  });
+
+  it("throws NotFoundError for a ticker with no coverage", async () => {
+    mockFetch.mockResolvedValueOnce(errorResponse(404, { error: "not_found" }));
+    await expect(client.analyst.coverage("NOSUCH")).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("analyst.profile", () => {
+  it("hits the people path", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: { slug: "dan-ives" } }),
+    );
+    await client.analyst.profile("dan-ives");
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/analyst/people/dan-ives");
+  });
+
+  it("reports the full book size in totalCount when the free tier truncates it", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        totalCount: 24,
+        data: {
+          slug: "gil-luria",
+          name: "Gil Luria",
+          role: "sell_side_equity",
+          mostRecentFirm: "DA Davidson",
+          firms: [
+            {
+              firm: "DA Davidson",
+              firstSeen: "2023-01-05",
+              lastSeen: "2026-08-27",
+              mostRecent: true,
+            },
+          ],
+          firstSeen: "2023-01-05",
+          lastSeen: "2026-08-27",
+          noteCount: 60,
+          tickerCount: 24,
+          coverage: [
+            {
+              ticker: "NVDA",
+              noteCount: 5,
+              firstNote: "2024-05-23",
+              lastNote: "2026-08-27",
+              latestPriceTarget: 300.0,
+              latestFirm: "DA Davidson",
+            },
+          ],
+        },
+      }),
+    );
+    const result = await client.analyst.profile("gil-luria");
+    expect(result.isPreview).toBe(true);
+    expect(result.totalCount).toBe(24);
+    expect(result.data.coverage).toHaveLength(1);
+    expect(result.data.firms[0].mostRecent).toBe(true);
+  });
+
+  it("throws NotFoundError on an unknown slug", async () => {
+    mockFetch.mockResolvedValueOnce(errorResponse(404, { error: "not_found" }));
+    await expect(client.analyst.profile("no-such-analyst")).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("analyst.calls", () => {
+  it("leaves paging to the server when unset", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, totalCount: 0, data: [] }),
+    );
+    await client.analyst.calls("dan-ives");
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/analyst/people/dan-ives/calls");
+    expect(url).not.toContain("limit");
+    expect(url).not.toContain("offset");
+  });
+
+  it("forwards limit and offset", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, totalCount: 0, data: [] }),
+    );
+    await client.analyst.calls("dan-ives", { limit: 50, offset: 25 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("limit=50");
+    expect(url).toContain("offset=25");
+  });
+
+  it("totalCount sizes the whole history, not the page", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        totalCount: 60,
+        data: [
+          {
+            publishedDate: "2026-08-27",
+            ticker: "NVDA",
+            firm: "DA Davidson",
+            priceTarget: 300.0,
+            adjPriceTarget: 300.0,
+            priceWhenPosted: 225.64,
+            newsTitle: "DA Davidson Reiterates Buy Rating on NVIDIA",
+            newsUrl: "https://example.com/note",
+            newsPublisher: "StreetInsider",
+          },
+        ],
+      }),
+    );
+    const result = await client.analyst.calls("gil-luria", { limit: 1 });
+    expect(result.totalCount).toBe(60);
+    expect(result.data[0].ticker).toBe("NVDA");
+    // One row of sixty: another page is available.
+    expect(0 + result.data.length).toBeLessThan(result.totalCount!);
+  });
+
+  it("previews a deep offset on a free key", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        totalCount: 60,
+        data: [],
+      }),
+    );
+    const result = await client.analyst.calls("gil-luria", { limit: 25, offset: 50 });
+    expect(result.isPreview).toBe(true);
+    expect(result.previewReason).toBe("PRO_REQUIRED");
+    expect(result.data).toEqual([]);
+  });
+
+  it("throws NotFoundError on an unknown slug", async () => {
+    mockFetch.mockResolvedValueOnce(errorResponse(404, { error: "not_found" }));
+    await expect(client.analyst.calls("no-such-analyst")).rejects.toThrow(NotFoundError);
   });
 });
 

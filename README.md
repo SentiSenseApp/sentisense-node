@@ -318,6 +318,39 @@ client.analyst.estimates("AAPL")                        // Forward EPS + surpris
 client.analyst.marketActivity({ lookbackDays: 7 })      // Market-wide analyst actions (PRO).
 ```
 
+Coverage answers "who covers this stock and what did they say" in one call, and it is the entry point into the per-analyst surfaces: every named analyst carries the slug that addresses their profile and their calls.
+
+```typescript
+client.analyst.coverage("NVDA", { lookbackDays: 365 })  // Who covers it, by firm. Free: 5 firms.
+client.analyst.profile("gil-luria")                     // One analyst's firms + coverage book.
+client.analyst.calls("gil-luria", { limit: 25 })        // Their price target notes, newest first.
+```
+
+```typescript
+const { data: book } = await client.analyst.coverage("NVDA");
+
+console.log(`${book.firmCount} firms, ${book.namedAnalystCount} named analysts`);
+console.log(`${book.attributedNoteCount} of ${book.noteCount} notes name someone`);
+
+for (const row of book.coverage.slice(0, 5)) {
+  if (row.noteCount === 0) {
+    // A desk can cover a stock on rating actions alone, with no price target.
+    console.log(`${row.firm}: rating only, ${row.firmRating?.rating}`);
+    continue;
+  }
+  const who = row.latestNote?.analyst ?? "unattributed";
+  console.log(`${row.firm}: ${row.latestNote?.priceTarget} (${who})`);
+
+  for (const analyst of row.analysts) {
+    if (!analyst.slug) continue;
+    const calls = await client.analyst.calls(analyst.slug, { limit: 10 });
+    console.log(`  ${analyst.name}: ${calls.totalCount} notes on record`);
+  }
+}
+```
+
+Two shapes to read rather than assume. A firm can appear with `noteCount: 0`, a `null` `latestNote` and a populated `firmRating`, because coverage means a price target **or** a rating action in the window. And a large, publisher-dependent share of notes name no individual, so an empty `analysts` array alongside a non-zero `noteCount` is normal: read `attributedNoteCount` and `unattributedNoteCount` off the response rather than hardcoding a rate. The response-level counts survive the free truncation, so they describe the whole window even when only 5 rows come back. An unknown slug throws `NotFoundError`, which keeps "published nothing we hold" distinguishable from "does not exist".
+
 ### Earnings
 
 The earnings analysis report is the assembled version of a quarter: one object per fiscal period carrying the editorial headline, the KPI cards with year-over-year deltas, the guidance language as management phrased it, and a summary of the earnings call. Pair it with the recent-reporters feed to drive a post-earnings sweep. Both return the preview envelope.
