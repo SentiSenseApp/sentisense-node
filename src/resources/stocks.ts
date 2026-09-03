@@ -34,6 +34,7 @@ import type {
   StockPrice,
   StockProfile,
   StockQuote,
+  StockRating,
 } from "../types.js";
 
 /**
@@ -333,5 +334,38 @@ export class Stocks {
       `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/options/history`,
       options,
     );
+  }
+
+  /**
+   * Get the SentiSense Rating for one stock: where it ranks against the other stocks rated
+   * that day, and the six dimensions the rank is blended from.
+   *
+   * The Rating is a *relative*, automatically generated research signal, for informational
+   * and educational purposes only. It ranks a stock against its cross-section; it is not
+   * financial, investment or trading advice and it is not a recommendation about any
+   * security. `disclaimer` carries the wording to display alongside a grade. Methodology:
+   * https://sentisense.ai/methodology/#sentisense-rating
+   *
+   * **A discriminated union on `rated`.** `if (rating.rated)` narrows to `letter`,
+   * `percentile`, `composite`, `ratedCount` and `methodologyVersion`; the `else` branch
+   * narrows to `reason`, `dimensionsPresent` and `presentDimensions`. Branch on the flag
+   * rather than testing a field for `undefined`.
+   *
+   * **Having no grade is a normal 200, not a 404.** ETFs and tickers outside the swept
+   * universe answer with `rated` false, and the composition still arrives so a card can
+   * render. Only a ticker that resolves to nothing we track rejects with
+   * {@link NotFoundError}; a request with no usable key rejects with
+   * {@link AuthenticationError}.
+   *
+   * `dimensions` always holds all six rows in a fixed order, including the ones with no
+   * data, which arrive with `present` false and a `null` percentile. Read `present` first
+   * and never read a missing percentile as zero. `letter` is served as stored rather than
+   * derived from `percentile`, so read it instead of computing your own bucket edges.
+   *
+   * For the daily history of a stock's percentile, ask `client.entityMetrics.getMetrics`
+   * for the `sentisense_rating` metric.
+   */
+  async getRating(ticker: string): Promise<StockRating> {
+    return this.client.get(`/api/v1/rating/${encodeURIComponent(ticker.toUpperCase())}`);
   }
 }

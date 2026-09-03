@@ -703,6 +703,155 @@ export interface OptionsOverview {
   etfTotalCount?: number;
 }
 
+// ── SentiSense Rating ───────────────────────────────────────
+//
+// The SentiSense Rating is an informational, relative rank: it places a stock against the
+// other stocks rated on the same day, across six dimensions. It is a research signal, not a
+// recommendation, and it carries no directive meaning about any security. Methodology:
+// https://sentisense.ai/methodology/#sentisense-rating
+
+/** The six dimensions the composite is blended from, by stable `key`. */
+export type RatingDimensionKey =
+  | "crowd"
+  | "smart_money"
+  | "options"
+  | "analysts"
+  | "fundamentals"
+  | "earnings";
+
+/**
+ * Why a stock has no grade.
+ *
+ * `stale` means a row exists but the nightly has not written recently, which is an
+ * operational gap rather than a coverage one. `not_rated_today` means no row and no refusal
+ * on record: an ETF, a ticker outside the swept universe, or one that entered coverage after
+ * the last run. The other two mean the run looked and declined to grade.
+ */
+export type RatingNotRatedReason =
+  | "stale"
+  | "not_rated_today"
+  | "insufficient_dimensions"
+  | "insufficient_coverage_weight";
+
+/**
+ * One constituent leg behind a dimension's percentile.
+ *
+ * Only the smart-money dimension carries legs today; every other dimension omits the field
+ * entirely, so an absent `subLegs` means "this dimension has no legs", never "the legs were
+ * all zero".
+ */
+export interface RatingSubLeg {
+  /** Stable snake_case identifier, e.g. `"inst_13f"`. */
+  key: string;
+  label: string;
+  /** The leg's natural-scale reading. `null` when the leg had no data. */
+  raw: number | null;
+  /** `"%"` for a percentage, `"ratio"` for a scale-free balance. */
+  unit: string;
+}
+
+/**
+ * One of the six dimensions the composite is blended from.
+ *
+ * **All six always arrive, in a fixed order, whether or not they had data.** An absent
+ * dimension is a full row with `present` false and a `null` percentile; the server never
+ * drops it, precisely so a client cannot mistake a gap for a five-dimension rating. Read
+ * `present` before reading `percentile`, and never substitute zero for a `null`: zero is the
+ * bottom of the cross-section, absence is not a position on it.
+ */
+export interface RatingDimension {
+  key: RatingDimensionKey;
+  /** Display label, owned by the API so every surface agrees on the wording. */
+  label: string;
+  /** The dimension's cross-sectional rank, 0 to 100. `null` when absent. */
+  percentile: number | null;
+  /** The natural-scale reading behind the percentile, when the dimension has one. */
+  raw: number | null;
+  /** What `raw` means and in what unit, e.g. `"Operating margin, percent"`. */
+  rawLabel: string | null;
+  /** Whether this dimension had data for this stock. */
+  present: boolean;
+  /** Constituent legs, currently smart-money only. Absent on every other dimension. */
+  subLegs?: RatingSubLeg[];
+}
+
+/**
+ * One anomaly flag evaluated alongside the rating.
+ *
+ * Flags are informational and never move the composite. A flag the run could not evaluate is
+ * absent from the list rather than reported inactive, so present-and-false and absent stay
+ * distinguishable.
+ */
+export interface RatingFlag {
+  /** Stable snake_case identifier, e.g. `"unusual_options_flow"`. */
+  key: string;
+  label: string;
+  active: boolean;
+}
+
+/** The fields both rating shapes carry, graded or not. */
+export interface RatingBase {
+  ticker: string;
+  /**
+   * The stock's knowledge base id, e.g. `"kb/company/1"`. Addresses the metrics time series
+   * without a second lookup.
+   */
+  kbEntityId: string;
+  /** The New York calendar day this answer describes, `"YYYY-MM-DD"`. */
+  asOf: string;
+  /** Always all six, in a fixed order, absent ones with `present` false. */
+  dimensions: RatingDimension[];
+  flags: RatingFlag[];
+  /** The standard financial disclaimer. Display it alongside the grade. */
+  disclaimer: string;
+}
+
+/** A stock that has a grade for `asOf`. */
+export interface RatedStockRating extends RatingBase {
+  rated: true;
+  /**
+   * `"A"`, `"B"`, `"C"`, `"D"` or `"F"`. Served as stored, never re-derived from
+   * `percentile`, so read it rather than computing your own bucket edges.
+   */
+  letter: string;
+  /** Rank of `composite` among the day's rated stocks, 0 to 100. */
+  percentile: number;
+  /** The weighted blend before ranking, in [-1, +1]. */
+  composite: number;
+  /** How many stocks were rated that day: the rank's denominator. */
+  ratedCount: number;
+  /** The weights and floors in force when the row was written, e.g. `"2026.09-v1"`. */
+  methodologyVersion: string;
+}
+
+/**
+ * A stock with no grade for `asOf`. A normal 200, not an error: ETFs and tickers outside
+ * the swept universe answer this way, and the composition still arrives so a card can render.
+ */
+export interface UnratedStockRating extends RatingBase {
+  rated: false;
+  /** Why there is no grade. */
+  reason: RatingNotRatedReason;
+  /** How many of the six dimensions had data. */
+  dimensionsPresent?: number;
+  /** Which dimensions had data, by `key`. */
+  presentDimensions: RatingDimensionKey[];
+}
+
+/**
+ * The SentiSense Rating for one stock: where it ranks against the day's rated set.
+ *
+ * A discriminated union on `rated`, so `if (rating.rated)` narrows to the graded fields and
+ * the `else` branch narrows to `reason`. Branch on that flag rather than testing a field for
+ * `undefined`.
+ *
+ * The rating is a *relative* research signal, informational and educational only. It ranks a
+ * stock against the others rated that day; it is not financial, investment or trading advice
+ * and it is not a recommendation about any security. Carry `disclaimer` wherever you display
+ * a grade. Methodology: https://sentisense.ai/methodology/#sentisense-rating
+ */
+export type StockRating = RatedStockRating | UnratedStockRating;
+
 // ── Documents & News ────────────────────────────────────────
 
 export type DocumentSource = "news" | "reddit" | "x" | "substack" | "youtube";
@@ -1496,6 +1645,11 @@ export type MetricType =
   | "mentions"
   | "sentiment"
   | "sentisense_score"
+  /**
+   * The SentiSense Rating percentile, 0 to 100. Time series only: it has no source
+   * breakdown, so `getDistribution` answers with an empty distribution for it.
+   */
+  | "sentisense_rating"
   | "social_dominance"
   | "creators";
 

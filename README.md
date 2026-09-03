@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/sentisense.svg)](https://www.npmjs.com/package/sentisense)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-Official JavaScript/TypeScript SDK and CLI for the [SentiSense](https://sentisense.ai) market intelligence API: stock prices, news and social sentiment, the SentiSense Score, insider and congressional trading, institutional 13F flows, options positioning, analyst ratings, earnings analysis, and a cross-signal screener.
+Official JavaScript/TypeScript SDK and CLI for the [SentiSense](https://sentisense.ai) market intelligence API: stock prices, news and social sentiment, the SentiSense Score, the SentiSense Rating, insider and congressional trading, institutional 13F flows, options positioning, analyst ratings, earnings analysis, and a cross-signal screener.
 
 - Full TypeScript support with detailed type definitions
 - Works in Node.js 18+, Deno, Bun, and browsers
@@ -212,6 +212,7 @@ client.stocks.getFundamentals("AAPL")                   // Financial data
 client.stocks.getShortInterest("GME")                   // Short interest
 client.stocks.getOptionsSummary("NVDA")                 // End-of-day options dossier
 client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // Daily options aggregates over time
+client.stocks.getRating("AAPL")                         // SentiSense Rating: letter, percentile, dimensions
 client.stocks.getAISummary("AAPL", { depth: "deep" })   // AI report (PRO)
 ```
 
@@ -418,7 +419,7 @@ client.entityMetrics.getDistribution("AAPL", "sentiment")
 client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })
 ```
 
-Available metric types: `mentions`, `sentiment`, `sentisense`, `social_dominance`, `creators`.
+Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense_rating`, `social_dominance`, `creators`. `sentisense_rating` is the SentiSense Rating percentile and is a time series only: it has no source breakdown, so `getDistribution` answers with an empty distribution for it.
 
 ### Options
 
@@ -433,6 +434,28 @@ client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // That name's daily 
 The radar carries two separately-ranked boards: `data.rows` for stocks and `data.etfRows` for ETFs. Keep them apart. Every reading behind a row's `interestScore` is a percentile of that ticker's own trailing history, so a ranking built across both boards compares numbers measured against different baselines. The aggregates split the same way, with the `etf`-prefixed fields describing the ETF board alone.
 
 A row whose baseline is still building carries its raw readings with the percentiles and `interestScore` omitted, which means "not enough history yet" rather than "nothing interesting". `getOptionsSummary` reports an uncovered ticker as a `null` payload; `getOptionsHistory` reports it as an empty `series` instead, so check the array rather than null-checking there.
+
+### SentiSense Rating
+
+Where a stock ranks against the other stocks rated that day, as a letter and a percentile, plus the six dimensions the rank is blended from. It is a relative research signal for informational and educational purposes, not financial, investment or trading advice, and not a recommendation about any security. Every response carries the wording to display alongside a grade in `disclaimer`. [Methodology](https://sentisense.ai/methodology/#sentisense-rating).
+
+```typescript
+const rating = await client.stocks.getRating("AAPL");
+if (rating.rated) {
+  console.log(rating.letter, rating.percentile, "of", rating.ratedCount, "rated stocks");
+  for (const dim of rating.dimensions.filter((d) => d.present)) {
+    console.log(" ", dim.label, dim.percentile);
+  }
+} else {
+  console.log("no grade today:", rating.reason);
+}
+```
+
+`StockRating` is a discriminated union on `rated`, so the `if` narrows to `letter`, `percentile`, `composite`, `ratedCount` and `methodologyVersion`, and the `else` narrows to `reason`, `dimensionsPresent` and `presentDimensions`. Branch on that flag rather than testing a field for `undefined`.
+
+Having no grade is a normal 200, not a 404: ETFs and tickers outside the swept universe answer that way, and `reason` is one of `stale`, `not_rated_today`, `insufficient_dimensions` or `insufficient_coverage_weight`. Only a ticker that resolves to nothing we track rejects with `NotFoundError`.
+
+`dimensions` always holds all six rows in a fixed order, including the ones with no data, which arrive with `present` false and a `null` percentile. Read `present` first and never substitute zero for a missing percentile: zero is the bottom of the cross-section, absence is not a position on it. Only the smart-money dimension carries `subLegs`. `letter` is served as stored rather than derived from `percentile`, so read it instead of computing your own bucket edges. For the daily history of a stock's percentile, ask `entityMetrics.getMetrics` for the `sentisense_rating` metric.
 
 ### Market mood & knowledge base
 

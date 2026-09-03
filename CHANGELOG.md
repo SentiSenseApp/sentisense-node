@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.50.0
+
+### Added
+
+- **The SentiSense Rating, new to this SDK.** `client.stocks.getRating(ticker)` returns
+  where a stock ranks against the other stocks rated that day: a letter, a percentile, the
+  composite behind it, and the six dimensions the composite is blended from. It is a
+  relative research signal for informational and educational purposes, not financial,
+  investment or trading advice and not a recommendation about any security. Every response
+  carries the wording to display alongside a grade in `disclaimer`.
+  [Methodology](https://sentisense.ai/methodology/#sentisense-rating).
+- Types exported from the package root: `StockRating`, `RatedStockRating`,
+  `UnratedStockRating`, `RatingBase`, `RatingDimension`, `RatingDimensionKey`,
+  `RatingSubLeg`, `RatingFlag` and `RatingNotRatedReason`. `StockRating` is a discriminated
+  union on `rated`, so `if (rating.rated)` narrows to the graded fields and the `else`
+  branch narrows to `reason`.
+- `sentisense_rating` added to `MetricType`, which serves the daily history of a stock's
+  percentile through `client.entityMetrics.getMetrics`. It is a time series only: there is
+  no source breakdown, so `getDistribution` answers with an empty distribution for it.
+- `examples/rating.ts` walks the whole shape: the grade, the dimensions with their legs,
+  the flags, and the percentile history.
+
+Two shapes to read rather than assume, both gated by tests. **Branch on `rated`.** A rated
+stock carries `letter`, `percentile`, `composite`, `ratedCount` and `methodologyVersion`; an
+unrated one carries `reason`, `dimensionsPresent` and `presentDimensions` instead. Having no
+grade is a normal 200, not a 404: ETFs and tickers outside the swept universe answer that
+way, and `reason` says which case it is. And `dimensions` always holds all six rows in a
+fixed order, including the ones with no data, which arrive with `present` false and a `null`
+percentile. Read `present` first and never substitute zero for a missing percentile: zero is
+the bottom of the cross-section, absence is not a position on it.
+
+### Fixed
+
+- The metric type list in the README named `sentisense`, which is an accepted alias rather
+  than the name the API echoes back. It now reads `sentisense_score`, matching the
+  `MetricType` union.
+
 ## 0.49.0
 
 ### Added
