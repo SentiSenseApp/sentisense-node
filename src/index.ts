@@ -146,6 +146,8 @@ export type {
   RatingSubLeg,
   RatingFlag,
   RatingNotRatedReason,
+  RiskCondition,
+  RiskAdjustment,
   Fundamentals,
   TtmFundamentals,
   FundamentalsPeriod,

@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.51.0
+
+### Added
+
+- Five fields on `RatedStockRating`, all optional because a response served before they
+  shipped omits them: `score`, `bucketLetter`, `riskConditions`, `riskAdjustments` and
+  `penaltyPoints`.
+- **`score` is the number `letter` is the band of**, 0 to 100 with one decimal:
+  `score = percentile - sum(riskAdjustments.map((a) => a.points))`, floored at 10 when
+  fewer than five dimensions are available and at 0 otherwise. The band edges are 90, 70,
+  30 and 10.
+- `percentile` is unchanged and still the true rank of the blended signals against the
+  day's rated set. The conditions are subtracted from `score`, never from it.
+- `bucketLetter` is the band `percentile` alone would fall in, so a difference from
+  `letter` is exactly what the conditions cost.
+- `riskAdjustments` itemises that cost as `RiskAdjustment` rows of `condition` and
+  `points`, since a condition is graded rather than binary and can cost anything up to
+  12, and `penaltyPoints` is their sum to one decimal. Both types are exported from the
+  package root.
+- New `RiskCondition` union exported from the package root, covering
+  `coverage_below_five`, `adverse_flag_insider_selling`,
+  `adverse_flag_institutional_outflow`, `unprofitable`, `no_fundamentals`,
+  `leverage_above_2x`, `ipo_within_year`, `weak_dimension_below_40th`,
+  `market_cap_below_2b`, `illiquid_below_10m_adv` and `extended_price`.
+
+### Changed
+
+- The `sentisense_rating` metric series carries the score rather than the percentile.
+  JSDoc, README and `examples/rating.ts` updated to match.
+
+A response with no grade is unchanged: `rated` false, `reason`, and the composition.
+
 ## 0.50.0
 
 ### Added

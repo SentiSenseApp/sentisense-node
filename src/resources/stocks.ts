@@ -346,10 +346,10 @@ export class Stocks {
    * security. `disclaimer` carries the wording to display alongside a grade. Methodology:
    * https://sentisense.ai/methodology/#sentisense-rating
    *
-   * **A discriminated union on `rated`.** `if (rating.rated)` narrows to `letter`,
-   * `percentile`, `composite`, `ratedCount` and `methodologyVersion`; the `else` branch
-   * narrows to `reason`, `dimensionsPresent` and `presentDimensions`. Branch on the flag
-   * rather than testing a field for `undefined`.
+   * **A discriminated union on `rated`.** `if (rating.rated)` narrows to `score`,
+   * `letter`, `percentile`, `composite`, `ratedCount` and `methodologyVersion`; the
+   * `else` branch narrows to `reason`, `dimensionsPresent` and `presentDimensions`.
+   * Branch on the flag rather than testing a field for `undefined`.
    *
    * **Having no grade is a normal 200, not a 404.** ETFs and tickers outside the swept
    * universe answer with `rated` false, and the composition still arrives so a card can
@@ -359,11 +359,22 @@ export class Stocks {
    *
    * `dimensions` always holds all six rows in a fixed order, including the ones with no
    * data, which arrive with `present` false and a `null` percentile. Read `present` first
-   * and never read a missing percentile as zero. `letter` is served as stored rather than
-   * derived from `percentile`, so read it instead of computing your own bucket edges.
+   * and never read a missing percentile as zero.
    *
-   * For the daily history of a stock's percentile, ask `client.entityMetrics.getMetrics`
-   * for the `sentisense_rating` metric.
+   * **`score` and `percentile` are different numbers.** `percentile` is the rank of the
+   * blended signals against the day's rated set, and
+   * `score = percentile - sum(riskAdjustments.map((a) => a.points))`, floored at 10 when
+   * fewer than five dimensions are available and at 0 otherwise. `letter` is the band
+   * `score` falls in, at edges 90, 70, 30 and 10, while `bucketLetter` is the band the
+   * percentile alone would fall in, so a difference between the two letters is exactly
+   * what the conditions cost. `riskConditions` names the active ones, `riskAdjustments`
+   * gives the points each cost (graded, up to 12 apiece), and `penaltyPoints` is their
+   * sum. `letter` is served as stored, so read it instead of computing your own bucket
+   * edges. The five fields arrive from the next API deploy onward and are optional, so a
+   * response served before then still parses.
+   *
+   * For the daily history of a stock's score, ask `client.entityMetrics.getMetrics` for
+   * the `sentisense_rating` metric.
    */
   async getRating(ticker: string): Promise<StockRating> {
     return this.client.get(`/api/v1/rating/${encodeURIComponent(ticker.toUpperCase())}`);
