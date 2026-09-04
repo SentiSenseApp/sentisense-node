@@ -182,3 +182,150 @@ export const MOOD = {
 };
 
 export const MARKET_STATUS = { status: "open" };
+
+/**
+ * One coverage book with every shape the renderer has to survive: a firm whose latest note
+ * names an analyst we hold a slug for, a firm whose note names nobody, and a firm covering
+ * on a rating action alone with no note at all.
+ */
+export const COVERAGE_NVDA = {
+  isPreview: false,
+  previewReason: null,
+  totalCount: 3,
+  data: {
+    ticker: "NVDA",
+    windowDays: 365,
+    asOf: "2026-09-04",
+    firmCount: 3,
+    ratingOnlyFirmCount: 1,
+    ratingBuckets: { buy: 2, hold: 1, sell: 0, unrated: 0, total: 3 },
+    namedAnalystCount: 1,
+    noteCount: 2,
+    attributedNoteCount: 1,
+    unattributedNoteCount: 1,
+    attributionNote: "A missing name means the report identified nobody, not that it did not happen.",
+    coverage: [
+      {
+        firm: "Example Research",
+        analysts: [
+          {
+            slug: "ada-example",
+            name: "Ada Example",
+            noteCount: 1,
+            firstNote: "2026-05-02",
+            lastNote: "2026-08-18",
+            latestPriceTarget: 240,
+          },
+        ],
+        noteCount: 1,
+        attributedNoteCount: 1,
+        unattributedNoteCount: 0,
+        firstNote: "2026-05-02",
+        lastNote: "2026-08-18",
+        latestNote: {
+          publishedDate: "2026-08-18",
+          analyst: "Ada Example",
+          priceTarget: 240,
+          adjPriceTarget: 240,
+          priceWhenPosted: 182.14,
+          newsTitle: null,
+          newsUrl: null,
+          newsPublisher: "Example Wire",
+        },
+        firmRating: { rating: "Buy", priorRating: "Hold", actionType: "UPGRADE", date: "2026-08-18" },
+      },
+      {
+        firm: "Second Desk",
+        analysts: [],
+        noteCount: 1,
+        attributedNoteCount: 0,
+        unattributedNoteCount: 1,
+        firstNote: "2026-07-01",
+        lastNote: "2026-07-01",
+        latestNote: {
+          publishedDate: "2026-07-01",
+          analyst: null,
+          priceTarget: 205,
+          adjPriceTarget: 205,
+          priceWhenPosted: 170.5,
+          newsTitle: null,
+          newsUrl: null,
+          newsPublisher: "Example Wire",
+        },
+        firmRating: { rating: "Buy", priorRating: null, actionType: "REITERATE", date: "2026-07-01" },
+      },
+      {
+        firm: "Rating Only Partners",
+        analysts: [],
+        noteCount: 0,
+        attributedNoteCount: 0,
+        unattributedNoteCount: 0,
+        firstNote: null,
+        lastNote: null,
+        latestNote: null,
+        firmRating: { rating: "Hold", priorRating: "Buy", actionType: "DOWNGRADE", date: "2026-06-10" },
+      },
+    ],
+  },
+};
+
+export const ANALYST_PROFILE = {
+  isPreview: false,
+  previewReason: null,
+  totalCount: 2,
+  data: {
+    slug: "ada-example",
+    name: "Ada Example",
+    role: "sell_side_equity",
+    mostRecentFirm: "Example Research",
+    firms: [
+      { firm: "Example Research", firstSeen: "2025-01-06", lastSeen: "2026-08-18", mostRecent: true },
+    ],
+    firstSeen: "2025-01-06",
+    lastSeen: "2026-08-18",
+    noteCount: 41,
+    tickerCount: 2,
+    coverage: [
+      {
+        ticker: "NVDA",
+        noteCount: 12,
+        firstNote: "2025-01-06",
+        lastNote: "2026-08-18",
+        latestPriceTarget: 240,
+        latestFirm: "Example Research",
+      },
+      {
+        ticker: "AMD",
+        noteCount: 4,
+        firstNote: "2025-03-11",
+        lastNote: "2026-05-20",
+        latestPriceTarget: 190,
+        latestFirm: "Example Research",
+      },
+    ],
+  },
+};
+
+export const ANALYST_CALLS = {
+  isPreview: false,
+  previewReason: null,
+  totalCount: 41,
+  data: [
+    {
+      publishedDate: "2026-08-18",
+      ticker: "NVDA",
+      firm: "Example Research",
+      priceTarget: 240,
+      adjPriceTarget: 240,
+      priceWhenPosted: 182.14,
+      newsTitle: null,
+      newsUrl: null,
+      newsPublisher: "Example Wire",
+    },
+  ],
+};
+
+export const SEARCH_TESLA = [
+  { name: "Tesla, Inc.", urlSlug: "tesla", type: "company", ticker: "TSLA" },
+  { name: "Elon Musk", urlSlug: "elon-musk", type: "person", ticker: null },
+];

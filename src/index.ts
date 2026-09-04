@@ -46,6 +46,13 @@ export type {
   GetUserInsightsOptions,
 } from "./resources/insights.js";
 
+// Knowledge base entity search
+export type {
+  EntitySearchResult,
+  EntitySearchType,
+  SearchEntitiesOptions,
+} from "./resources/kb.js";
+
 // ETF aggregate types
 export type {
   EtfInfo,

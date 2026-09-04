@@ -3,11 +3,16 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  ANALYST_CALLS,
+  ANALYST_PROFILE,
+  COVERAGE_NVDA,
   MARKET_STATUS,
   MOOD,
   PROFILE_NVDA,
   QUOTE_NVDA,
+  SEARCH_TESLA,
   SENTIMENT_NVDA,
+  errorResponse,
   routeFetch,
   run,
   type Route,
@@ -1205,5 +1210,182 @@ describe("examples demonstrate features that actually return data", () => {
       const result = await run(["help", name], {});
       expect(result.stdout).toContain("An empty result verifies the ticker before reporting no data");
     }
+  });
+});
+
+describe("analyst coverage, profiles, and entity search", () => {
+  it("analysts --coverage asks for the coverage book and nothing else", async () => {
+    const result = await run(["analysts", "NVDA", "--coverage", "--days", "180", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/analyst\/NVDA\/coverage/, COVERAGE_NVDA]]),
+    });
+    expect(result.code).toBe(0);
+    expect(url(result, "/analyst/NVDA/coverage")).toContain("lookbackDays=180");
+    expect(result.urls).toHaveLength(1);
+    expect(result.urls.some((candidate) => candidate.includes("/consensus"))).toBe(false);
+  });
+
+  it("coverage prints a row per firm with the slug that addresses the person", async () => {
+    const result = await run(["analysts", "NVDA", "--coverage", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/analyst\/NVDA\/coverage/, COVERAGE_NVDA]]),
+    });
+    expect(result.stdout).toContain("Example Research");
+    expect(result.stdout).toContain("Ada Example");
+    expect(result.stdout).toContain("ada-example");
+    expect(result.stdout).toContain("$240.00");
+    // A desk covering on a rating action alone is a real reading, not a dropped row.
+    expect(result.stdout).toContain("Rating Only Partners");
+    expect(result.stdout).toContain("DOWNGRADE");
+  });
+
+  it("coverage prints the rating buckets that survive the free truncation", async () => {
+    const result = await run(["analysts", "NVDA", "--coverage", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/analyst\/NVDA\/coverage/, COVERAGE_NVDA]]),
+    });
+    expect(result.stdout).toMatch(/Buy: +2/);
+    expect(result.stdout).toMatch(/Hold: +1/);
+    expect(result.stdout).toMatch(/Sell: +0/);
+    expect(result.stdout).toMatch(/Unrated: +0/);
+    expect(result.stdout).toMatch(/Total: +3/);
+  });
+
+  it("coverage says how many firms it is showing of the whole book", async () => {
+    const result = await run(["analysts", "NVDA", "--coverage", "--limit", "1", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/analyst\/NVDA\/coverage/, COVERAGE_NVDA]]),
+    });
+    expect(result.stdout).toContain("Showing 1 of 3 firms");
+    // --limit trims the print, never the request: the whole book still came back.
+    expect(url(result, "/analyst/NVDA/coverage")).not.toContain("limit=");
+  });
+
+  it("coverage --json is the envelope exactly as received", async () => {
+    const result = await run(["analysts", "NVDA", "--coverage", "--json"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/analyst\/NVDA\/coverage/, COVERAGE_NVDA]]),
+    });
+    expect(JSON.parse(result.stdout)).toEqual(COVERAGE_NVDA);
+  });
+
+  it("analyst reads one profile and skips the calls request without --calls", async () => {
+    const result = await run(["analyst", "ada-example", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/analyst\/people\/ada-example$/, ANALYST_PROFILE]]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.urls).toHaveLength(1);
+    expect(result.stdout).toContain("Ada Example");
+    expect(result.stdout).toContain("Example Research");
+    expect(result.stdout).toContain("NVDA");
+  });
+
+  it("analyst --calls appends the call history and honours --limit", async () => {
+    const result = await run(["analyst", "ada-example", "--calls", "--limit", "50", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/analyst\/people\/ada-example\/calls/, ANALYST_CALLS],
+        [/\/analyst\/people\/ada-example/, ANALYST_PROFILE],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(url(result, "/analyst/people/ada-example/calls")).toContain("limit=50");
+    expect(result.stdout).toContain("2026-08-18");
+    expect(result.stdout).toContain("Example Wire");
+  });
+
+  it("analyst always says the output is not accuracy scoring", async () => {
+    const result = await run(["analyst", "ada-example", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/analyst\/people\/ada-example/, ANALYST_PROFILE]]),
+    });
+    expect(result.stdout).toContain("not accuracy scoring");
+  });
+
+  it("analyst rejects a name before spending a request, and says where slugs come from", async () => {
+    const result = await run(["analyst", "Ada Example", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([]),
+    });
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("takes a slug, not a name");
+    expect(result.stderr).toContain("--coverage");
+    expect(result.urls).toHaveLength(0);
+  });
+
+  it("analyst exits 4 when the slug matches nobody", async () => {
+    const result = await run(["analyst", "nobody-here", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/analyst\/people\//, errorResponse(404, { message: "no analyst for that slug" })],
+      ]),
+    });
+    expect(result.code).toBe(4);
+  });
+
+  it("search resolves a name to a symbol", async () => {
+    const result = await run(["search", "Tesla", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/kb\/entities\/search/, SEARCH_TESLA]]),
+    });
+    expect(result.code).toBe(0);
+    expect(url(result, "/kb/entities/search")).toContain("q=Tesla");
+    expect(result.stdout).toContain("TSLA");
+    expect(result.stdout).toContain("Tesla, Inc.");
+    expect(result.stdout).toContain("company");
+    expect(result.stdout).toContain("elon-musk");
+  });
+
+  it("search takes an unquoted multi-word name and the type filter", async () => {
+    const result = await run(["search", "Elon", "Musk", "--type", "person", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/kb\/entities\/search/, [SEARCH_TESLA[1]]]]),
+    });
+    expect(result.code).toBe(0);
+    const requested = url(result, "/kb/entities/search");
+    expect(requested).toContain("q=Elon+Musk");
+    expect(requested).toContain("type=person");
+  });
+
+  it("search exits 4 when nothing matches", async () => {
+    const result = await run(["search", "zzzzqqq", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/kb\/entities\/search/, []]]),
+    });
+    expect(result.code).toBe(4);
+    expect(result.stderr).toContain('nothing matches "zzzzqqq"');
+  });
+
+  it("search rejects a query the API would reject, before sending it", async () => {
+    const result = await run(["search", "T", "--plain"], { env: KEYED, fetch: routeFetch([]) });
+    expect(result.code).toBe(2);
+    expect(result.urls).toHaveLength(0);
+  });
+
+  it("search rejects an unknown --type and lists the ones that work", async () => {
+    const result = await run(["search", "Tesla", "--type", "widget", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([]),
+    });
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("person");
+    expect(result.urls).toHaveLength(0);
+  });
+
+  it("search --json is the array exactly as received", async () => {
+    const result = await run(["search", "Tesla", "--json"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/kb\/entities\/search/, SEARCH_TESLA]]),
+    });
+    expect(JSON.parse(result.stdout)).toEqual(SEARCH_TESLA);
+  });
+
+  it("both new commands are in the map and reachable from help", async () => {
+    const main = await run([], {});
+    expect(main.stdout).toContain("analyst ");
+    expect(main.stdout).toContain("search ");
+    const help = await run(["help", "analyst"], {});
+    expect(help.stdout).toContain("Takes a slug, not a name");
   });
 });

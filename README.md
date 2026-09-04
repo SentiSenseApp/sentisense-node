@@ -71,7 +71,8 @@ npx -y sentisense@latest health
 | `quote <ticker>...` | Price, day range, 52-week range, market cap, P/E. One request per ticker |
 | `sentiment <ticker>` | SentiSense Score, tone, attention, per-source breakdown, `--days N` history |
 | `mood` | Composite market sentiment, the signals behind it, and the sector map |
-| `analysts <ticker>` | Consensus, price target band, recent upgrades and downgrades |
+| `analysts <ticker>` | Consensus, price target band, recent upgrades and downgrades. `--coverage` for who covers it, by firm |
+| `analyst <slug>` | One analyst: their firms, their coverage book, and `--calls` for their price target notes |
 | `earnings [ticker]` | Forward calendar with no ticker, per-quarter analysis with one (`earnings AAPL`) |
 | `insiders <ticker>` | Filed Form 4 transactions, including whether they were pre-planned |
 | `insights <ticker>` | Generated signals, filterable by `--urgency` and `--type` |
@@ -80,8 +81,21 @@ npx -y sentisense@latest health
 | `flows [ticker]` | Institutional 13F flows, or one ticker's holders and notable changes |
 | `options <ticker>` | End-of-day options positioning, IV rank, walls, unusual contracts |
 | `screen --filter ...` | Screen the universe on Score, analyst, technical, and price fields |
+| `search <name>` | Resolve a name, alias, ticker or slug to a symbol and the entity handle |
 
 Run `sentisense help <command>` for its flags and examples.
+
+Three of these chain into each other. Start from a name, land on a person:
+
+```bash
+npx -y sentisense@latest search Tesla --type company   # "Tesla" -> TSLA, plus the entity slug
+npx -y sentisense@latest analysts NVDA --coverage      # who covers it, by firm, with analyst slugs
+npx -y sentisense@latest analyst quinn-bolton --calls  # that analyst's firms, book, and notes
+```
+
+`analyst` takes a slug, not a name: slugs are lowercase and hyphenated, and every named analyst in a `--coverage` row carries the one that addresses them. A name is rejected before a request is spent. What comes back is call history, not accuracy scoring: there is no hit rate, no ranking, and nothing in it rates the person.
+
+Ranking on `search` is the API's own, and a company can sort below its own products, so pass `--type company` when what you want is the issuer.
 
 ### Output modes
 
@@ -474,7 +488,17 @@ All five are optional: a response served before they shipped omits them. For the
 ```typescript
 client.marketMood.get()             // Composite market sentiment with sub-signals
 client.kb.getPopularEntities()      // Most-tracked entities
+client.kb.searchEntities("Tesla")   // Resolve a name, alias, ticker or slug to what we track
 ```
+
+Entity search is resolution, not enumeration: the query must be at least 2 characters, the match count is capped at 25, and it returns a bare `EntitySearchResult[]` rather than a `PreviewResponse` envelope. Each hit carries `name`, `type`, the `ticker` for a listed entity (`null` for everything else), and the `urlSlug` the metric endpoints address that entity by, which is the only way to get a handle for a person, product or topic with no ticker.
+
+```typescript
+const hits = await client.kb.searchEntities("Tesla", { type: "company", limit: 5 });
+const symbol = hits.find((hit) => hit.ticker)?.ticker;   // "TSLA"
+```
+
+An empty array is the normal answer for a query that matches nothing, so branch on `length` rather than catching.
 
 ### Screener
 

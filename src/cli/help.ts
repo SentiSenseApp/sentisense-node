@@ -18,7 +18,8 @@ const EXAMPLE: Record<string, string> = {
   quote: "sentisense quote NVDA AAPL",
   sentiment: "sentisense sentiment NVDA --days 30",
   mood: "sentisense mood",
-  analysts: "sentisense analysts NVDA",
+  analysts: "sentisense analysts NVDA --coverage",
+  analyst: "sentisense analyst dan-ives --calls",
   earnings: "sentisense earnings --week next",
   insiders: "sentisense insiders NVDA",
   insights: "sentisense insights NVDA",
@@ -27,6 +28,7 @@ const EXAMPLE: Record<string, string> = {
   flows: "sentisense flows NVDA",
   options: "sentisense options NVDA",
   screen: "sentisense screen --filter SENTI_SCORE_7D:GTE:13",
+  search: "sentisense search Tesla",
 };
 
 function pad(text: string, width: number): string {

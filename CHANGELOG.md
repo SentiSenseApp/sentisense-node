@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.52.0
+
+### Added
+
+- **`sentisense analysts <ticker> --coverage`.** Who covers a ticker, one row per firm:
+  the analyst that firm last published under and the slug that addresses them, their latest
+  price target and its date, and the firm's current rating and action. The header carries
+  the whole-book counts and the `ratingBuckets` line (`buy`, `hold`, `sell`, `unrated`,
+  `total`), which are counted before any free truncation, so the shown-of-total line and the
+  buckets describe the full window even when the rows do not. `--days` sets the window,
+  `--limit` trims the rows printed (the API returns the whole book either way) and `--full`
+  prints all of them. `--json` is the coverage envelope untouched.
+- **`sentisense analyst <slug>`.** One analyst: the firms they have published under with the
+  window of notes at each, and their coverage book. `--calls` appends their price target
+  notes, newest first, with `--limit` for the page size. It takes a slug, not a name, and a
+  name is rejected before a request is spent with a pointer at where slugs come from, which
+  is the coverage rows above. Every run prints that this is call history and not accuracy
+  scoring: there is no hit rate, no ranking, and nothing in it rates the person.
+- **`sentisense search <name>`.** Resolve a name, alias, ticker or slug to the entities we
+  track, so a user who typed "Tesla" gets `TSLA` and the rest of a pipeline can carry on.
+  Prints symbol, name, type and the slug the metric endpoints address an entity by, which is
+  the only way to get one for a person, product or topic with no ticker. `--type` narrows to
+  `person`, `company`, `product`, `organization`, `etf`, `topic` or `country`, `--limit` caps
+  the matches. A query under 2 characters or an unknown `--type` is rejected before any
+  request; a query that matches nothing exits 4, the same code an unknown symbol uses.
+- **`client.kb.searchEntities(q, { type, limit })`** backs that command and is new to the
+  SDK. It returns a bare `EntitySearchResult[]`, not a `PreviewResponse` envelope, and an
+  empty array is the normal answer for a query that matches nothing. New type exports:
+  `EntitySearchResult`, `EntitySearchType`, `SearchEntitiesOptions`.
+
+Ranking on search is the API's own, and a company can sort below its own products: a bare
+`search Tesla` puts several Tesla products above `Tesla, Inc.`. Pass `--type company` when
+what you want is the issuer.
+
 ## 0.51.0
 
 - **Renamed, breaking against 0.50.0.** `RatedStockRating` -> `StockRating`,

@@ -61,6 +61,25 @@ export class UnknownTickerError extends Error {
   }
 }
 
+/**
+ * A search that ran and matched nothing.
+ *
+ * Same exit code as an unknown ticker, because to a script both mean "the thing you named
+ * is not here". Separate from {@link UnknownTickerError} only so the advice can talk about
+ * spellings rather than about canonical symbols.
+ */
+export class NoMatchError extends Error {
+  query: string;
+  hint: string;
+
+  constructor(query: string, hint: string) {
+    super(`nothing matches "${query}".`);
+    this.name = "NoMatchError";
+    this.query = query;
+    this.hint = hint;
+  }
+}
+
 /** No key was resolved from a flag, the environment, or the config file. */
 export class MissingKeyError extends Error {
   constructor() {
@@ -109,6 +128,13 @@ function classify(error: unknown, command?: string): ErrorReport {
         `error: ${error.message}`,
         "next: check the symbol. Use canonical tickers, for example GOOGL rather than GOOG and BRK.B rather than BRK-B.",
       ],
+    };
+  }
+
+  if (error instanceof NoMatchError) {
+    return {
+      exitCode: EXIT.NOT_FOUND,
+      lines: [`error: ${error.message}`, `next: ${error.hint}`],
     };
   }
 
