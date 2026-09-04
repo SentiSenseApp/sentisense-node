@@ -333,6 +333,11 @@ const { data: book } = await client.analyst.coverage("NVDA");
 console.log(`${book.firmCount} firms, ${book.namedAnalystCount} named analysts`);
 console.log(`${book.attributedNoteCount} of ${book.noteCount} notes name someone`);
 
+const buckets = book.ratingBuckets;
+if (buckets) {
+  console.log(`${buckets.buy} buy, ${buckets.hold} hold, ${buckets.sell} sell, ${buckets.unrated} unrated of ${buckets.total}`);
+}
+
 for (const row of book.coverage.slice(0, 5)) {
   if (row.noteCount === 0) {
     // A desk can cover a stock on rating actions alone, with no price target.
@@ -351,6 +356,8 @@ for (const row of book.coverage.slice(0, 5)) {
 ```
 
 Two shapes to read rather than assume. A firm can appear with `noteCount: 0`, a `null` `latestNote` and a populated `firmRating`, because coverage means a price target **or** a rating action in the window. And a large, publisher-dependent share of notes name no individual, so an empty `analysts` array alongside a non-zero `noteCount` is normal: read `attributedNoteCount` and `unattributedNoteCount` off the response rather than hardcoding a rate. The response-level counts survive the free truncation, so they describe the whole window even when only 5 rows come back. An unknown slug throws `NotFoundError`, which keeps "published nothing we hold" distinguishable from "does not exist".
+
+`ratingBuckets` sizes the same book by rating tier: `buy`, `hold`, `sell`, `unrated` and `total`, counted over every covering firm before the free truncation, so `buy + hold + sell + unrated === total` and a free key reads the same numbers as a PRO one. `unrated` is a desk with no current rating on record, such as a price-target-only firm. These count the firms in this coverage book, a different population from the `strongBuy` through `strongSell` figures on `client.analyst.consensus`, which come from the provider's analyst survey. Read one or the other, do not reconcile them.
 
 ### Earnings
 

@@ -118,6 +118,24 @@ export interface AnalystCoverageFirm {
   firmRating: AnalystFirmRating | null;
 }
 
+/**
+ * Covering firms counted by the tier of their current rating. Counted over the whole
+ * book before the free truncation, so `buy + hold + sell + unrated === total` and a free
+ * key reads the same numbers as a PRO one.
+ */
+export interface AnalystRatingBuckets {
+  /** Buy-tier grades: Buy, Overweight, Outperform, Strong Buy, Sector Outperform. */
+  buy: number;
+  /** Hold-tier grades: Hold, Neutral, Equal-Weight, Market Perform. */
+  hold: number;
+  /** Sell-tier grades. */
+  sell: number;
+  /** No current rating on record (a price-target-only desk), or a grade we do not recognise. */
+  unrated: number;
+  /** Every covering firm. Equals `firmCount`. */
+  total: number;
+}
+
 export interface AnalystCoverage {
   ticker: string;
   /** Window actually applied after clamping, in days. */
@@ -131,6 +149,12 @@ export interface AnalystCoverage {
    * target are `firmCount - ratingOnlyFirmCount`.
    */
   ratingOnlyFirmCount: number;
+  /**
+   * The same firms split by the tier of their current rating. A different population from
+   * `strongBuy`..`strongSell` on the consensus endpoint, which report the provider's
+   * analyst survey rather than the firms in this book, so do not reconcile the two.
+   */
+  ratingBuckets?: AnalystRatingBuckets;
   namedAnalystCount: number;
   noteCount: number;
   /** Notes that name an individual. */

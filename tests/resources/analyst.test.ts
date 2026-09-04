@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SentiSense, { NotFoundError } from "../../src/index.js";
+import type { AnalystRatingBuckets } from "../../src/index.js";
 
 const mockFetch = vi.fn();
 
@@ -149,6 +150,45 @@ describe("analyst.coverage", () => {
     expect(result.data.ratingOnlyFirmCount).toBe(6);
     // The named analyst carries the slug that addresses profile() and calls().
     expect(result.data.coverage[0].analysts[0].slug).toBe("gil-luria");
+  });
+
+  it("counts the whole book in ratingBuckets even when the rows are truncated", async () => {
+    // The buckets are computed before the FREE 5-row truncation, so a preview
+    // response still sizes every covering firm and the parts sum to the total.
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        data: {
+          ticker: "NVDA",
+          firmCount: 41,
+          ratingOnlyFirmCount: 6,
+          ratingBuckets: { buy: 30, hold: 1, sell: 0, unrated: 10, total: 41 },
+          coverage: [
+            {
+              firm: "DA Davidson",
+              analysts: [],
+              noteCount: 1,
+              attributedNoteCount: 0,
+              unattributedNoteCount: 1,
+              firstNote: "2026-08-27",
+              lastNote: "2026-08-27",
+              latestNote: null,
+              firmRating: { rating: "Buy", priorRating: "Buy", actionType: "REITERATE", date: "2026-08-27" },
+            },
+          ],
+        },
+      }),
+    );
+    const result = await client.analyst.coverage("NVDA");
+    const buckets: AnalystRatingBuckets | undefined = result.data.ratingBuckets;
+    expect(buckets).toBeDefined();
+    expect(buckets!.buy).toBe(30);
+    // A desk with no current rating lands in unrated, not in hold.
+    expect(buckets!.unrated).toBe(10);
+    expect(buckets!.buy + buckets!.hold + buckets!.sell + buckets!.unrated).toBe(buckets!.total);
+    expect(buckets!.total).toBe(result.data.firmCount);
+    expect(result.data.coverage).toHaveLength(1);
   });
 
   it("returns a rating-only firm as an ordinary row with no note", async () => {

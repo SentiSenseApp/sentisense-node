@@ -11,6 +11,7 @@ export type {
   AnalystFirmRating,
   AnalystCoverageAnalyst,
   AnalystCoverageFirm,
+  AnalystRatingBuckets,
   AnalystCoverage,
   AnalystFirmTenure,
   AnalystCoverageBookEntry,

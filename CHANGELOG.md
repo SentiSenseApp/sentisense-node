@@ -21,6 +21,14 @@
   no source breakdown, so `getDistribution` answers with an empty distribution for it.
 - `examples/rating.ts` walks the whole shape: the grade, the dimensions with their legs,
   the flags, and the percentile history.
+- `client.analyst.coverage()` now returns `ratingBuckets` next to `firmCount`: how many
+  covering firms sit in each rating tier, as `buy`, `hold`, `sell`, `unrated` and `total`,
+  typed by the new `AnalystRatingBuckets` export. Counted over the whole book before the
+  free truncation, so `buy + hold + sell + unrated === total` and a free key reads the
+  same numbers as a PRO one. `unrated` is a desk with no current rating on record, such as
+  a price-target-only firm. It counts the firms in the coverage book, which is a different
+  population from the `strongBuy` through `strongSell` survey figures on
+  `client.analyst.consensus()`.
 
 Two shapes to read rather than assume, both gated by tests. **Branch on `rated`.** A rated
 stock carries `letter`, `percentile`, `composite`, `ratedCount` and `methodologyVersion`; an
