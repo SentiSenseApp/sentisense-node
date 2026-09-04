@@ -11,10 +11,29 @@ const rating = await client.stocks.getRating("AAPL");
 
 // Branch on `rated`, not on whether a field is undefined. The union narrows from here.
 if (rating.rated) {
+  // `score` is the number the letter bands: the percentile less the summed risk
+  // adjustments. `percentile` stays the untouched rank of the blended signals, and
+  // `bucketLetter` is the band that rank alone would fall in. Older responses omit all
+  // five, so read them as optional.
+  const score = rating.score !== undefined ? rating.score.toFixed(1) : "n/a";
   console.log(
-    `${rating.ticker}: ${rating.letter}, percentile ${rating.percentile.toFixed(1)} ` +
-      `of ${rating.ratedCount} rated stocks on ${rating.asOf} (${rating.methodologyVersion})`,
+    `${rating.ticker}: ${rating.letter} at ${score}, percentile ` +
+      `${rating.percentile.toFixed(1)} of ${rating.ratedCount} rated stocks on ` +
+      `${rating.asOf} (${rating.methodologyVersion})`,
   );
+
+  // Each condition is graded rather than binary, so read the points off the row instead
+  // of multiplying the 12-point maximum by how many conditions are listed.
+  const adjustments = rating.riskAdjustments ?? [];
+  if (adjustments.length) {
+    console.log(
+      `  ${adjustments.length} risk condition(s) cost ${rating.penaltyPoints} points, ` +
+        `down from ${rating.bucketLetter}`,
+    );
+    for (const adj of adjustments) {
+      console.log(`    ${adj.condition.padEnd(36)} -${adj.points.toFixed(1)}`);
+    }
+  }
 } else {
   // Not a failure. ETFs and tickers outside the swept universe answer this way, and the
   // composition below still renders.
@@ -45,12 +64,12 @@ for (const dim of rating.dimensions) {
 const active = rating.flags.filter((f) => f.active);
 console.log(`\nFlags active: ${active.length ? active.map((f) => f.label).join(", ") : "none"}`);
 
-// The daily history of the percentile comes from the metrics time series.
+// The daily history of the score comes from the metrics time series.
 const history = await client.entityMetrics.getMetrics(rating.ticker, {
   metricType: "sentisense_rating",
   startTime: Date.now() - 30 * 86400000,
 });
-console.log(`\n${history.length} daily percentile readings in the last 30 days`);
+console.log(`\n${history.length} daily score readings in the last 30 days`);
 
 // Display this wherever you display a grade.
 console.log(`\n${rating.disclaimer}`);

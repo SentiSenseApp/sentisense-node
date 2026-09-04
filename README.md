@@ -212,7 +212,7 @@ client.stocks.getFundamentals("AAPL")                   // Financial data
 client.stocks.getShortInterest("GME")                   // Short interest
 client.stocks.getOptionsSummary("NVDA")                 // End-of-day options dossier
 client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // Daily options aggregates over time
-client.stocks.getRating("AAPL")                         // SentiSense Rating: letter, percentile, dimensions
+client.stocks.getRating("AAPL")                         // SentiSense Rating: score, letter, percentile, dimensions
 client.stocks.getAISummary("AAPL", { depth: "deep" })   // AI report (PRO)
 ```
 
@@ -426,7 +426,7 @@ client.entityMetrics.getDistribution("AAPL", "sentiment")
 client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })
 ```
 
-Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense_rating`, `social_dominance`, `creators`. `sentisense_rating` is the SentiSense Rating percentile and is a time series only: it has no source breakdown, so `getDistribution` answers with an empty distribution for it.
+Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense_rating`, `social_dominance`, `creators`. `sentisense_rating` is the SentiSense Rating score and is a time series only: it has no source breakdown, so `getDistribution` answers with an empty distribution for it.
 
 ### Options
 
@@ -444,12 +444,13 @@ A row whose baseline is still building carries its raw readings with the percent
 
 ### SentiSense Rating
 
-Where a stock ranks against the other stocks rated that day, as a letter and a percentile, plus the six dimensions the rank is blended from. It is a relative research signal for informational and educational purposes, not financial, investment or trading advice, and not a recommendation about any security. Every response carries the wording to display alongside a grade in `disclaimer`. [Methodology](https://sentisense.ai/methodology/#sentisense-rating).
+Where a stock ranks against the other stocks rated that day, as a score, a letter and a percentile, plus the six dimensions the rank is blended from. It is a relative research signal for informational and educational purposes, not financial, investment or trading advice, and not a recommendation about any security. Every response carries the wording to display alongside a grade in `disclaimer`. [Methodology](https://sentisense.ai/methodology/#sentisense-rating).
 
 ```typescript
 const rating = await client.stocks.getRating("AAPL");
 if (rating.rated) {
-  console.log(rating.letter, rating.percentile, "of", rating.ratedCount, "rated stocks");
+  console.log(rating.letter, rating.score, "percentile", rating.percentile, "of", rating.ratedCount);
+  for (const adj of rating.riskAdjustments ?? []) console.log(" ", adj.condition, -adj.points);
   for (const dim of rating.dimensions.filter((d) => d.present)) {
     console.log(" ", dim.label, dim.percentile);
   }
@@ -458,11 +459,15 @@ if (rating.rated) {
 }
 ```
 
-`StockRating` is a discriminated union on `rated`, so the `if` narrows to `letter`, `percentile`, `composite`, `ratedCount` and `methodologyVersion`, and the `else` narrows to `reason`, `dimensionsPresent` and `presentDimensions`. Branch on that flag rather than testing a field for `undefined`.
+`getRating` returns `StockRatingResponse`, a discriminated union on `rated` of `StockRating` (graded) and `StockNotRated`. The `if` narrows to `score`, `letter`, `percentile`, `composite`, `ratedCount` and `methodologyVersion`, the `else` to `reason`, `dimensionsPresent` and `presentDimensions`. Branch on that flag rather than testing a field for `undefined`.
 
 Having no grade is a normal 200, not a 404: ETFs and tickers outside the swept universe answer that way, and `reason` is one of `stale`, `not_rated_today`, `insufficient_dimensions` or `insufficient_coverage_weight`. Only a ticker that resolves to nothing we track rejects with `NotFoundError`.
 
-`dimensions` always holds all six rows in a fixed order, including the ones with no data, which arrive with `present` false and a `null` percentile. Read `present` first and never substitute zero for a missing percentile: zero is the bottom of the cross-section, absence is not a position on it. Only the smart-money dimension carries `subLegs`. `letter` is served as stored rather than derived from `percentile`, so read it instead of computing your own bucket edges. For the daily history of a stock's percentile, ask `entityMetrics.getMetrics` for the `sentisense_rating` metric.
+`dimensions` always holds all six rows in a fixed order, including the ones with no data, which arrive with `present` false and a `null` percentile. Read `present` first and never substitute zero for a missing percentile: zero is the bottom of the cross-section, absence is not a position on it. Only the smart-money dimension carries `subLegs`.
+
+**`score` is not `percentile`.** `percentile` is the rank of the blended signals against the day's rated set. `score = percentile - sum(riskAdjustments.map((a) => a.points))`, floored at 10 when fewer than five dimensions are available, and it is the number `letter` bands (A 90, B 70, C 30, D 10). `bucketLetter` is the band the percentile alone would give, so the two letters differ by exactly what the conditions cost. `riskAdjustments` itemises that cost, `penaltyPoints` totals it, and `riskConditions` names the active ones from the `RiskCondition` union: `thin_coverage`, `weak_dimension`, `unprofitable`, `no_fundamentals`, `high_leverage`, `unseasoned_listing`, `small_market_cap`, `thin_liquidity`, `extended_price`, `insider_selling` and `institutional_outflow`.
+
+All five are optional: a response served before they shipped omits them. For the daily history of a stock's score, ask `entityMetrics.getMetrics` for the `sentisense_rating` metric.
 
 ### Market mood & knowledge base
 

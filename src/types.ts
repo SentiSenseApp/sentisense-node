@@ -734,6 +734,37 @@ export type RatingNotRatedReason =
   | "insufficient_coverage_weight";
 
 /**
+ * A risk condition evaluated against a rated stock. An active one deducts points from the
+ * score, up to 12 apiece; `percentile` itself is never touched by them.
+ */
+export type RiskCondition =
+  | "thin_coverage"
+  | "weak_dimension"
+  | "unprofitable"
+  | "no_fundamentals"
+  | "high_leverage"
+  | "unseasoned_listing"
+  | "small_market_cap"
+  | "thin_liquidity"
+  | "extended_price"
+  | "insider_selling"
+  | "institutional_outflow";
+
+/**
+ * One graded deduction applied to a rated stock's score.
+ *
+ * A condition is graded rather than binary, so `points` is the share of the 12-point
+ * maximum this one actually cost. Only active conditions appear, and `penaltyPoints` is
+ * the sum of these.
+ */
+export interface RiskAdjustment {
+  /** Which condition, by the same key `riskConditions` reports. */
+  condition: RiskCondition;
+  /** Points deducted, to one decimal, up to 12 for a single condition. */
+  points: number;
+}
+
+/**
  * One constituent leg behind a dimension's percentile.
  *
  * Only the smart-money dimension carries legs today; every other dimension omits the field
@@ -806,18 +837,59 @@ export interface RatingBase {
   disclaimer: string;
 }
 
-/** A stock that has a grade for `asOf`. */
-export interface RatedStockRating extends RatingBase {
+/**
+ * A stock that has a grade for `asOf`.
+ *
+ * `score`, `bucketLetter`, `riskConditions`, `riskAdjustments` and `penaltyPoints` arrive
+ * from the next API deploy onward and are optional here because a response served before
+ * then omits them.
+ */
+export interface StockRating extends RatingBase {
   rated: true;
   /**
-   * `"A"`, `"B"`, `"C"`, `"D"` or `"F"`. Served as stored, never re-derived from
-   * `percentile`, so read it rather than computing your own bucket edges.
+   * The headline number, 0 to 100 with one decimal, and the number `letter` is the band
+   * of: `score = percentile - sum(riskAdjustments.map((a) => a.points))`, floored at 10
+   * when fewer than five dimensions are available and at 0 otherwise. Absent on a
+   * response served before this field shipped.
+   */
+  score?: number;
+  /**
+   * `"A"`, `"B"`, `"C"`, `"D"` or `"F"`: the band `score` falls in, at edges 90, 70, 30
+   * and 10. Served as stored, so read it rather than deriving your own edges. Deriving
+   * it from `percentile` disagrees with the API for every stock carrying a risk
+   * condition.
    */
   letter: string;
-  /** Rank of `composite` among the day's rated stocks, 0 to 100. */
+  /**
+   * The band `percentile` alone would fall in, so a difference from `letter` is exactly
+   * what the risk conditions cost. Absent on a response served before this field
+   * shipped.
+   */
+  bucketLetter?: string;
+  /**
+   * Rank of `composite` among the day's rated stocks, 0 to 100. This stays the true rank
+   * of the blended signals: the risk conditions are subtracted from `score`, never here.
+   */
   percentile: number;
   /** The weighted blend before ranking, in [-1, +1]. */
   composite: number;
+  /**
+   * Which risk conditions were active. An empty array means none were, and the field is
+   * absent on a response served before it shipped.
+   */
+  riskConditions?: RiskCondition[];
+  /**
+   * The same conditions with the points each one actually cost, since a condition is
+   * graded rather than binary and can cost anything up to 12. Absent on a response
+   * served before this field shipped.
+   */
+  riskAdjustments?: RiskAdjustment[];
+  /**
+   * The sum of `riskAdjustments` points, to one decimal: how far `score` sits below
+   * `percentile` before the floor applies. Absent on a response served before this field
+   * shipped.
+   */
+  penaltyPoints?: number;
   /** How many stocks were rated that day: the rank's denominator. */
   ratedCount: number;
   /** The weights and floors in force when the row was written, e.g. `"2026.09-v1"`. */
@@ -828,7 +900,7 @@ export interface RatedStockRating extends RatingBase {
  * A stock with no grade for `asOf`. A normal 200, not an error: ETFs and tickers outside
  * the swept universe answer this way, and the composition still arrives so a card can render.
  */
-export interface UnratedStockRating extends RatingBase {
+export interface StockNotRated extends RatingBase {
   rated: false;
   /** Why there is no grade. */
   reason: RatingNotRatedReason;
@@ -850,7 +922,7 @@ export interface UnratedStockRating extends RatingBase {
  * and it is not a recommendation about any security. Carry `disclaimer` wherever you display
  * a grade. Methodology: https://sentisense.ai/methodology/#sentisense-rating
  */
-export type StockRating = RatedStockRating | UnratedStockRating;
+export type StockRatingResponse = StockRating | StockNotRated;
 
 // ── Documents & News ────────────────────────────────────────
 
@@ -1646,7 +1718,7 @@ export type MetricType =
   | "sentiment"
   | "sentisense_score"
   /**
-   * The SentiSense Rating percentile, 0 to 100. Time series only: it has no source
+   * The SentiSense Rating score, 0 to 100. Time series only: it has no source
    * breakdown, so `getDistribution` answers with an empty distribution for it.
    */
   | "sentisense_rating"

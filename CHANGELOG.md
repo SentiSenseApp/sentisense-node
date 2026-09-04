@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.51.0
+
+- **Renamed, breaking against 0.50.0.** `RatedStockRating` -> `StockRating`,
+  `UnratedStockRating` -> `StockNotRated`, and the union `StockRating` ->
+  `StockRatingResponse`, which is what `stocks.getRating` returns.
+- `StockRating` gains `score`, `bucketLetter`, `riskConditions`, `riskAdjustments` and
+  `penaltyPoints`, all optional. `score = percentile - sum(riskAdjustments.map((a) =>
+  a.points))` and is what `letter` bands; `percentile` is unchanged. New `RiskAdjustment`
+  and `RiskCondition` types; the `sentisense_rating` metric series carries the score.
+- Use 0.51.0 instead of 0.50.0.
+
 ## 0.50.0
 
 ### Added

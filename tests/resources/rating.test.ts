@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SentiSense, { AuthenticationError, NotFoundError } from "../../src/index.js";
-import type { StockRating } from "../../src/index.js";
+import type { StockRatingResponse } from "../../src/index.js";
 
 /**
  * The rating's failure modes are all quiet, which is why they are gated here rather than
@@ -10,8 +10,14 @@ import type { StockRating } from "../../src/index.js";
  *   grade" as an error surfaces an exception for every ETF it asks about.
  * - An absent dimension is a full row with `present` false and a null percentile. Read as
  *   zero, the dimension we know nothing about ranks at the bottom of the market.
- * - `letter` is served as stored, never re-derived from `percentile`, so the bucket edges
- *   live in one place and a client must not recompute them.
+ * - `letter` is the band of `score`, not of `percentile`, and it is served as stored. A
+ *   client that recomputes it from the percentile disagrees with the API for every stock
+ *   carrying a risk condition.
+ * - `score` is `percentile` less the summed `riskAdjustments` points, and a condition is
+ *   graded rather than binary, so the points are read off the response instead of
+ *   multiplied out from how many conditions are listed.
+ * - `score`, `bucketLetter`, `riskConditions`, `riskAdjustments` and `penaltyPoints` are
+ *   optional: a response served before they shipped omits them and must still parse.
  * - Only the smart-money dimension carries `subLegs`; on every other one the field is
  *   absent, which must read as "no legs" rather than "legs of zero".
  *
@@ -46,9 +52,18 @@ const RATED = {
   ticker: "AAPL",
   kbEntityId: "kb/company/1",
   rated: true,
-  letter: "B",
+  // 79.96 less the summed adjustments, reported to one decimal.
+  score: 59.5,
+  letter: "C",
+  bucketLetter: "B",
   percentile: 79.96146435452793,
   composite: 0.21454864250697855,
+  riskConditions: ["unprofitable", "high_leverage"],
+  riskAdjustments: [
+    { condition: "unprofitable", points: 12.0 },
+    { condition: "high_leverage", points: 8.5 },
+  ],
+  penaltyPoints: 20.5,
   ratedCount: 1038,
   asOf: "2026-09-03",
   methodologyVersion: "2026.09-v1",
@@ -89,6 +104,19 @@ const RATED = {
   ],
   disclaimer: DISCLAIMER,
 };
+
+// The same stock as served before the score fields shipped: all four absent rather than
+// null, which is the shape the optional typing exists for.
+const LEGACY_RATED = (() => {
+  const { score, bucketLetter, riskConditions, riskAdjustments, penaltyPoints, ...rest } =
+    RATED;
+  void score;
+  void bucketLetter;
+  void riskConditions;
+  void riskAdjustments;
+  void penaltyPoints;
+  return { ...rest, letter: "B" };
+})();
 
 const NOT_RATED = {
   ticker: "SPY",
@@ -132,7 +160,8 @@ describe("stocks.getRating: the graded shape", () => {
     const rating = await client.stocks.getRating("AAPL");
     expect(rating.rated).toBe(true);
     if (!rating.rated) throw new Error("expected a rated response");
-    expect(rating.letter).toBe("B");
+    expect(rating.letter).toBe("C");
+    expect(rating.score).toBeCloseTo(59.5);
     expect(rating.percentile).toBeCloseTo(79.9614643);
     expect(rating.composite).toBeCloseTo(0.2145486);
     // Without the denominator a percentile is a number with no cohort behind it.
@@ -152,6 +181,71 @@ describe("stocks.getRating: the graded shape", () => {
     mockFetch.mockResolvedValueOnce(jsonResponse(RATED));
     const rating = await client.stocks.getRating("AAPL");
     expect(rating.disclaimer).toBe(DISCLAIMER);
+  });
+});
+
+describe("stocks.getRating: the score and its risk conditions", () => {
+  it("reports the score as the percentile less the summed adjustments", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(RATED));
+    const rating = await client.stocks.getRating("AAPL");
+    if (!rating.rated) throw new Error("expected a rated response");
+    expect(rating.score).toBeCloseTo(59.5);
+    expect(rating.penaltyPoints).toBeCloseTo(20.5);
+    // The total is the sum of the graded rows, not 12 times how many there are: a
+    // condition can cost anything up to 12, and the second one here costs 8.5.
+    const summed = (rating.riskAdjustments ?? []).reduce((t, a) => t + a.points, 0);
+    expect(rating.penaltyPoints).toBeCloseTo(summed);
+    expect(rating.penaltyPoints).not.toBe(12 * (rating.riskConditions?.length ?? 0));
+    expect(rating.score).toBeCloseTo(rating.percentile - rating.penaltyPoints!, 0);
+  });
+
+  it("itemises each adjustment with its condition and its cost", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(RATED));
+    const rating = await client.stocks.getRating("AAPL");
+    if (!rating.rated) throw new Error("expected a rated response");
+    expect(rating.riskAdjustments).toEqual([
+      { condition: "unprofitable", points: 12.0 },
+      { condition: "high_leverage", points: 8.5 },
+    ]);
+    // Every graded row names a condition that is also listed as active.
+    expect(rating.riskAdjustments?.map((a) => a.condition)).toEqual(rating.riskConditions);
+  });
+
+  it("bands the letter off the score, not off the percentile", async () => {
+    // 79.9 would band as B. The two conditions take the score to 59.5, which bands as C,
+    // and `bucketLetter` keeps the pre-penalty band visible next to it.
+    mockFetch.mockResolvedValueOnce(jsonResponse(RATED));
+    const rating = await client.stocks.getRating("AAPL");
+    if (!rating.rated) throw new Error("expected a rated response");
+    expect(rating.letter).toBe("C");
+    expect(rating.bucketLetter).toBe("B");
+    expect(rating.letter).not.toBe(rating.bucketLetter);
+  });
+
+  it("names the active conditions", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(RATED));
+    const rating = await client.stocks.getRating("AAPL");
+    if (!rating.rated) throw new Error("expected a rated response");
+    expect(rating.riskConditions).toEqual(["unprofitable", "high_leverage"]);
+  });
+
+  it("parses a response served before the four fields shipped", async () => {
+    // Absent has to read as "not reported", never as a zero that would look like a stock
+    // carrying no conditions at all.
+    mockFetch.mockResolvedValueOnce(jsonResponse(LEGACY_RATED));
+    const rating = await client.stocks.getRating("AAPL");
+    expect(rating.rated).toBe(true);
+    if (!rating.rated) throw new Error("expected a rated response");
+    expect(rating.score).toBeUndefined();
+    expect(rating.bucketLetter).toBeUndefined();
+    expect(rating.penaltyPoints).toBeUndefined();
+    expect(rating.riskConditions).toBeUndefined();
+    expect(rating.riskAdjustments).toBeUndefined();
+    // Everything that was there before is untouched.
+    expect(rating.letter).toBe("B");
+    expect(rating.percentile).toBeCloseTo(79.9614643);
+    expect(rating.ratedCount).toBe(1038);
+    expect(rating.dimensions).toHaveLength(3);
   });
 });
 
@@ -247,7 +341,7 @@ describe("stocks.getRating: the ungraded shape", () => {
 
   it("narrows on `rated`, so the graded fields are unreachable on this branch", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse(NOT_RATED));
-    const rating: StockRating = await client.stocks.getRating("SPY");
+    const rating: StockRatingResponse = await client.stocks.getRating("SPY");
     const headline = rating.rated ? rating.letter : rating.reason;
     expect(headline).toBe("not_rated_today");
   });
