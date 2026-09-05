@@ -983,6 +983,38 @@ export interface StoryCluster {
   averageSentiment: number;
   /** Unix timestamp in seconds when the cluster was assembled by our pipeline. */
   clusteredAt: number;
+  /**
+   * How the story was authored: `"ORIGINAL"` for an editorially authored SentiSense
+   * Original, `"AI"` for a pipeline-generated story. Optional because an older API
+   * build omits it, in which case it is `undefined` rather than `"AI"`.
+   */
+  storySource?: "ORIGINAL" | "AI";
+  /**
+   * True while the story is still being revised as the event develops. Optional
+   * because an older API build omits it, in which case it is `undefined` rather than
+   * `false`: read that as "not known", not as "settled".
+   */
+  isLive?: boolean;
+}
+
+/**
+ * One dated update on a live story, as served inside the story detail response's
+ * `timeline` array (newest first, empty when a story has none).
+ *
+ * `documents.getStoryDetail()` returns `unknown`, so this type is exported for callers
+ * that narrow the response themselves.
+ */
+export interface StoryTimelineEntry {
+  /** Publication time of this update, Unix milliseconds. */
+  publishedAt: number;
+  /**
+   * `"INITIAL"`, `"UPDATE"` or `"CORRECTION"`. Left open: an unrecognised label is
+   * served through rather than rejected, so branch on the three known values and let
+   * anything else fall through to a neutral rendering.
+   */
+  updateType: "INITIAL" | "UPDATE" | "CORRECTION" | (string & {});
+  /** The update text, markdown. */
+  content: string;
 }
 
 export interface Story {

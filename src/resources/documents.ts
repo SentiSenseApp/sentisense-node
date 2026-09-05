@@ -54,7 +54,14 @@ export class Documents {
     return this.client.get("/api/v1/documents/stories", options);
   }
 
-  /** Get full story detail by cluster ID. */
+  /**
+   * Get full story detail by cluster ID.
+   *
+   * Deliberately untyped: narrow it yourself. The response carries `storySource` and
+   * `isLive` alongside the story body, plus a `timeline` array of dated updates,
+   * newest first and empty when the story has none. {@link StoryTimelineEntry} is
+   * exported for that array.
+   */
   async getStoryDetail(clusterId: string): Promise<unknown> {
     return this.client.get(`/api/v1/documents/stories/${encodeURIComponent(clusterId)}`);
   }

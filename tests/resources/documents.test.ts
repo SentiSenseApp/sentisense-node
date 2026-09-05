@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SentiSense from "../../src/index.js";
+import type { StoryCluster, StoryTimelineEntry } from "../../src/index.js";
 
 const mockFetch = vi.fn();
 
@@ -111,6 +112,77 @@ describe("documents.getStoriesByTicker", () => {
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/documents/stories/ticker/AAPL");
     expect(url).toContain("limit=5");
+  });
+});
+
+describe("story provenance fields", () => {
+  const cluster = {
+    id: "cluster_abc123",
+    title: "Chipmaker lifts full-year outlook after a beat",
+    clusterSize: 7,
+    averageSentiment: 0.42,
+    clusteredAt: 1757001600,
+    storySource: "ORIGINAL" as const,
+    isLive: true,
+  };
+
+  const story = {
+    cluster,
+    displayTickers: ["Example Corp (EXMP)"],
+    tickers: ["EXMP"],
+    primaryEntityNames: ["Example Corp"],
+    impactScore: 0.81,
+    brokeAt: 1757000400,
+  };
+
+  it("reads storySource and isLive off the cluster", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([story]));
+    const stories = await client.documents.getStories({ limit: 1 });
+    expect(stories[0].cluster.storySource).toBe("ORIGINAL");
+    expect(stories[0].cluster.isLive).toBe(true);
+  });
+
+  it("leaves both undefined when the API build predates them", async () => {
+    // Undefined has to survive as "not known": collapsing it to "AI"/false would make
+    // an Original look pipeline-written and an unsettled story look settled.
+    const { storySource: _s, isLive: _l, ...older } = cluster;
+    mockFetch.mockResolvedValueOnce(jsonResponse([{ ...story, cluster: older }]));
+    const stories = await client.documents.getStories({ limit: 1 });
+    expect(stories[0].cluster.storySource).toBeUndefined();
+    expect(stories[0].cluster.isLive).toBeUndefined();
+    // Still a valid StoryCluster: both fields are optional, gated by npm run typecheck.
+    const narrowed: StoryCluster = stories[0].cluster;
+    expect(narrowed.id).toBe("cluster_abc123");
+  });
+
+  it("types the story detail timeline for callers that narrow it", async () => {
+    const timeline: StoryTimelineEntry[] = [
+      { publishedAt: 1757005200000, updateType: "UPDATE", content: "Shares pared gains." },
+      { publishedAt: 1757001600000, updateType: "INITIAL", content: "The print landed." },
+    ];
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ...cluster, timeline }));
+    const detail = (await client.documents.getStoryDetail("cluster_abc123")) as {
+      timeline: StoryTimelineEntry[];
+    };
+    expect(detail.timeline).toHaveLength(2);
+    // Newest first, as served.
+    expect(detail.timeline[0].publishedAt).toBeGreaterThan(detail.timeline[1].publishedAt);
+    expect(detail.timeline[1].updateType).toBe("INITIAL");
+    // updateType is left open: an unrecognised label is served through, not rejected.
+    const unknownLabel: StoryTimelineEntry = {
+      publishedAt: 1757008800000,
+      updateType: "RETRACTION",
+      content: "Pulled pending review.",
+    };
+    expect(unknownLabel.updateType).toBe("RETRACTION");
+  });
+
+  it("returns an empty timeline for a story with no updates", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ...cluster, timeline: [] }));
+    const detail = (await client.documents.getStoryDetail("cluster_abc123")) as {
+      timeline: StoryTimelineEntry[];
+    };
+    expect(detail.timeline).toEqual([]);
   });
 });
 

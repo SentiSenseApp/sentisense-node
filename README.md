@@ -241,6 +241,27 @@ client.documents.getStories({ limit: 10 })
 client.documents.getStoryDetail("cluster_abc123")
 ```
 
+A story's `cluster` says where it came from and whether it has settled. `storySource` is
+`"ORIGINAL"` for an editorially authored SentiSense Original and `"AI"` for a
+pipeline-generated story, and `isLive` is true while the story is still being revised as
+the event develops. Both are optional: against an API build that predates them they are
+`undefined`, which means "not known" rather than `"AI"` or `false`.
+
+`getStoryDetail` returns `unknown`, so narrow it yourself. It carries the same two fields
+plus a `timeline` array of dated updates, newest first and empty when a story has none.
+The `StoryTimelineEntry` type is exported for that array:
+
+```typescript
+import type { StoryTimelineEntry } from "sentisense";
+
+const detail = (await client.documents.getStoryDetail("cluster_abc123")) as {
+  timeline: StoryTimelineEntry[];
+};
+for (const update of detail.timeline) {
+  console.log(new Date(update.publishedAt), update.updateType, update.content);
+}
+```
+
 ### Institutional flows (13F)
 
 ```typescript

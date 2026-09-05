@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.53.0
+
+### Added
+
+- **Story provenance on the cluster.** `StoryCluster` gains `storySource` and `isLive`.
+  `storySource` is `"ORIGINAL"` for an editorially authored SentiSense Original and
+  `"AI"` for a pipeline-generated story; `isLive` is true while the story is still being
+  revised as the event develops. Both are optional, so a response served before they
+  shipped still typechecks and reads `undefined`, which means "not known" rather than
+  `"AI"` or `false`.
+- **`StoryTimelineEntry`**, exported. The story detail response carries a `timeline`
+  array of dated updates, newest first and empty when a story has none, each with
+  `publishedAt` (Unix milliseconds), `updateType` and markdown `content`.
+  `getStoryDetail` still returns `unknown` and this type is for narrowing it yourself.
+  `updateType` is left open past `"INITIAL"`, `"UPDATE"` and `"CORRECTION"`: an
+  unrecognised label is served through rather than rejected.
+
 ## 0.52.0
 
 ### Added

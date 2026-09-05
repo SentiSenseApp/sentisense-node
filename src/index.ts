@@ -170,6 +170,7 @@ export type {
   SentimentEntry,
   Story,
   StoryCluster,
+  StoryTimelineEntry,
   Quarter,
   InstitutionalFlow,
   InstitutionalFlows,
