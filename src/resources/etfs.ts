@@ -18,12 +18,19 @@ export interface EtfInfo {
 }
 
 export interface EtfHolding {
+  /** The symbol as the issuer filed it. For an international fund this is the local exchange code, not a US ticker, so resolve stocks with `linkedTicker` instead. */
   ticker: string;
   name: string | null;
   /** Weight in the fund as a percentage (0-100). */
   weightPct: number;
   /** ISO date "YYYY-MM-DD". First date this holding appeared in the composition. */
   firstSeen: string | null;
+  /** Listing venue the issuer reported for this position, verbatim (e.g. "NYSE", "SIX Swiss Exchange"). Null when the source carries no venue column. */
+  exchange?: string | null;
+  /** The symbol as listed on `exchange`. Same value as `ticker`, named to make it clear the symbol is venue-local and may not identify a US company. */
+  localTicker?: string | null;
+  /** The US stock symbol this holding resolves to, or null when it cannot be resolved to one. */
+  linkedTicker?: string | null;
 }
 
 export interface EtfHoldings {

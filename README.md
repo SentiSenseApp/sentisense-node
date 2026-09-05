@@ -170,7 +170,22 @@ Most methods resolve to the payload directly, but two families wrap it. The retu
 
 **1. Tier-gated endpoints return a preview envelope.** The payload is in `data`, and `isPreview` tells you whether it was truncated for your tier. `totalCount` carries the untruncated size whenever the server knows it: on a truncated response, so you can render "showing N of M", and on a paged endpoint such as `politicians.getActivity`, where it is the full match count on every tier including PRO. A missing `totalCount` means "count `data` yourself", never "zero results".
 
-Affected: `institutional.getFlows` / `getHolders` / `getActivists`, and all five `insights` methods.
+Affected: every method whose declared return type is `PreviewResponse<T>`. A test keeps this table in step with the source, so it is the full list rather than a sample.
+
+| Namespace | Methods |
+|-----------|---------|
+| `analyst` | `consensus` `actions` `estimates` `marketActivity` `coverage` `profile` `calls` |
+| `calendar` | `getEarnings` |
+| `earnings` | `getSummaries` `getRecent` |
+| `etfs` | `analystAggregate` `insiderAggregate` `sentimentAggregate` |
+| `insider` | `getActivity` `getTrades` `getClusterBuys` |
+| `insights` | `stock` `stockRange` `market` `latest` `user` |
+| `institutional` | `getFlows` `getHolders` `getActivists` |
+| `options` | `getOverview` |
+| `politicians` | `getActivity` `getFilings` `getMembers` `getMember` |
+| `stocks` | `getSentiment` `getKpis` `getOptionsSummary` `getOptionsHistory` |
+
+The envelope itself is always an object, so test the payload rather than the response. Two of these declare a `data` that can be null: `stocks.getOptionsSummary`, for a ticker outside the covered options universe, and `options.getOverview`, before its first nightly build. Everywhere else `data` is an array or an object.
 
 ```typescript
 const flows = await client.institutional.getFlows();
@@ -475,7 +490,7 @@ client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // That name's daily 
 
 The radar carries two separately-ranked boards: `data.rows` for stocks and `data.etfRows` for ETFs. Keep them apart. Every reading behind a row's `interestScore` is a percentile of that ticker's own trailing history, so a ranking built across both boards compares numbers measured against different baselines. The aggregates split the same way, with the `etf`-prefixed fields describing the ETF board alone.
 
-A row whose baseline is still building carries its raw readings with the percentiles and `interestScore` omitted, which means "not enough history yet" rather than "nothing interesting". `getOptionsSummary` reports an uncovered ticker as a `null` payload; `getOptionsHistory` reports it as an empty `series` instead, so check the array rather than null-checking there.
+A row whose baseline is still building carries its raw readings with the percentiles and `interestScore` omitted, which means "not enough history yet" rather than "nothing interesting". `getOptionsSummary` reports an uncovered ticker as a null payload inside the usual envelope, so the check is `result.data === null`: the response object itself is always truthy, and a bare `if (summary === null)` never fires. `getOptionsHistory` reports it as an empty `series` instead, so check the array's length rather than null-checking there.
 
 ### SentiSense Rating
 

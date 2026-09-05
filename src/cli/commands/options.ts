@@ -72,6 +72,7 @@ export const optionsCommand: CommandDef = {
         kind: "facts",
         items: fields(
           field("ATM IV", fixed(latest.atmIv, 4)),
+          field("Exp move 1d", fixed(latest.expectedMove1d, 4)),
           field("Skew 25d", signed(latest.skew25d, 4)),
           field("Call vol", humanize(latest.callVol, 1)),
           field("Put vol", humanize(latest.putVol, 1)),

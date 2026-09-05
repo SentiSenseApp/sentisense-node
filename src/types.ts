@@ -488,6 +488,26 @@ export interface OptionsAggregate {
   /** Raw 25-delta call and put implied volatilities. */
   iv25c?: number;
   iv25p?: number;
+  /**
+   * Calibrated 90% expected move over 1 trading session, as a fraction of price, so `0.0407`
+   * is 4.07%. `k * atmIv * Math.sqrt(h / 252)` with an empirical `k` (1.48 here) fit on
+   * SentiSense's own stored option history. The 90% is a measured historical coverage rate,
+   * not a guarantee, and the range carries no direction and no price target.
+   */
+  expectedMove1d?: number;
+  /** The same calibrated 90% range over 5 trading sessions (`k` = 1.56). */
+  expectedMove5d?: number;
+  /** The same calibrated 90% range over 20 trading sessions (`k` = 1.56). */
+  expectedMove20d?: number;
+  /**
+   * One-sigma expected move over 1 trading session, `atmIv * Math.sqrt(h / 252)`: the industry
+   * convention, roughly 68% of moves, with no calibration applied.
+   */
+  expectedMove1s1d?: number;
+  /** One-sigma expected move over 5 trading sessions. */
+  expectedMove1s5d?: number;
+  /** One-sigma expected move over 20 trading sessions. */
+  expectedMove1s20d?: number;
   netDelta?: number;
   notionalVol?: number;
   contracts?: number;
@@ -644,6 +664,18 @@ export interface OptionsOverviewRow {
   notionalVol?: number;
   /** Signed change of `atmIv` against its ~20-session mean. Rank "biggest IV moves" by absolute value. */
   ivMove20?: number;
+  /** Calibrated 90% expected move over 1 trading session, as a fraction of price. */
+  expectedMove1d?: number;
+  /** The same calibrated 90% range over 5 trading sessions. */
+  expectedMove5d?: number;
+  /** The same calibrated 90% range over 20 trading sessions. */
+  expectedMove20d?: number;
+  /** One-sigma expected move over 1 trading session: the industry convention, uncalibrated. */
+  expectedMove1s1d?: number;
+  /** One-sigma expected move over 5 trading sessions. */
+  expectedMove1s5d?: number;
+  /** One-sigma expected move over 20 trading sessions. */
+  expectedMove1s20d?: number;
   /** Trailing-1y observation count, which is what drives the building-baseline state. */
   observations1y?: number;
   /** Unusually-active contracts this session. */
@@ -1363,6 +1395,8 @@ export interface InsiderTrade {
   transactionCode: string;
   transactionType: "BUY" | "SELL" | "EXERCISE" | "AWARD" | "GIFT" | "OTHER";
   securityTitle: string;
+  /** The security the row was filed in when it is not the US listing `ticker` names (e.g. "Common Shares (2330.TW)"); null on the ordinary case, and when set `pricePerShare` is null because the filed price is per foreign ordinary share. */
+  securityBasis?: string | null;
   sharesTransacted: number;
   pricePerShare: number | null;
   totalValue: number;
@@ -1724,9 +1758,34 @@ export interface GetRecentEarningsOptions {
   limit?: number;
 }
 
+/**
+ * What lifts the gate on a preview response, in a form you can show a user directly.
+ *
+ * Present only when `isPreview` is `true`. Every field is optional: the copy and the
+ * offer are set server-side and can change without an SDK release, so read what is
+ * there rather than depending on any one field.
+ */
+export interface UpgradeHint {
+  /** Plan that lifts the gate, e.g. `"PRO"`. */
+  plan?: string;
+  /** One sentence naming what was withheld. Safe to show verbatim. */
+  message?: string;
+  /** Current price, including any active discount code. */
+  price?: string;
+  /** Where to complete the upgrade. */
+  url?: string;
+  /** What an automated caller should do with this object. */
+  relay?: string;
+}
+
 export interface PreviewResponse<T> {
   isPreview: boolean;
   previewReason: "PRO_REQUIRED" | null;
+  /**
+   * How to lift the gate. Present only on a preview; absent from full responses.
+   * Surface `message` and `url` to your user rather than hard-coding a price.
+   */
+  upgrade?: UpgradeHint;
   /**
    * Size of the full result set, before any truncation your response went through.
    *
@@ -2130,6 +2189,8 @@ export interface TrackerSnapshotResponse {
   previewReason: "PRO_REQUIRED" | null;
   /** Full row count before truncation. Only set on preview responses. */
   totalCount?: number;
+  /** How to lift the gate. Only set on preview responses. */
+  upgrade?: UpgradeHint;
   data: TrackerSnapshot;
 }
 

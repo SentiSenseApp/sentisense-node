@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.54.0
+
+### Added
+
+- **Expected move on the options aggregate.** `OptionsAggregate` and `OptionsOverviewRow` gain
+  six optional fields, all fractions of price over 1, 5 and 20 trading sessions (252 per year).
+  `expectedMove1s1d`, `expectedMove1s5d` and `expectedMove1s20d` are the one-sigma industry
+  convention, `atmIv * Math.sqrt(h / 252)`, with no calibration applied. `expectedMove1d`,
+  `expectedMove5d` and `expectedMove20d` apply the same formula with an empirical scale (1.48 at
+  one session, 1.56 at five and twenty) fit on SentiSense's own stored option history, giving a
+  90% range whose measured out-of-sample coverage runs 90.4% to 91.4%. Read that coverage as a
+  measured historical rate rather than a guarantee: the fields describe what the option chain
+  implies today against the ticker's own past, and carry no direction and no price target.
+  They ride on the daily aggregate, so they read the same from `stocks.getOptionsSummary()`'s
+  `latest`, every row of `stocks.getOptionsHistory()`, and both boards of `options.getOverview()`.
+- **`sentisense options <ticker>`** prints the calibrated one-session range next to ATM IV.
+- **`InsiderTrade.securityBasis`**, set when a Form 4 was filed in a security other than the
+  listed US share (for example a foreign issuer's ordinary shares); on those rows `pricePerShare`
+  is `null` rather than a converted number.
+- **ETF holding venue fields.** `EtfHolding` gains `exchange`, `localTicker` and `linkedTicker`.
+  For holdings listed outside the US, `ticker` is the local symbol on `exchange`; resolve to a
+  SentiSense stock only through `linkedTicker`, which is `null` when there is no US listing.
+- **`upgrade` on preview envelopes.** Present only when `isPreview` is true, it describes how to
+  lift the gate so an agent has something concrete to relay.
+
+### Fixed
+
+- **Documentation: the README now names every method that returns the preview envelope** (33, grouped by namespace and pinned to the source by a test, where the old list named 8), and corrects the options-dossier note: an uncovered ticker arrives as `data: null` inside the envelope, so the response object itself is always truthy.
+
 ## 0.53.0
 
 ### Added
