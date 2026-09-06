@@ -738,18 +738,19 @@ export interface OptionsOverview {
 // ── SentiSense Rating ───────────────────────────────────────
 //
 // The SentiSense Rating is an informational, relative rank: it places a stock against the
-// other stocks rated on the same day, across six dimensions. It is a research signal, not a
+// other stocks rated on the same day, across seven dimensions. It is a research signal, not a
 // recommendation, and it carries no directive meaning about any security. Methodology:
 // https://sentisense.ai/methodology/#sentisense-rating
 
-/** The six dimensions the composite is blended from, by stable `key`. */
+/** The seven dimensions the composite is blended from, by stable `key`. */
 export type RatingDimensionKey =
   | "crowd"
   | "smart_money"
   | "options"
   | "analysts"
   | "fundamentals"
-  | "earnings";
+  | "earnings"
+  | "technicals";
 
 /**
  * Why a stock has no grade.
@@ -814,9 +815,9 @@ export interface RatingSubLeg {
 }
 
 /**
- * One of the six dimensions the composite is blended from.
+ * One of the seven dimensions the composite is blended from.
  *
- * **All six always arrive, in a fixed order, whether or not they had data.** An absent
+ * **All seven always arrive, in a fixed order, whether or not they had data.** An absent
  * dimension is a full row with `present` false and a `null` percentile; the server never
  * drops it, precisely so a client cannot mistake a gap for a five-dimension rating. Read
  * `present` before reading `percentile`, and never substitute zero for a `null`: zero is the
@@ -862,7 +863,7 @@ export interface RatingBase {
   kbEntityId: string;
   /** The New York calendar day this answer describes, `"YYYY-MM-DD"`. */
   asOf: string;
-  /** Always all six, in a fixed order, absent ones with `present` false. */
+  /** Always all seven, in a fixed order, absent ones with `present` false. */
   dimensions: RatingDimension[];
   flags: RatingFlag[];
   /** The standard financial disclaimer. Display it alongside the grade. */
@@ -936,7 +937,7 @@ export interface StockNotRated extends RatingBase {
   rated: false;
   /** Why there is no grade. */
   reason: RatingNotRatedReason;
-  /** How many of the six dimensions had data. */
+  /** How many of the seven dimensions had data. */
   dimensionsPresent?: number;
   /** Which dimensions had data, by `key`. */
   presentDimensions: RatingDimensionKey[];

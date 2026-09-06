@@ -494,7 +494,7 @@ A row whose baseline is still building carries its raw readings with the percent
 
 ### SentiSense Rating
 
-Where a stock ranks against the other stocks rated that day, as a score, a letter and a percentile, plus the six dimensions the rank is blended from. It is a relative research signal for informational and educational purposes, not financial, investment or trading advice, and not a recommendation about any security. Every response carries the wording to display alongside a grade in `disclaimer`. [Methodology](https://sentisense.ai/methodology/#sentisense-rating).
+Where a stock ranks against the other stocks rated that day, as a score, a letter and a percentile, plus the seven dimensions the rank is blended from. It is a relative research signal for informational and educational purposes, not financial, investment or trading advice, and not a recommendation about any security. Every response carries the wording to display alongside a grade in `disclaimer`. [Methodology](https://sentisense.ai/methodology/#sentisense-rating).
 
 ```typescript
 const rating = await client.stocks.getRating("AAPL");
@@ -513,7 +513,7 @@ if (rating.rated) {
 
 Having no grade is a normal 200, not a 404: ETFs and tickers outside the swept universe answer that way, and `reason` is one of `stale`, `not_rated_today`, `insufficient_dimensions` or `insufficient_coverage_weight`. Only a ticker that resolves to nothing we track rejects with `NotFoundError`.
 
-`dimensions` always holds all six rows in a fixed order, including the ones with no data, which arrive with `present` false and a `null` percentile. Read `present` first and never substitute zero for a missing percentile: zero is the bottom of the cross-section, absence is not a position on it. Only the smart-money dimension carries `subLegs`.
+`dimensions` always holds all seven rows in a fixed order, including the ones with no data, which arrive with `present` false and a `null` percentile. Read `present` first and never substitute zero for a missing percentile: zero is the bottom of the cross-section, absence is not a position on it. Only the smart-money dimension carries `subLegs`.
 
 **`score` is not `percentile`.** `percentile` is the rank of the blended signals against the day's rated set. `score = percentile - sum(riskAdjustments.map((a) => a.points))`, floored at 10 when fewer than five dimensions are available, and it is the number `letter` bands (A 90, B 70, C 30, D 10). `bucketLetter` is the band the percentile alone would give, so the two letters differ by exactly what the conditions cost. `riskAdjustments` itemises that cost, `penaltyPoints` totals it, and `riskConditions` names the active ones from the `RiskCondition` union: `thin_coverage`, `weak_dimension`, `unprofitable`, `no_fundamentals`, `high_leverage`, `unseasoned_listing`, `small_market_cap`, `thin_liquidity`, `extended_price`, `insider_selling` and `institutional_outflow`.
 
