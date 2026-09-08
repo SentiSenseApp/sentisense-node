@@ -476,7 +476,7 @@ client.entityMetrics.getDistribution("AAPL", "sentiment")
 client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })
 ```
 
-Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense_rating`, `social_dominance`, `creators`. `sentisense_rating` is the SentiSense Rating score and is a time series only: it has no source breakdown, so `getDistribution` answers with an empty distribution for it.
+Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense_rating`, `social_dominance`, `creators`. `sentisense` is an alias for `sentisense_score`; either spelling returns the same series, and keys are case-insensitive. Responses always name the canonical type, so a `sentisense` request answers with `SENTISENSE_SCORE`. `sentisense_rating` is the SentiSense Rating score and is a time series only: it has no source breakdown, so `getDistribution` answers with an empty distribution for it.
 
 ### Options
 
