@@ -74,6 +74,48 @@ export interface AnalystConsensusHistory {
   history: AnalystConsensusHistoryPoint[];
 }
 
+/** One recorded call associated with a stock move. */
+export interface AnalystCalledItCall {
+  firm: string;
+  /** Always present; `null` when the publisher named nobody. */
+  analystName: string | null;
+  attribution: "firm" | "analyst";
+  priceTarget: number | null;
+  priorPriceTarget: number | null;
+  /** Publication date, `"YYYY-MM-DD"`. */
+  publishedOn: string;
+  daysBeforeMove: number;
+}
+
+/** Factual call history as recorded when a stock moved 20% or more over five sessions. */
+export interface AnalystCalledItMove {
+  insightId: string;
+  /** When the observation was generated, in epoch seconds. */
+  generatedAt: number;
+  /** First session date, `"YYYY-MM-DD"`. */
+  moveStartDate: string;
+  /** Last session date, `"YYYY-MM-DD"`. */
+  moveEndDate: string;
+  movePct: number;
+  moveWindowSessions: number;
+  lookbackDays: number;
+  /** Move-level counts remain intact in a free preview. */
+  coveringFirms: number;
+  revisedWithMove: number;
+  revisedAgainstMove: number;
+  leftUnchanged: number;
+  /** PRO: all recorded calls. FREE: up to five on the newest move. */
+  calls: AnalystCalledItCall[];
+}
+
+export interface GetAnalystCalledItOptions {
+  /**
+   * Maximum moves, newest first. Default 10; minimum 1, maximum 50.
+   * The API rejects values below 1 and clamps values above 50.
+   */
+  limit?: number;
+}
+
 export interface AnalystAction {
   ticker: string;
   actionDate: string;
@@ -333,6 +375,26 @@ export class Analyst {
   ): Promise<PreviewResponse<AnalystConsensusHistory>> {
     return this.client.get(
       `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/consensus/history`,
+      options,
+    );
+  }
+
+  /**
+   * Get factual call history as recorded when a stock moved 20% or more over five
+   * sessions, newest move first by `moveEndDate`.
+   *
+   * PRO receives full moves and calls. FREE receives the newest move with up to five
+   * calls and all move-level counts intact. The envelope's `totalCount` counts all
+   * available moves before the limit. A known stock with no qualifying move returns
+   * an empty `moves` array. Each call includes `analystName`: it is `null`, never
+   * absent, when the publisher named nobody.
+   */
+  async calledIt(
+    ticker: string,
+    options?: GetAnalystCalledItOptions,
+  ): Promise<PreviewResponse<{ ticker: string; count: number; moves: AnalystCalledItMove[] }>> {
+    return this.client.get(
+      `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/called-it`,
       options,
     );
   }

@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SentiSense, { NotFoundError } from "../../src/index.js";
-import type { AnalystRatingBuckets } from "../../src/index.js";
+import type {
+  AnalystCalledItCall,
+  AnalystCalledItMove,
+  AnalystRatingBuckets,
+  GetAnalystCalledItOptions,
+} from "../../src/index.js";
 
 const mockFetch = vi.fn();
 
@@ -100,6 +105,82 @@ describe("analyst.consensusHistory", () => {
     expect(result.totalCount).toBe(90);
     expect(result.data.history[0].countsObserved).toBe(false);
     expect(result.data.history[0].strongBuy).toBeNull();
+  });
+});
+
+describe("analyst.calledIt", () => {
+  it("uppercases the ticker, omits limit, and returns empty moves", async () => {
+    const data = { ticker: "AAPL", count: 0, moves: [] };
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, totalCount: 0, data }),
+    );
+    const result = await client.analyst.calledIt("aapl");
+    const url = new URL(mockFetch.mock.calls[0][0] as string);
+    expect(url.pathname).toBe("/api/v1/analyst/AAPL/called-it");
+    expect(url.search).toBe("");
+    expect(mockFetch.mock.calls[0][1].method).toBe("GET");
+    expect(result.data).toEqual(data);
+    expect(result.totalCount).toBe(0);
+    expect(result.isPreview).toBe(false);
+  });
+
+  it.each([3, 0, 75])("forwards limit %s for server validation", async (limit) => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: { moves: [] } }),
+    );
+    const options: GetAnalystCalledItOptions = { limit };
+    await client.analyst.calledIt("AAPL", options);
+    const url = new URL(mockFetch.mock.calls[0][0] as string);
+    expect(url.pathname).toBe("/api/v1/analyst/AAPL/called-it");
+    expect([...url.searchParams.entries()]).toEqual([["limit", String(limit)]]);
+  });
+
+  it("keeps preview metadata, move counts, and a null analystName", async () => {
+    const call: AnalystCalledItCall = {
+      firm: "Example Research",
+      analystName: null,
+      attribution: "firm",
+      priceTarget: 250.0,
+      priorPriceTarget: null,
+      publishedOn: "2026-08-21",
+      daysBeforeMove: 3,
+    };
+    const move: AnalystCalledItMove = {
+      insightId: "move-example",
+      generatedAt: 1788228000,
+      moveStartDate: "2026-08-24",
+      moveEndDate: "2026-08-31",
+      movePct: 22.5,
+      moveWindowSessions: 5,
+      lookbackDays: 90,
+      coveringFirms: 12,
+      revisedWithMove: 7,
+      revisedAgainstMove: 2,
+      leftUnchanged: 3,
+      calls: [call],
+    };
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        totalCount: 4,
+        data: { ticker: "AAPL", count: 1, moves: [move] },
+      }),
+    );
+    const result = await client.analyst.calledIt("AAPL");
+    expect(result.isPreview).toBe(true);
+    expect(result.previewReason).toBe("PRO_REQUIRED");
+    expect(result.totalCount).toBe(4);
+    expect(result.data.count).toBe(1);
+    expect(result.data.moves).toHaveLength(1);
+    const returned = result.data.moves[0];
+    expect(returned).toEqual(move);
+    expect(returned.coveringFirms).toBe(12);
+    expect(returned.revisedWithMove).toBe(7);
+    expect(returned.revisedAgainstMove).toBe(2);
+    expect(returned.leftUnchanged).toBe(3);
+    expect(returned.calls).toHaveLength(1);
+    expect(returned.calls[0]).toHaveProperty("analystName", null);
   });
 });
 
