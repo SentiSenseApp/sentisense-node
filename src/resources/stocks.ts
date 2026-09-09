@@ -249,7 +249,7 @@ export class Stocks {
    * the full series. Returns 404 for tickers that do not yet have curated coverage.
    *
    * Coverage today: near-complete for the S&P 500 plus extended universe
-   * (~500 tickers). Use `listKpiCoverage()` to enumerate.
+   * (900+ tickers). Use `listKpiCoverage()` to enumerate.
    */
   async getKpis(ticker: string): Promise<PreviewResponse<CompanyKpisData>> {
     return this.client.get(
