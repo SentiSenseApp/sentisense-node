@@ -86,6 +86,7 @@ export {
   NotFoundError,
   DeepHistoryUnavailableError,
   RateLimitError,
+  TemporarilyUnavailableError,
   APIError,
 } from "./errors.js";
 

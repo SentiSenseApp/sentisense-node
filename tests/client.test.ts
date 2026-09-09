@@ -243,6 +243,54 @@ describe("Retry-After handling", () => {
   });
 });
 
+describe("503 Service Unavailable", () => {
+  // A 503 carries Retry-After for the same reason a 429 does: the server knows when it
+  // expects capacity back and the client does not. Guessing with exponential backoff
+  // retries into a server that is still saturated, and spends another of the caller's
+  // requests doing it.
+
+  function unavailable(retryAfter?: string): Response {
+    return new Response(JSON.stringify({ message: "Temporarily unavailable" }), {
+      status: 503,
+      headers: {
+        "Content-Type": "application/json",
+        ...(retryAfter ? { "Retry-After": retryAfter } : {}),
+      },
+    });
+  }
+
+  it("waits exactly as long as the server asked, then succeeds", async () => {
+    vi.useFakeTimers();
+    try {
+      const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 1 });
+      mockFetch
+        .mockResolvedValueOnce(unavailable("7"))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+      const pending = c.get("/x");
+      await vi.advanceTimersByTimeAsync(7000);
+      await expect(pending).resolves.toMatchObject({ ok: true });
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("hands the caller the server's own figure when it exceeds the wait budget", async () => {
+    const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 1 });
+    mockFetch.mockResolvedValueOnce(unavailable("600"));
+
+    // Unclamped on purpose: the point of the error is to let a batch job keep what it
+    // already fetched and resume later, which needs the real number.
+    await expect(c.get("/x")).rejects.toMatchObject({
+      name: "TemporarilyUnavailableError",
+      retryAfter: 600,
+      status: 503,
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("RateLimitError.retryAfter", () => {
   // The same header hostility as above, but on the value handed to the caller. The 202
   // path clamped it and the 429 path did not, so `error.retryAfter` could surface a raw

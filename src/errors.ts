@@ -57,6 +57,25 @@ export class RateLimitError extends SentiSenseError {
   }
 }
 
+export class TemporarilyUnavailableError extends SentiSenseError {
+  /**
+   * Seconds the server asked us to wait, from its `Retry-After` header on a 503. Unclamped,
+   * because the point of this error is to hand you the server's real figure.
+   *
+   * The client honours short waits automatically, so you normally never see this. It is
+   * thrown only when the requested wait is longer than the client will sleep for, which lets
+   * a batch job keep the results it already has and resume later instead of retrying into a
+   * server that has told you it is not ready.
+   */
+  retryAfter?: number;
+
+  constructor(message: string, retryAfter?: number, code?: string) {
+    super(message, 503, code);
+    this.name = "TemporarilyUnavailableError";
+    this.retryAfter = retryAfter;
+  }
+}
+
 export class APIError extends SentiSenseError {
   constructor(message: string, status: number, code?: string) {
     super(message, status, code);

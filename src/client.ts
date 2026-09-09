@@ -5,6 +5,7 @@ import {
   NotFoundError,
   RateLimitError,
   SentiSenseError,
+  TemporarilyUnavailableError,
 } from "./errors.js";
 import { Analyst } from "./resources/analyst.js";
 import { Calendar } from "./resources/calendar.js";
@@ -197,12 +198,26 @@ export class SentiSense implements APIClient {
         if (!response.ok) {
           const isRetryable = response.status === 429 || response.status >= 500;
           if (isRetryable && attempt < this.maxRetries) {
-            if (response.status === 429) {
-              delayMs = retryAfterSeconds(
+            if (response.status === 429 || response.status === 503) {
+              // 503 carries Retry-After for the same reason 429 does: the server knows when
+              // it will have capacity and we do not. Backing off on our own guess would
+              // retry into a server that is still saturated.
+              const requestedS = retryAfterSeconds(
                 response.headers.get("Retry-After"),
                 RATE_LIMIT_FALLBACK_WAIT_S,
-                MAX_RATE_LIMIT_WAIT_S,
-              ) * 1000;
+                Number.POSITIVE_INFINITY,
+              );
+              if (requestedS > MAX_RATE_LIMIT_WAIT_S) {
+                // Retrying early would spend another request against a server that just told
+                // us it is not ready. Hand the caller the figure so it can resume later.
+                try { await response.body?.cancel(); } catch { /* ignore */ }
+                throw new TemporarilyUnavailableError(
+                  `Server asked for a ${Math.round(requestedS)}s wait, longer than this ` +
+                    `client's ${MAX_RATE_LIMIT_WAIT_S}s budget`,
+                  requestedS,
+                );
+              }
+              delayMs = requestedS * 1000;
             } else {
               delayMs = Math.min(BASE_DELAY_MS * Math.pow(2, attempt), MAX_DELAY_MS) + Math.random() * 1000;
             }
