@@ -25,6 +25,55 @@ export interface AnalystConsensus {
   updatedAt: string | null;
 }
 
+/** One daily observation of the analyst consensus, as observed on `snapshotDate`. */
+export interface AnalystConsensusHistoryPoint {
+  /** Market-calendar date of the observation, `"YYYY-MM-DD"`. */
+  snapshotDate: string;
+  /** UTC observation instant, formatted as ISO-8601 with whole seconds. */
+  observedAt: string;
+  /** UTC observation instant in epoch seconds. */
+  observedAtEpoch: number;
+  source: string;
+  /**
+   * `false` when the vendor panel did not come back that day and the distribution
+   * counts are carried forward.
+   */
+  countsObserved: boolean;
+  currentPrice: number | null;
+  targetLow: number | null;
+  targetMean: number | null;
+  /** `null` in a free preview. */
+  targetMedian: number | null;
+  targetHigh: number | null;
+  numberOfAnalysts: number;
+  upsidePercent: number | null;
+  /** `null` in a free preview. */
+  recommendationMean: number | null;
+  /** `null` in a free preview. */
+  strongBuy: number | null;
+  /** `null` in a free preview. */
+  buy: number | null;
+  /** `null` in a free preview. */
+  hold: number | null;
+  /** `null` in a free preview. */
+  sell: number | null;
+  /** `null` in a free preview. */
+  strongSell: number | null;
+  consensusLabel: string | null;
+}
+
+export interface AnalystConsensusHistory {
+  ticker: string;
+  /** Inclusive first date of the served window, `"YYYY-MM-DD"`. */
+  from: string;
+  /** Inclusive last date of the served window, `"YYYY-MM-DD"`. */
+  to: string;
+  /** Rows returned after the limit and any free-preview clipping. */
+  count: number;
+  /** Daily observations ordered by `snapshotDate` ascending. */
+  history: AnalystConsensusHistoryPoint[];
+}
+
 export interface AnalystAction {
   ticker: string;
   actionDate: string;
@@ -53,6 +102,15 @@ export interface AnalystEstimatesResponse {
 export interface GetAnalystActionsOptions {
   /** Days of history to return. Default 90. */
   lookbackDays?: number;
+}
+
+export interface GetAnalystConsensusHistoryOptions {
+  /** First snapshot date, inclusive, as `"YYYY-MM-DD"`. */
+  from?: string;
+  /** Last snapshot date, inclusive, as `"YYYY-MM-DD"`. */
+  to?: string;
+  /** Maximum rows to return, 1 to 366. Omitted, the API uses 90. */
+  limit?: number;
 }
 
 export interface GetAnalystMarketActivityOptions {
@@ -256,6 +314,26 @@ export class Analyst {
   ): Promise<PreviewResponse<AnalystConsensus>> {
     return this.client.get(
       `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/consensus`,
+    );
+  }
+
+  /**
+   * Get daily consensus observations, ordered by `snapshotDate` ascending.
+   * Each row describes the target fields as observed on that date. When
+   * `countsObserved` is `false`, the vendor panel did not come back that day and the
+   * distribution counts are carried forward.
+   *
+   * A PRO key receives the requested window. A FREE key receives the last 30 days;
+   * `targetMedian`, `recommendationMean`, and the five distribution fields are `null`.
+   * The envelope's `totalCount` still sizes the full requested window.
+   */
+  async consensusHistory(
+    ticker: string,
+    options?: GetAnalystConsensusHistoryOptions,
+  ): Promise<PreviewResponse<AnalystConsensusHistory>> {
+    return this.client.get(
+      `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/consensus/history`,
+      options,
     );
   }
 

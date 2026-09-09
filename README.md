@@ -174,7 +174,7 @@ Affected: every method whose declared return type is `PreviewResponse<T>`. A tes
 
 | Namespace | Methods |
 |-----------|---------|
-| `analyst` | `consensus` `actions` `estimates` `marketActivity` `coverage` `profile` `calls` |
+| `analyst` | `consensus` `consensusHistory` `actions` `estimates` `marketActivity` `coverage` `profile` `calls` |
 | `calendar` | `getEarnings` |
 | `earnings` | `getSummaries` `getRecent` `getStatistics` `getRanked` |
 | `etfs` | `analystAggregate` `insiderAggregate` `sentimentAggregate` |
@@ -364,6 +364,7 @@ The price target cone (mean, high, low, upside %) and consensus are free for eve
 
 ```typescript
 client.analyst.consensus("AAPL")                        // Price target cone + consensus. Free, full data.
+client.analyst.consensusHistory("AAPL", { limit: 90 })  // Daily history. Free: last 30 days; distribution fields null.
 client.analyst.actions("AAPL", { lookbackDays: 30 })    // Upgrade/downgrade feed. Free: 3 most recent.
 client.analyst.estimates("AAPL")                        // Forward EPS + surprises. Free: 1 quarter.
 client.analyst.marketActivity({ lookbackDays: 7 })      // Market-wide analyst actions (PRO).

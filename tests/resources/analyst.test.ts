@@ -30,6 +30,79 @@ describe("analyst.consensus", () => {
   });
 });
 
+describe("analyst.consensusHistory", () => {
+  it("uppercases the ticker and leaves optional filters to the server", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, totalCount: 0, data: { history: [] } }),
+    );
+    await client.analyst.consensusHistory("aapl");
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/analyst/AAPL/consensus/history");
+    expect(url).not.toContain("from=");
+    expect(url).not.toContain("to=");
+    expect(url).not.toContain("limit=");
+  });
+
+  it("forwards from, to, and limit", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, totalCount: 0, data: { history: [] } }),
+    );
+    await client.analyst.consensusHistory("AAPL", {
+      from: "2026-06-01",
+      to: "2026-08-31",
+      limit: 60,
+    });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("from=2026-06-01");
+    expect(url).toContain("to=2026-08-31");
+    expect(url).toContain("limit=60");
+  });
+
+  it("keeps preview metadata and null distribution fields", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        totalCount: 90,
+        data: {
+          ticker: "AAPL",
+          from: "2026-08-02",
+          to: "2026-08-31",
+          count: 1,
+          history: [
+            {
+              snapshotDate: "2026-08-31",
+              observedAt: "2026-09-01T02:00:00Z",
+              observedAtEpoch: 1788228000,
+              source: "market data provider",
+              countsObserved: false,
+              currentPrice: 230.0,
+              targetLow: 195.0,
+              targetMean: 245.0,
+              targetMedian: null,
+              targetHigh: 285.0,
+              numberOfAnalysts: 42,
+              upsidePercent: 6.52,
+              recommendationMean: null,
+              strongBuy: null,
+              buy: null,
+              hold: null,
+              sell: null,
+              strongSell: null,
+              consensusLabel: "Buy",
+            },
+          ],
+        },
+      }),
+    );
+    const result = await client.analyst.consensusHistory("AAPL");
+    expect(result.isPreview).toBe(true);
+    expect(result.totalCount).toBe(90);
+    expect(result.data.history[0].countsObserved).toBe(false);
+    expect(result.data.history[0].strongBuy).toBeNull();
+  });
+});
+
 describe("analyst.actions", () => {
   it("forwards lookbackDays", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ isPreview: false, previewReason: null, data: [] }));

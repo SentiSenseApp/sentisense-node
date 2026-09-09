@@ -3,6 +3,8 @@ export { SentiSense as default } from "./client.js";
 
 export type {
   AnalystConsensus,
+  AnalystConsensusHistoryPoint,
+  AnalystConsensusHistory,
   AnalystAction,
   AnalystEstimate,
   AnalystEarningsSurprise,
@@ -18,6 +20,7 @@ export type {
   AnalystProfile,
   AnalystCall,
   GetAnalystActionsOptions,
+  GetAnalystConsensusHistoryOptions,
   GetAnalystMarketActivityOptions,
   GetAnalystCoverageOptions,
   GetAnalystCallsOptions,
