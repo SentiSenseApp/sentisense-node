@@ -176,7 +176,7 @@ Affected: every method whose declared return type is `PreviewResponse<T>`. A tes
 |-----------|---------|
 | `analyst` | `consensus` `actions` `estimates` `marketActivity` `coverage` `profile` `calls` |
 | `calendar` | `getEarnings` |
-| `earnings` | `getSummaries` `getRecent` |
+| `earnings` | `getSummaries` `getRecent` `getStatistics` `getRanked` |
 | `etfs` | `analystAggregate` `insiderAggregate` `sentimentAggregate` |
 | `insider` | `getActivity` `getTrades` `getClusterBuys` |
 | `insights` | `stock` `stockRange` `market` `latest` `user` |
@@ -411,11 +411,14 @@ Two shapes to read rather than assume. A firm can appear with `noteCount: 0`, a 
 
 ### Earnings
 
-The earnings analysis report is the assembled version of a quarter: one object per fiscal period carrying the editorial headline, the KPI cards with year-over-year deltas, the guidance language as management phrased it, and a summary of the earnings call. Pair it with the recent-reporters feed to drive a post-earnings sweep. Both return the preview envelope.
+The earnings analysis report is the assembled version of a quarter: one object per fiscal period carrying the editorial headline, the KPI cards with year-over-year deltas, the guidance language as management phrased it, and a summary of the earnings call. Pair it with the recent-reporters feed to drive a post-earnings sweep. Summaries, recent reports, statistics, and rankings return the preview envelope; per-ticker reactions return a direct payload.
 
 ```typescript
 client.earnings.getSummaries("AAPL", { limit: 4 })   // Per-quarter analysis, newest first. Free: latest quarter, shaped.
 client.earnings.getRecent({ days: 7, limit: 25 })    // Who reported in the last N days. Full window on every key.
+client.earnings.getReactions("AAPL")                 // Up to twelve measured post-report moves. Full series on every key.
+client.earnings.getStatistics({ window: "week_to_date" }) // Market-wide outcomes, reaction rates, baseline, and coverage.
+client.earnings.getRanked({ reportedDays: 14, upcomingDays: 7 }) // Free: first 3 rows per section. PRO: full ranking.
 ```
 
 ```typescript

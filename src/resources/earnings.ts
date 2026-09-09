@@ -1,9 +1,14 @@
 import type { APIClient } from "../client.js";
 import type {
+  EarningsReactionsResponse,
+  EarningsStatistics,
   EarningsQuarter,
+  GetEarningsStatisticsOptions,
   GetEarningsSummariesOptions,
+  GetRankedEarningsOptions,
   GetRecentEarningsOptions,
   PreviewResponse,
+  RankedEarnings,
   RecentEarningsEntry,
 } from "../types.js";
 
@@ -69,5 +74,58 @@ export class Earnings {
     options?: GetRecentEarningsOptions,
   ): Promise<PreviewResponse<RecentEarningsEntry[]>> {
     return this.client.get("/api/v1/earnings/recent", options);
+  }
+
+  /**
+   * Measured price reactions to a ticker's last earnings reports, newest first.
+   *
+   * Use this after {@link getRecent} when you need one company's realized
+   * post-report history. `client.calendar.getEarnings()` is the forward-looking
+   * schedule instead. This endpoint returns its payload directly, without a
+   * preview envelope, and every API key receives the full series.
+   *
+   * `timing` is always present on each row and can be `null` when the reacting
+   * session was inferred rather than observed.
+   */
+  async getReactions(ticker: string): Promise<EarningsReactionsResponse> {
+    return this.client.get(
+      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/earnings/reactions`,
+    );
+  }
+
+  /**
+   * Market-wide earnings outcomes and realized reaction statistics.
+   *
+   * Use this for aggregate beat, miss, inline, and post-report move rates.
+   * {@link getRecent} returns individual recent reports, while
+   * `client.calendar.getEarnings()` covers upcoming dates. The response uses
+   * the preview envelope, but every API key receives the full body and
+   * `isPreview` is always `false`.
+   *
+   * `baseline` and `deviation` are omitted for long-span windows, and rates can
+   * be `null` when their denominator is zero.
+   */
+  async getStatistics(
+    options?: GetEarningsStatisticsOptions,
+  ): Promise<PreviewResponse<EarningsStatistics>> {
+    return this.client.get("/api/v1/earnings/statistics", options);
+  }
+
+  /**
+   * Important recently reported and upcoming earnings in one ranking.
+   *
+   * Use this to prioritize a cross-ticker sweep. Follow reported rows with
+   * {@link getReactions} for realized history; use {@link getRecent} for an
+   * unranked recent feed or `client.calendar.getEarnings()` for the broader
+   * forward schedule.
+   *
+   * A PRO key receives the full ranking. A FREE key receives the first three
+   * rows in each section with `totalInWindow` left intact. Optional row fields
+   * are omitted when null, so check them before use.
+   */
+  async getRanked(
+    options?: GetRankedEarningsOptions,
+  ): Promise<PreviewResponse<RankedEarnings>> {
+    return this.client.get("/api/v1/earnings/ranked", options);
   }
 }

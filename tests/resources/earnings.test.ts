@@ -57,6 +57,200 @@ const FREE_QUARTER = {
   source: "press_release",
 };
 
+const REACTIONS_PAYLOAD = {
+  ticker: "NVDA",
+  asOf: "2026-08-21",
+  reactions: [
+    {
+      reportDate: "2026-05-20",
+      timing: "AMC",
+      priorClose: 223.47,
+      nextClose: 219.51,
+      movePct: -1.77,
+    },
+    {
+      reportDate: "2026-02-25",
+      timing: null,
+      priorClose: 131.28,
+      nextClose: 120.15,
+      movePct: -8.48,
+    },
+  ],
+};
+
+const STATISTICS_PAYLOAD = {
+  calculationVersion: "1.0.0",
+  asOf: 1234567890,
+  window: {
+    key: "2026-W01",
+    kind: "COMPLETED_WEEK",
+    startDate: "2025-12-29",
+    endDate: "2026-01-04",
+  },
+  eventsInWindow: 120,
+  classifiedEvents: 118,
+  unclassifiedEvents: 2,
+  distinctTickers: 118,
+  completedReactions: 104,
+  pendingReactions: 14,
+  coverageRatio: 0.8814,
+  sufficientData: true,
+  beat: {
+    count: 80,
+    rate: 0.678,
+    withReaction: 71,
+    fell: 30,
+    rose: 40,
+    flat: 1,
+    fellRate: 0.4225,
+    averageMovePct: 1.1,
+  },
+  miss: {
+    count: 34,
+    rate: 0.2881,
+    withReaction: 30,
+    fell: 19,
+    rose: 11,
+    flat: 0,
+    fellRate: 0.6333,
+    averageMovePct: -2.2,
+  },
+  inline: {
+    count: 4,
+    rate: 0.0339,
+    withReaction: 3,
+    fell: 2,
+    rose: 1,
+    flat: 0,
+    fellRate: 0.6667,
+    averageMovePct: -0.4,
+  },
+  averageMovePct: 0.1,
+  baseline: {
+    window: {
+      key: "2026-W01-trailing52w",
+      kind: "TRAILING_BASELINE",
+      startDate: "2024-12-30",
+      endDate: "2025-12-28",
+    },
+    classifiedEvents: 2400,
+    completedReactions: 2150,
+    distinctTickers: 900,
+    beatRate: 0.73,
+    beatsFellRate: 0.44,
+    coverageRatio: 0.8958,
+    sufficientData: true,
+  },
+  deviation: {
+    beatRate: -0.052,
+    beatsFellRate: -0.0175,
+    beatRateIsMaterial: false,
+    beatsFellRateIsMaterial: false,
+  },
+  thresholds: {
+    minClassifiedEvents: 30,
+    minCoverageRatio: 0.8,
+    baselineWeeks: 52,
+    beatRateDeviation: 0.1,
+    reactionDivergence: 0.07,
+  },
+};
+
+const RANKED_PRO_PAYLOAD = {
+  asOf: 1789000000,
+  rankingVersion: "2026.08-v1",
+  reported: {
+    windowStart: "2026-08-26",
+    windowEnd: "2026-09-09",
+    totalInWindow: 87,
+    rows: [
+      {
+        ticker: "NVDA",
+        reportDate: "2026-08-27",
+        fiscalPeriod: "Q2 FY2027",
+        headline: "Revenue and earnings exceeded the consensus estimate",
+        hasTranscriptSummary: true,
+        estimateEps: 1.01,
+        actualEps: 1.05,
+        surprisePct: 3.96,
+        outcome: "BEAT",
+        movePct: -6.38,
+        reactionPending: false,
+        awaitingConsensus: false,
+        marketCap: 4400000000000,
+        sentisenseScore7d: 12.4,
+        scoreChange7d: -3.1,
+        importance: 0.93,
+      },
+    ],
+  },
+  upcoming: {
+    windowStart: "2026-09-09",
+    windowEnd: "2026-09-16",
+    totalInWindow: 41,
+    rows: [
+      {
+        ticker: "ORCL",
+        companyName: "Oracle Corporation",
+        earningsDate: "2026-09-10",
+        earningsTime: "after_close",
+        confirmed: true,
+        estimatedEps: 1.48,
+        marketCap: 640000000000,
+        sentisenseScore7d: 4.2,
+        scoreChange7d: 1,
+        importance: 0.81,
+      },
+    ],
+  },
+};
+
+const RANKED_FREE_PAYLOAD = {
+  ...RANKED_PRO_PAYLOAD,
+  reported: {
+    ...RANKED_PRO_PAYLOAD.reported,
+    rows: [
+      RANKED_PRO_PAYLOAD.reported.rows[0],
+      {
+        ticker: "CRM",
+        reportDate: "2026-09-02",
+        outcome: "INLINE",
+        reactionPending: true,
+        importance: 0.86,
+      },
+      {
+        ticker: "AVGO",
+        reportDate: "2026-09-03",
+        outcome: "UNCLASSIFIED",
+        awaitingConsensus: true,
+        importance: 0.82,
+      },
+    ],
+  },
+  upcoming: {
+    ...RANKED_PRO_PAYLOAD.upcoming,
+    rows: [
+      RANKED_PRO_PAYLOAD.upcoming.rows[0],
+      {
+        ticker: "ADBE",
+        companyName: "Adobe Inc.",
+        earningsDate: "2026-09-11",
+        earningsTime: "after_close",
+        confirmed: true,
+        importance: 0.76,
+      },
+      {
+        ticker: "KR",
+        companyName: "The Kroger Co.",
+        earningsDate: "2026-09-12",
+        earningsTime: "before_open",
+        confirmed: false,
+        importance: 0.68,
+      },
+    ],
+  },
+};
+
 describe("earnings.getSummaries", () => {
   it("hits the ticker path and upcases the symbol", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ isPreview: false, data: [] }));
@@ -223,5 +417,107 @@ describe("earnings.getRecent", () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ isPreview: false, data: [] }));
     const res = await client.earnings.getRecent({ days: 1 });
     expect(res.data).toEqual([]);
+  });
+});
+
+describe("earnings.getReactions", () => {
+  it("hits the direct ticker path and preserves a null timing field", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(REACTIONS_PAYLOAD));
+
+    const res = await client.earnings.getReactions("nvda");
+
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/stocks/NVDA/earnings/reactions");
+    expect(url).not.toContain("?");
+    expect(res.ticker).toBe("NVDA");
+    expect(res.reactions[0].movePct).toBe(-1.77);
+    expect(res.reactions[1]).toHaveProperty("timing", null);
+  });
+});
+
+describe("earnings.getStatistics", () => {
+  it("passes the window and returns every nested statistics block", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: STATISTICS_PAYLOAD }),
+    );
+
+    const res = await client.earnings.getStatistics({ window: "last_completed_week" });
+
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/earnings/statistics");
+    expect(url).toContain("window=last_completed_week");
+    expect(res.isPreview).toBe(false);
+    expect(res.data.window.key).toBe("2026-W01");
+    expect(res.data.beat.fellRate).toBe(0.4225);
+    expect(res.data.baseline?.window.kind).toBe("TRAILING_BASELINE");
+    expect(res.data.deviation?.beatRate).toBe(-0.052);
+    expect(res.data.thresholds.minClassifiedEvents).toBe(30);
+  });
+});
+
+describe("earnings.getRanked", () => {
+  it("omits query arguments by default", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: RANKED_PRO_PAYLOAD }),
+    );
+
+    await client.earnings.getRanked();
+
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/earnings/ranked");
+    expect(url).not.toContain("?");
+  });
+
+  it("passes every optional window and limit", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: RANKED_PRO_PAYLOAD }),
+    );
+
+    await client.earnings.getRanked({
+      reportedDays: 10,
+      reportedLimit: 20,
+      upcomingDays: 5,
+      upcomingLimit: 15,
+    });
+
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("reportedDays=10");
+    expect(url).toContain("reportedLimit=20");
+    expect(url).toContain("upcomingDays=5");
+    expect(url).toContain("upcomingLimit=15");
+  });
+
+  it("returns a full ranking with typed row fields", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: RANKED_PRO_PAYLOAD }),
+    );
+
+    const res = await client.earnings.getRanked();
+
+    expect(res.data.rankingVersion).toBe("2026.08-v1");
+    expect(res.data.reported.totalInWindow).toBe(87);
+    expect(res.data.reported.rows[0].surprisePct).toBe(3.96);
+    expect(res.data.upcoming.rows[0].earningsTime).toBe("after_close");
+  });
+
+  it("returns the three-row preview with full window counts", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        data: RANKED_FREE_PAYLOAD,
+      }),
+    );
+
+    const res = await client.earnings.getRanked();
+
+    expect(res.isPreview).toBe(true);
+    expect(res.previewReason).toBe("PRO_REQUIRED");
+    expect(res.data.reported.totalInWindow).toBe(87);
+    expect(res.data.upcoming.totalInWindow).toBe(41);
+    expect(res.data.reported.rows).toHaveLength(3);
+    expect(res.data.upcoming.rows).toHaveLength(3);
+    expect(res.data.reported.rows[1].estimateEps).toBeUndefined();
+    expect(res.data.upcoming.rows[1].estimatedEps).toBeUndefined();
   });
 });

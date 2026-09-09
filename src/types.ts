@@ -1744,6 +1744,179 @@ export interface RecentEarningsEntry {
   generatedAt: number;
 }
 
+/** One measured session move following an earnings announcement. */
+export interface EarningsReaction {
+  /** Date the results were announced, ISO calendar day `"YYYY-MM-DD"`. */
+  reportDate: string;
+  /** Always present. `null` means the reacting session was inferred. */
+  timing: "AMC" | "BMO" | null;
+  /** Close immediately before the reaction session. */
+  priorClose: number;
+  /** Close of the reaction session. */
+  nextClose: number;
+  /** Signed percent change from `priorClose` to `nextClose`. */
+  movePct: number;
+}
+
+/** Up to twelve measured earnings reactions for one ticker, newest first. */
+export interface EarningsReactionsResponse {
+  ticker: string;
+  /** Date the response was produced, ISO calendar day `"YYYY-MM-DD"`. */
+  asOf: string;
+  reactions: EarningsReaction[];
+}
+
+/** Calendar span covered by an earnings-statistics block. */
+export interface EarningsStatisticsWindow {
+  /** Stable cache key for this span. */
+  key: string;
+  kind: string;
+  /** Inclusive first day, ISO `"YYYY-MM-DD"`. */
+  startDate: string;
+  /** Inclusive last day, ISO `"YYYY-MM-DD"`. */
+  endDate: string;
+}
+
+/** Counts, rates, and measured moves for one earnings outcome. */
+export interface EarningsOutcomeStatistics {
+  count: number;
+  /** `count` divided by all classified events; `null` when the denominator is zero. */
+  rate: number | null;
+  withReaction: number;
+  fell: number;
+  rose: number;
+  flat: number;
+  /** `fell` divided by `withReaction`; `null` when the denominator is zero. */
+  fellRate: number | null;
+  /** Mean signed session move as a percent, or `null` when no move is available. */
+  averageMovePct: number | null;
+}
+
+/** Trailing comparison span for an earnings-statistics window. */
+export interface EarningsStatisticsBaseline {
+  window: EarningsStatisticsWindow;
+  classifiedEvents: number;
+  completedReactions: number;
+  distinctTickers: number;
+  beatRate: number | null;
+  beatsFellRate: number | null;
+  coverageRatio: number | null;
+  sufficientData: boolean;
+}
+
+/** Signed differences from the trailing baseline. */
+export interface EarningsStatisticsDeviation {
+  beatRate: number | null;
+  beatsFellRate: number | null;
+  beatRateIsMaterial: boolean;
+  beatsFellRateIsMaterial: boolean;
+}
+
+/** Publication and materiality thresholds used for the statistics. */
+export interface EarningsStatisticsThresholds {
+  minClassifiedEvents: number;
+  minCoverageRatio: number;
+  baselineWeeks: number;
+  beatRateDeviation: number;
+  reactionDivergence: number;
+}
+
+/** Market-wide earnings outcomes and their realized price reactions. */
+export interface EarningsStatistics {
+  calculationVersion: string;
+  /** When the figures were computed, epoch seconds. */
+  asOf: number;
+  window: EarningsStatisticsWindow;
+  eventsInWindow: number;
+  classifiedEvents: number;
+  unclassifiedEvents: number;
+  distinctTickers: number;
+  completedReactions: number;
+  pendingReactions: number;
+  /** Completed reactions divided by classified events. */
+  coverageRatio: number | null;
+  sufficientData: boolean;
+  /** Absent when `sufficientData` is true. */
+  insufficientDataReason?: "SAMPLE_BELOW_FLOOR" | "COVERAGE_BELOW_FLOOR";
+  beat: EarningsOutcomeStatistics;
+  miss: EarningsOutcomeStatistics;
+  inline: EarningsOutcomeStatistics;
+  /** Mean signed session move as a percent, or `null` when no move is available. */
+  averageMovePct: number | null;
+  /** Absent on `trailing_52w` and `all_time`. */
+  baseline?: EarningsStatisticsBaseline;
+  /** Absent when there is no baseline. */
+  deviation?: EarningsStatisticsDeviation;
+  thresholds: EarningsStatisticsThresholds;
+}
+
+/** One recently reported company in the earnings ranking. */
+export interface RankedReportedEarnings {
+  ticker: string;
+  /** ISO calendar day `"YYYY-MM-DD"`. */
+  reportDate: string;
+  fiscalPeriod?: string;
+  headline?: string;
+  hasTranscriptSummary?: boolean;
+  estimateEps?: number;
+  actualEps?: number;
+  /** Signed percent. */
+  surprisePct?: number;
+  outcome: "BEAT" | "MISS" | "INLINE" | "UNCLASSIFIED";
+  /** Signed percent of the reacting session. */
+  movePct?: number;
+  reactionPending?: boolean;
+  /** Signed percent, present only while the reacting session is trading. */
+  liveReactionPct?: number;
+  awaitingConsensus?: boolean;
+  /** US dollars. */
+  marketCap?: number;
+  /** Signed and unbounded. */
+  sentisenseScore7d?: number;
+  scoreChange7d?: number;
+  /** Ranking importance from 0 to 1. */
+  importance: number;
+}
+
+/** One upcoming company in the earnings ranking. */
+export interface RankedUpcomingEarnings {
+  ticker: string;
+  companyName: string;
+  /** ISO calendar day `"YYYY-MM-DD"`. */
+  earningsDate: string;
+  earningsTime: "before_open" | "after_close" | "during_market" | "unknown";
+  confirmed: boolean;
+  estimatedEps?: number;
+  /** US dollars. */
+  marketCap?: number;
+  /** Signed and unbounded. */
+  sentisenseScore7d?: number;
+  scoreChange7d?: number;
+  /** Ranking importance from 0 to 1. */
+  importance: number;
+}
+
+/** A ranked earnings window and the rows returned for it. */
+export interface RankedEarningsSection<T> {
+  /** Inclusive first day, ISO `"YYYY-MM-DD"`. */
+  windowStart: string;
+  /** Inclusive last day, ISO `"YYYY-MM-DD"`. */
+  windowEnd: string;
+  /** Full event count before tier or limit truncation. */
+  totalInWindow: number;
+  rows: T[];
+}
+
+/** Recently reported and upcoming earnings ranked by importance. */
+export interface RankedEarnings {
+  /** When the ranking was computed, epoch seconds. */
+  asOf: number;
+  /** Revision of the ordering rules. */
+  rankingVersion: string;
+  reported: RankedEarningsSection<RankedReportedEarnings>;
+  upcoming: RankedEarningsSection<RankedUpcomingEarnings>;
+}
+
 export interface GetEarningsSummariesOptions {
   /**
    * Max quarters returned, 1 to 40. Omitted, the API applies its own default
@@ -1757,6 +1930,22 @@ export interface GetRecentEarningsOptions {
   days?: number;
   /** Max rows returned, 1 to 100. Omitted, the API applies its own default of 50. */
   limit?: number;
+}
+
+export interface GetEarningsStatisticsOptions {
+  /** Statistics window. Omitted, the API uses `last_completed_week`. */
+  window?: "last_completed_week" | "week_to_date" | "trailing_52w" | "all_time";
+}
+
+export interface GetRankedEarningsOptions {
+  /** Reported look-back window, 1 to 31. Omitted, the API uses 14. */
+  reportedDays?: number;
+  /** Maximum reported rows, 1 to 50. Omitted, the API uses 12. */
+  reportedLimit?: number;
+  /** Upcoming window, 1 to 31. Omitted, the API uses 7. */
+  upcomingDays?: number;
+  /** Maximum upcoming rows, 1 to 50. Omitted, the API uses 12. */
+  upcomingLimit?: number;
 }
 
 /**

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.55.0
+
+### Added
+
+- **`earnings.getReactions(ticker)`.** Up to twelve measured post-report session moves
+  as a direct `EarningsReactionsResponse`. Each row keeps its required, nullable `timing`
+  field so inferred sessions remain distinguishable.
+- **`earnings.getStatistics({ window })`.** Typed market-wide outcome counts, reaction
+  rates, coverage, trailing baseline, deviations, and calculation thresholds. It uses the
+  preview envelope, while every API key receives the full `EarningsStatistics` body.
+- **`earnings.getRanked(options)`.** Separate recently reported and upcoming rankings.
+  PRO keys receive the full `RankedEarnings` body; FREE keys receive the first three rows
+  in each section with `totalInWindow` intact. Optional row fields tolerate omission.
+
 ## 0.54.0
 
 ### Added
