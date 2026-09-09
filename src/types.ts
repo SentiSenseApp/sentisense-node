@@ -1871,8 +1871,9 @@ export interface RankedReportedEarnings {
   awaitingConsensus?: boolean;
   /** US dollars. */
   marketCap?: number;
-  /** Signed and unbounded. */
+  /** 7-day average SentiSense Score. Signed and unbounded. */
   sentisenseScore7d?: number;
+  /** 7-day average Score minus the 30-day average, in signed score units. Positive means strengthening. */
   scoreChange7d?: number;
   /** Ranking importance from 0 to 1. */
   importance: number;
@@ -1889,8 +1890,9 @@ export interface RankedUpcomingEarnings {
   estimatedEps?: number;
   /** US dollars. */
   marketCap?: number;
-  /** Signed and unbounded. */
+  /** 7-day average SentiSense Score. Signed and unbounded. */
   sentisenseScore7d?: number;
+  /** 7-day average Score minus the 30-day average, in signed score units. Positive means strengthening. */
   scoreChange7d?: number;
   /** Ranking importance from 0 to 1. */
   importance: number;
