@@ -339,6 +339,43 @@ export interface Fundamentals {
    * securities portfolio is wrong by billions and can flip the sign.
    */
   freeCashFlow?: number | null;
+  /**
+   * Basic earnings per share. Always the basic figure, on every data source, unlike `eps`,
+   * whose basis depends on which source served the row.
+   */
+  epsBasic?: number | null;
+  /** Diluted earnings per share. `null` when the provider reports no diluted figure. */
+  epsDiluted?: number | null;
+  /**
+   * The provider's bottom-line income line, which can differ from `netIncome` in size and in
+   * sign. Published as the provider states it; it is not promised to reconcile with either EPS
+   * field, and neither is `netIncome`.
+   */
+  bottomLineNetIncome?: number | null;
+  /**
+   * Basic weighted-average shares for the period. An average ACROSS the period, not a count at
+   * period end, so it is not a correct input to a market capitalisation or a book value per
+   * share. `null` when the provider reports none.
+   */
+  weightedAverageSharesBasic?: number | null;
+  /**
+   * Diluted weighted-average shares for the period. Same caveat as the basic count: it is an
+   * average across the period, not a period-end count. `null` when the provider reports none.
+   */
+  weightedAverageSharesDiluted?: number | null;
+  /**
+   * @deprecated Stops being populated on 2026-12-15. Despite the name this is never a
+   * period-end shares-outstanding count, and it means different things on different rows: a
+   * diluted weighted average, a basic weighted average where no diluted figure exists, or an
+   * estimate derived from market capitalisation. It is being retired rather than redefined
+   * because no single definition would be true of every row it has already served.
+   *
+   * Use `weightedAverageSharesDiluted` or `weightedAverageSharesBasic`, and handle `null`,
+   * which now means the provider did not report that count instead of silently substituting
+   * the other one. To keep the old behaviour exactly during migration, read
+   * `weightedAverageSharesDiluted` and fall back to `weightedAverageSharesBasic` when null.
+   */
+  sharesOutstanding?: number | null;
   [key: string]: unknown;
 }
 
