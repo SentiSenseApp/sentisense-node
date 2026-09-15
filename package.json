@@ -1,6 +1,6 @@
 {
   "name": "sentisense",
-  "version": "0.55.0",
+  "version": "0.56.0",
   "description": "Official JavaScript/TypeScript SDK for the SentiSense market intelligence API",
   "author": "SentiSense <support@sentisense.ai>",
   "license": "MIT",
