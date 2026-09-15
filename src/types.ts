@@ -372,8 +372,10 @@ export interface Fundamentals {
    *
    * Use `weightedAverageSharesDiluted` or `weightedAverageSharesBasic`, and handle `null`,
    * which now means the provider did not report that count instead of silently substituting
-   * the other one. To keep the old behaviour exactly during migration, read
-   * `weightedAverageSharesDiluted` and fall back to `weightedAverageSharesBasic` when null.
+   * the other one. Reading `weightedAverageSharesDiluted` and falling back to
+   * `weightedAverageSharesBasic` when null reproduces the statement-history form of the old
+   * field, which is what most callers were reading; it does not reproduce the rows that
+   * carried no value, nor the market-capitalisation-derived estimate on the latest snapshot.
    */
   sharesOutstanding?: number | null;
   [key: string]: unknown;
@@ -1676,7 +1678,10 @@ export interface GetEarningsCalendarOptions {
   from?: string;
   /** Inclusive upper date bound, ISO "YYYY-MM-DD". */
   to?: string;
-  /** When true, only company-confirmed dates. */
+  /**
+   * Two-sided. `true` returns only company-confirmed dates, `false` returns only
+   * the still-estimated ones. Omit it to get both.
+   */
   confirmed?: boolean;
   /** Session filter. */
   time?: "before_open" | "after_close" | "during_market" | "unknown";

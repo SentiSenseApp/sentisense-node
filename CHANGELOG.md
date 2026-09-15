@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.56.0
+
+### Added
+
+- **Earnings and share-count fields on `Fundamentals`.** `epsBasic`, `epsDiluted`,
+  `bottomLineNetIncome`, `weightedAverageSharesBasic` and `weightedAverageSharesDiluted` are
+  now typed, each documenting its basis and its null behaviour. `epsBasic` and `epsDiluted`
+  name their basis explicitly, unlike `eps`, whose basis depends on the source that served
+  the row.
+
+### Deprecated
+
+- **`sharesOutstanding` stops being populated on 2026-12-15.** It is not a period-end share
+  count despite its name, and it carried different meanings on different rows, so it is being
+  retired rather than redefined. Migrate to `weightedAverageSharesDiluted` or
+  `weightedAverageSharesBasic` and handle null. Reading diluted with a fallback to basic
+  reproduces the statement-history form of the old field.
+
+### Note
+
+- These fields are reported independently by the data provider and are not expected to
+  reconcile arithmetically: dividing an income figure by a share count does not reproduce a
+  reported EPS.
+
+
 ## 0.55.0
 
 ### Added
