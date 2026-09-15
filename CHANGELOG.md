@@ -23,6 +23,11 @@
 - These fields are reported independently by the data provider and are not expected to
   reconcile arithmetically: dividing an income figure by a share count does not reproduce a
   reported EPS.
+- Server-side, `epsDiluted` now carries a value on statement-history rows where it was
+  previously null on most tickers (a binding defect, not missing provider data). Where the
+  latest-period response derives trailing EPS and P/E from it, those can now populate where
+  they were null, and a valuation that picks its EPS basis from the newest quarter can now
+  select the diluted series.
 
 
 ## 0.55.0
