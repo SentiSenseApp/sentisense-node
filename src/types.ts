@@ -290,12 +290,11 @@ export interface ChartDataPoint {
    * printed at the time. Always true on this endpoint.
    *
    * A stock that has split since a bar was printed would otherwise show that bar on a different
-   * basis from today's, so both prices and volume are converted to today's shares. The practical
-   * consequence is on `volume`: for a stock with a large cumulative split factor, older bars
-   * report share counts many times the raw prints of the day, which is the restatement and not an
-   * error. Prices through `5Y` are split-adjusted; `10Y` and `MAX` are split- and
-   * dividend-adjusted. Volume is split-restated in every range, because a dividend changes the
-   * price basis but not the number of shares that changed hands.
+   * basis from the current one, so both prices and volume are converted to current shares. The
+   * practical consequence is on `volume`: for a stock with a large cumulative split factor, older
+   * bars can report share counts many times the raw prints of the day, which is the restatement
+   * and not an error. Prices through `5Y` are split-adjusted; `10Y` and `MAX` are split- and
+   * dividend-adjusted.
    */
   adjusted?: boolean;
 }
