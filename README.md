@@ -253,6 +253,7 @@ Price fields carry `priceAsOf` (Unix milliseconds) for the age of the market dat
 client.documents.getByTicker("AAPL", { source: "news", days: 3 })
 client.documents.search("NVDA earnings", { days: 7, limit: 20 })
 client.documents.getStories({ limit: 10 })
+client.documents.searchStories({ query: "fed decision", days: 30, limit: 20 })
 client.documents.getStoryDetail("cluster_abc123")
 ```
 

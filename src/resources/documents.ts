@@ -9,6 +9,7 @@ import type {
   GetStoriesByTickerOptions,
   GetStoriesOptions,
   SearchDocumentsOptions,
+  SearchStoriesOptions,
   Story,
 } from "../types.js";
 
@@ -64,6 +65,18 @@ export class Documents {
    */
   async getStoryDetail(clusterId: string): Promise<unknown> {
     return this.client.get(`/api/v1/documents/stories/${encodeURIComponent(clusterId)}`);
+  }
+
+  /**
+   * Free-text search across the AI-curated stories, newest first.
+   *
+   * The query is parsed like {@link Documents.search}: explicit entity ids first, then entities
+   * recognised in the text, then the remaining words as keywords that must all appear in the
+   * story's own title or summary. The rows are the same {@link Story} shape {@link
+   * Documents.getStories} returns, so an `id` can go straight to {@link Documents.getStoryDetail}.
+   */
+  async searchStories(options: SearchStoriesOptions): Promise<Story[]> {
+    return this.client.get("/api/v1/documents/stories/search", options);
   }
 
   /** Get stories for a specific stock. */

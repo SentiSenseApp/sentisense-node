@@ -105,6 +105,27 @@ describe("documents.getStoryDetail", () => {
   });
 });
 
+describe("documents.searchStories", () => {
+  it("passes the query and the window options", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    await client.documents.searchStories({ query: "fed decision", days: 30, limit: 5 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/documents/stories/search");
+    expect(url).toContain("query=fed+decision");
+    expect(url).toContain("days=30");
+    expect(url).toContain("limit=5");
+  });
+
+  it("sends only the query when no window is given", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    await client.documents.searchStories({ query: "value menu traffic" });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/documents/stories/search");
+    expect(url).not.toContain("days=");
+    expect(url).not.toContain("limit=");
+  });
+});
+
 describe("documents.getStoriesByTicker", () => {
   it("includes ticker in path", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse([]));

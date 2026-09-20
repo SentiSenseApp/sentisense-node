@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.57.0
+
+### Added
+
+- **`documents.searchStories({ query, days, limit })`**, a free-text search across the
+  AI-curated stories. The query is parsed like `documents.search`: explicit entity ids first,
+  then entities recognised in the text, then the remaining words as keywords that must all
+  appear in the story's own title or summary. Rows come back newest first in the same `Story`
+  shape `getStories` returns, so an `id` can go straight to `getStoryDetail`. `days` accepts 1
+  to 30 and defaults to 7 (stories older than 30 days are archived), `limit` defaults to 20 and
+  is capped at 50, and a blank query is rejected with a 400. The new `SearchStoriesOptions`
+  type is exported.
+
 ## 0.56.0
 
 ### Added

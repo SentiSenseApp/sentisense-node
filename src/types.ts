@@ -1154,6 +1154,19 @@ export interface GetStoriesOptions {
   filterHours?: number;
 }
 
+export interface SearchStoriesOptions {
+  /**
+   * Free text, for example `fed decision` or `kb/company/1 guidance`. Explicit entity ids are
+   * read first, then entities recognised in the text, then the remaining words as keywords that
+   * must all appear in the story's own title or summary. A blank query is rejected with a 400.
+   */
+  query: string;
+  /** Look-back window in days, 1 to 30, defaulting to 7. Stories older than 30 days are archived and not searchable. */
+  days?: number;
+  /** Maximum number of stories, defaulting to 20 and capped at 50. */
+  limit?: number;
+}
+
 export interface GetStoriesByTickerOptions {
   limit?: number;
 }

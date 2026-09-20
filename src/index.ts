@@ -192,6 +192,7 @@ export type {
   Story,
   StoryCluster,
   StoryTimelineEntry,
+  SearchStoriesOptions,
   Quarter,
   InstitutionalFlow,
   InstitutionalFlows,
