@@ -387,8 +387,12 @@ export interface Fundamentals {
    *
    * `null` means no EPS repair was applied to this row. It does NOT mean the row's EPS and share
    * count are known to be on the same basis: an unlisted issuer, a row whose figures did not
-   * qualify, and a row whose split history could not be read all carry `null`. The
-   * trailing-twelve-month figures are summed from the provider's own rows and are never restated.
+   * qualify, and a row whose split history could not be read all carry `null`.
+   *
+   * This marker describes per-period EPS only. The repair never changes `epsTTM` or the other
+   * trailing-twelve-month figures, and the marker never describes a trailing adjustment: those are
+   * assembled separately, and whether they carry a split adjustment of their own depends on which
+   * source served them.
    */
   epsBasisRepair?: EpsBasisRepair | null;
   /**
