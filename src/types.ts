@@ -311,6 +311,23 @@ export interface MarketStatus {
 }
 
 /**
+ * How one period's EPS was restated to the current share basis, on the rows that carry it.
+ *
+ * Reproduce the original figure by dividing the served value by `multiplier`.
+ */
+export interface EpsBasisRepair {
+  /** Which EPS fields on the row were restated, in the order `epsBasic`, `epsDiluted`, `eps`. */
+  fields: string[];
+  /** Restated value divided by the value the provider reported: `0.25` for a 4-for-1 split. */
+  multiplier: number;
+  /**
+   * Execution dates of the splits the provider had not applied to this row's EPS, newest first,
+   * as `YYYY-MM-DD`.
+   */
+  splitExecutionDates: string[];
+}
+
+/**
  * One period of filed financial statement data from `stocks.getFundamentals()`.
  *
  * The index signature is deliberate: the response carries the full income statement, balance
@@ -358,6 +375,17 @@ export interface Fundamentals {
   epsBasic?: number | null;
   /** Diluted earnings per share. `null` when the provider reports no diluted figure. */
   epsDiluted?: number | null;
+  /**
+   * Present when this row's EPS was restated to the provider's current share basis, and `null`
+   * when the row is served exactly as the provider reports it, which is the usual case.
+   *
+   * A data provider that restates a company's share counts for a split but leaves some older
+   * rows' EPS on the pre-split basis produces rows that contradict themselves. Where that has
+   * been confirmed against the company's own filing, the EPS on those rows is divided by the
+   * split ratio so it agrees with the share count beside it. Share counts and net income are
+   * never changed.
+   */
+  epsBasisRepair?: EpsBasisRepair | null;
   /**
    * The provider's bottom-line income line, which can differ from `netIncome` in size and in
    * sign. Published as the provider states it; it is not promised to reconcile with either EPS
