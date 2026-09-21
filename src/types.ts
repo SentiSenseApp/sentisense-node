@@ -376,14 +376,19 @@ export interface Fundamentals {
   /** Diluted earnings per share. `null` when the provider reports no diluted figure. */
   epsDiluted?: number | null;
   /**
-   * Present when this row's EPS was restated to the provider's current share basis, and `null`
-   * when the row is served exactly as the provider reports it, which is the usual case.
+   * Present when this row's EPS was restated, and `null` on almost every row.
    *
-   * A data provider that restates a company's share counts for a split but leaves some older
-   * rows' EPS on the pre-split basis produces rows that contradict themselves. Where that has
-   * been confirmed against the company's own filing, the EPS on those rows is divided by the
-   * split ratio so it agrees with the share count beside it. Share counts and net income are
-   * never changed.
+   * Per-period EPS is served as the provider reports it, and is restated for a small list of
+   * named issuers and nowhere else. A provider that restates a company's share counts for a
+   * split but leaves some older rows' EPS on the pre-split basis produces rows that contradict
+   * themselves; where that has been checked against the company's own filing, the EPS on the
+   * affected rows is divided by the split ratio so it agrees with the share count beside it.
+   * Share counts and net income are never changed.
+   *
+   * `null` means no EPS repair was applied to this row. It does NOT mean the row's EPS and share
+   * count are known to be on the same basis: an unlisted issuer, a row whose figures did not
+   * qualify, and a row whose split history could not be read all carry `null`. The
+   * trailing-twelve-month figures are summed from the provider's own rows and are never restated.
    */
   epsBasisRepair?: EpsBasisRepair | null;
   /**
