@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.59.0
+
+### Added
+
+- Typed open-interest follow-up fields on unusual options contracts,
+  `maxUnusualPremium` on daily aggregates, and `unusualPremiumPctl1y` in context.
+- `OptionsHighlight` and stock/ETF session highlight arrays on options overviews.
+
 ## 0.58.0
 
 ### Added

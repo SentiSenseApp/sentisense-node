@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SentiSense from "../../src/index.js";
+import type { OptionsHighlight } from "../../src/index.js";
 
 /**
  * The radar's two failure modes are both silent, which is why they are gated here rather
@@ -74,6 +75,39 @@ describe("options.getOverview", () => {
     expect(result.data?.etfRows?.[0].sector).toBe("Equity");
   });
 
+  it("exposes typed session highlights for both boards", async () => {
+    const stock = {
+      ticker: "NVDA", contract: "NVDA260821C00217500", type: "call",
+      strike: 217.5, expiry: "2026-08-21", dte: 1, volume: 900,
+      oi: 100, volOiRatio: 9, premium: 19321974, premiumPctl1y: 98.5,
+      oiPrior: 100, oiNext: 650, oiChange: 550, oiConfirmation: "opened",
+      oiObservedAt: 1787335200, oiVintage: "next_session", asOf: "2026-08-20",
+      publishedAt: "2026-08-21T01:00:00Z", session: "completed",
+    } satisfies OptionsHighlight;
+    const etf = { ...stock, ticker: "SPY", contract: "SPY260821P00600000" };
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      isPreview: false, previewReason: null,
+      data: { highlights: [stock], etfHighlights: [etf] },
+    }));
+    const result = await client.options.getOverview();
+    expect(result.data?.highlights?.[0]).toEqual(stock);
+    expect(result.data?.etfHighlights?.[0]).toEqual(etf);
+  });
+
+  it("leaves omitted highlight arrays and fields undefined", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      isPreview: false, previewReason: null, data: { highlights: [{}] },
+    }));
+    const result = await client.options.getOverview();
+    expect(result.data?.etfHighlights).toBeUndefined();
+    for (const field of ["ticker", "contract", "type", "strike", "expiry", "dte",
+      "volume", "oi", "volOiRatio", "premium", "premiumPctl1y", "oiPrior",
+      "oiNext", "oiChange", "oiConfirmation", "oiObservedAt", "oiVintage",
+      "asOf", "publishedAt", "session"] as const) {
+      expect(result.data?.highlights?.[0][field]).toBeUndefined();
+    }
+  });
+
   it("leaves a building baseline's percentiles and score undefined rather than zero", async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({
@@ -121,5 +155,53 @@ describe("options.getOverview", () => {
     );
     const result = await client.options.getOverview();
     expect(result.data).toBeNull();
+  });
+});
+
+describe("options dossier fields", () => {
+  it("keeps open-interest follow-up and premium fields on summary and history", async () => {
+    const followUp = {
+      oiPrior: 100, oiNext: 650, oiChange: 550, oiConfirmation: "opened" as const,
+      oiObservedAt: 1787335200, oiVintage: "next_session" as const,
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      isPreview: false, previewReason: null,
+      data: {
+        latest: { maxUnusualPremium: 19321974 },
+        context: { unusualPremiumPctl1y: 98.5 },
+        unusual: [{ contract: "NVDA260821C00217500", ...followUp }],
+      },
+    }));
+    const summary = await client.stocks.getOptionsSummary("NVDA");
+    expect(summary.data?.latest?.maxUnusualPremium).toBe(19321974);
+    expect(summary.data?.context?.unusualPremiumPctl1y).toBe(98.5);
+    for (const field of ["oiPrior", "oiNext", "oiChange", "oiConfirmation",
+      "oiObservedAt", "oiVintage"] as const) {
+      expect(summary.data?.unusual?.[0][field]).toBe(followUp[field]);
+    }
+
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      isPreview: false, previewReason: null,
+      data: { ticker: "NVDA", window: "1y", series: [
+        { maxUnusualPremium: 19321974 }, {},
+      ] },
+    }));
+    const history = await client.stocks.getOptionsHistory("NVDA");
+    expect(history.data?.series?.[0].maxUnusualPremium).toBe(19321974);
+    expect(history.data?.series?.[1].maxUnusualPremium).toBeUndefined();
+  });
+
+  it("leaves omitted follow-up and premium fields undefined", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      isPreview: false, previewReason: null,
+      data: { latest: {}, context: {}, unusual: [{}] },
+    }));
+    const summary = await client.stocks.getOptionsSummary("NVDA");
+    expect(summary.data?.latest?.maxUnusualPremium).toBeUndefined();
+    expect(summary.data?.context?.unusualPremiumPctl1y).toBeUndefined();
+    for (const field of ["oiPrior", "oiNext", "oiChange", "oiConfirmation",
+      "oiObservedAt", "oiVintage"] as const) {
+      expect(summary.data?.unusual?.[0][field]).toBeUndefined();
+    }
   });
 });

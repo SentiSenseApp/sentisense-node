@@ -599,6 +599,8 @@ export interface OptionsAggregate {
   netDelta?: number;
   notionalVol?: number;
   contracts?: number;
+  /** Largest unusual-contract premium this session; zero when none qualified. */
+  maxUnusualPremium?: number;
 }
 
 /**
@@ -615,6 +617,8 @@ export interface OptionsContext {
   /** Where today's at-the-money implied volatility sits in its own trailing year. */
   ivRank1y?: number;
   skewPctl1y?: number;
+  /** Percentile of this session's largest unusual premium within its trailing year, 0-100. */
+  unusualPremiumPctl1y?: number;
   observations1y?: number;
 }
 
@@ -646,6 +650,15 @@ export interface OptionsUnusualContract {
   oi?: number;
   volOiRatio?: number;
   premium?: number;
+  oiPrior?: number;
+  oiNext?: number;
+  oiChange?: number;
+  /** Net open-interest change: opened, closed, mixed, pending, or unmatched. */
+  oiConfirmation?: "opened" | "closed" | "mixed" | "pending" | "unmatched";
+  /** Open-interest observation time in UTC epoch seconds. */
+  oiObservedAt?: number;
+  /** Which chain supplied the observed open interest. */
+  oiVintage?: "prior_settle" | "settled" | "next_session";
 }
 
 /**
@@ -780,6 +793,35 @@ export interface OptionsOverviewRow {
   wallShare?: number;
 }
 
+/** One ticker's highest-premium unusual contract in the completed session. */
+export interface OptionsHighlight {
+  ticker?: string;
+  contract?: string;
+  type?: string;
+  strike?: number;
+  expiry?: string;
+  dte?: number;
+  volume?: number;
+  oi?: number;
+  volOiRatio?: number;
+  premium?: number;
+  /** Percentile against this ticker's trailing-year largest daily unusual premiums, 0-100. */
+  premiumPctl1y?: number;
+  oiPrior?: number;
+  oiNext?: number;
+  oiChange?: number;
+  oiConfirmation?: OptionsUnusualContract["oiConfirmation"];
+  /** Open-interest observation time in UTC epoch seconds. */
+  oiObservedAt?: number;
+  oiVintage?: OptionsUnusualContract["oiVintage"];
+  /** Completed session, ISO calendar day. */
+  asOf?: string;
+  /** UTC ISO timestamp when the build published this highlight. */
+  publishedAt?: string;
+  /** `completed` for an end-of-day session. */
+  session?: string;
+}
+
 /**
  * The market-wide options radar, from `client.options.getOverview()`.
  *
@@ -811,6 +853,10 @@ export interface OptionsOverview {
   rows?: OptionsOverviewRow[];
   /** The ETF board, ranked independently. Omitted entirely when a build has no ETF rows. */
   etfRows?: OptionsOverviewRow[];
+  /** Stock session highlights, up to 3 for FREE keys and 10 for PRO. Omitted when empty. */
+  highlights?: OptionsHighlight[];
+  /** ETF session highlights, up to 3 for FREE keys and 10 for PRO. Omitted when empty. */
+  etfHighlights?: OptionsHighlight[];
   /** Median `ivRank1y` across the ETF board. */
   etfMedianIvRank?: number;
   /** Median put/call volume ratio across the ETF board. */

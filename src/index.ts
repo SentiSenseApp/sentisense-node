@@ -165,6 +165,7 @@ export type {
   GetOptionsHistoryOptions,
   OptionsOverview,
   OptionsOverviewRow,
+  OptionsHighlight,
   StockRatingResponse,
   StockRating,
   StockNotRated,
