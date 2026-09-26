@@ -107,3 +107,29 @@ describe("README preview-envelope table", () => {
     );
   });
 });
+
+/**
+ * A distribution answers a count metric with percentage shares and `sentiment` with per-source
+ * means, and names which in `valueType`. `sentisense_score` has no per-source split and answers
+ * empty, so a README example that passes it shows a call that returns nothing.
+ */
+describe("README getDistribution examples", () => {
+  const readme = readFileSync(fileURLToPath(new URL("README.md", repoRoot)), "utf8");
+  const calls = [...readme.matchAll(/getDistribution\(\s*"[^"]*"\s*,\s*"([^"]+)"/g)].map((m) => m[1]);
+
+  it("finds the examples", () => {
+    expect(calls.length).toBeGreaterThan(0);
+  });
+
+  it("only passes metrics that have a per-source split", () => {
+    const empty = calls.filter(
+      (metric) => !["mentions", "creators", "app_review_count", "sentiment"].includes(metric),
+    );
+    expect(empty, `README shows getDistribution with a metric that answers empty: ${empty.join(", ")}`).toEqual([]);
+  });
+
+  it("names both value types", () => {
+    expect(readme).toContain('"SHARE_PERCENT"');
+    expect(readme).toContain('"MEAN"');
+  });
+});

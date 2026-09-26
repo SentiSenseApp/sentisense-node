@@ -33,10 +33,16 @@ export class EntityMetrics {
   }
 
   /**
-   * Get distribution data for a metric, broken down by a dimension (default: source).
+   * Get a metric broken down by dimension (default dimension: source).
+   *
+   * `valueType` on the response says what each number in `distribution` is. For a count metric
+   * such as `"mentions"` it is `"SHARE_PERCENT"`: each source's percentage share of the total,
+   * summing to about 100. For `"sentiment"` it is `"MEAN"`: each source's mean polarity over the
+   * window, in [-1, 1]. `"sentisense_score"` has no per-source split and answers with an empty
+   * distribution.
    *
    * @param symbol     Ticker symbol (e.g. "AAPL") or entity urlSlug.
-   * @param metricType The metric to break down (e.g. "mentions", "sentiment").
+   * @param metricType The metric to break down (e.g. "mentions" or "sentiment").
    * @param options    Optional dimension parameter.
    */
   async getDistribution(

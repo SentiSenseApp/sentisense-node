@@ -2211,6 +2211,18 @@ export interface ServingMetric {
 
 /** Distribution data returned by the v2 distribution endpoint. */
 export interface MetricDistribution {
+  /** The metric queried. */
+  metricType?: string;
+  /** The dimension the metric is broken down by, e.g. "source". */
+  dimension?: string;
+  /** Dimension value to a number whose meaning `valueType` gives. Empty when there is no data. */
+  distribution?: Record<string, number>;
+  /**
+   * `"SHARE_PERCENT"` for a count metric (mentions, creators): each value is a percentage share
+   * of the total, summing to about 100. `"MEAN"` for a value metric (sentiment): each value is
+   * the mean reading on the metric's own scale, never a share.
+   */
+  valueType?: "SHARE_PERCENT" | "MEAN";
   [key: string]: unknown;
 }
 
