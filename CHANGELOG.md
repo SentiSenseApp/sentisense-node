@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `marketMood.get()` now accepts `{ days }` and sends it as the `days` query parameter,
+  so `marketMood.get({ days: 30 })` returns 30 days of history. It previously took no
+  arguments and silently dropped the option, returning the default 180 days. Calling it
+  with no arguments behaves as before. New exported type: `MarketMoodOptions`.
+
 ## 0.59.0
 
 ### Added

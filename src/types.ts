@@ -2220,6 +2220,12 @@ export interface MarketMood {
   [key: string]: unknown;
 }
 
+/** Options for `MarketMoodResource.get()`. */
+export interface MarketMoodOptions {
+  /** Days of history to return. Omit to get the API's default of 180. */
+  days?: number;
+}
+
 /** AI-generated market summary with headline and analysis. */
 export interface MarketSummary {
   /** Not populated by the API (always empty); retained for backward compatibility. */

@@ -212,6 +212,7 @@ export type {
   ServingMetric,
   MetricDistribution,
   MarketMood,
+  MarketMoodOptions,
   MarketSummary,
   KBEntity,
   IndexListing,

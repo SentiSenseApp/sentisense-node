@@ -529,6 +529,7 @@ All five are optional: a response served before they shipped omits them. For the
 
 ```typescript
 client.marketMood.get()             // Composite market sentiment with sub-signals
+client.marketMood.get({ days: 30 }) // Same, with 30 days of history (default 180)
 client.kb.getPopularEntities()      // Most-tracked entities
 client.kb.searchEntities("Tesla")   // Resolve a name, alias, ticker or slug to what we track
 ```
