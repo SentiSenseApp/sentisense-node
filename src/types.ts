@@ -547,6 +547,24 @@ export interface GetFundamentalsOptions {
 // ── Options Intelligence ────────────────────────────────────
 
 /**
+ * The open-interest follow-up for one contract, as carried by an aggregate's `unusualOi`
+ * list: the same fields an unusual contract carries, keyed by symbol.
+ */
+export interface OptionsOiFollowUp {
+  /** Exchange-style option symbol. */
+  contract?: string;
+  oiPrior?: number;
+  oiNext?: number;
+  oiChange?: number;
+  /** Net open-interest change: opened, closed, mixed, pending, or unmatched. */
+  oiConfirmation?: "opened" | "closed" | "mixed" | "pending" | "unmatched";
+  /** Open-interest observation time in UTC epoch seconds. */
+  oiObservedAt?: number;
+  /** Which chain supplied the observed open interest. */
+  oiVintage?: "prior_settle" | "settled" | "next_session";
+}
+
+/**
  * One session's aggregate options activity for a ticker.
  *
  * Every field is optional because the response omits anything it cannot compute rather than
@@ -601,6 +619,17 @@ export interface OptionsAggregate {
   contracts?: number;
   /** Largest unusual-contract premium this session; zero when none qualified. */
   maxUnusualPremium?: number;
+  /**
+   * Premium of the session's highlight contract: the largest qualifying premium with an
+   * expiry at least one day after the session. Zero when the session was evaluated and none
+   * qualified; absent on sessions recorded before this rule existed.
+   */
+  maxUnusualPremiumEx0dte?: number;
+  /**
+   * Open-interest follow-up for the session's unusual contracts, plus its highlight contract
+   * when that is not one of them. Absent until the follow-up has been read.
+   */
+  unusualOi?: OptionsOiFollowUp[];
 }
 
 /**
@@ -662,10 +691,71 @@ export interface OptionsUnusualContract {
 }
 
 /**
+ * A ticker's row on today's intraday options board, reduced to counts and the board's own
+ * clock. It carries no contract symbol, strike, price or premium.
+ *
+ * The board is rebuilt every 15 minutes during the session from 15-minute delayed chains;
+ * the contract-level board itself is in the SentiSense app, not the API.
+ */
+export interface OptionsIntradayFlow {
+  /** Contracts on the ticker's row passing the unusual rule so far this session, up to 5. */
+  unusualCount?: number;
+  /** Earliest board cycle that flagged one of them, `"HH:mm ET"`. Absent when none. */
+  firstSeenEt?: string;
+  /** `firstSeenEt` as Unix epoch seconds. */
+  firstSeenAt?: number;
+  /**
+   * Percentile (0-100) of the ticker's intraday highlight contract against its own history.
+   * Present only for highlighted tickers, and absent while that history holds fewer than 60
+   * sessions.
+   */
+  flowPctl1y?: number;
+  /** The board's snapshot time, `"HH:mm ET"`. */
+  asOfEt?: string;
+  /**
+   * The same instant as Unix epoch seconds. Unlike the dossier's own `asOf`, which is an ISO
+   * date, this one is a timestamp.
+   */
+  asOf?: number;
+  /** `true` while the board updates during the session, `false` once it has stopped. */
+  live?: boolean;
+  /** How far the board's chain data trails the market, in minutes. */
+  delayMinutes?: number;
+}
+
+/**
+ * Where the intraday options board lives and who can open it. Describes the board, not the
+ * data: `apiData` is `false` because its rows are app-only.
+ */
+export interface OptionsIntradayBoardCapability {
+  /** `true` when the app offers the board. */
+  available?: boolean;
+  /**
+   * Who can open the board in the app: `"signed_in_pro"` (any signed-in PRO account) or
+   * `"power_user"` (an early-access group). New values may appear.
+   */
+  access?: "signed_in_pro" | "power_user" | (string & {});
+  /** `false`: the board's rows are app-only, and the API serves only the derived fields. */
+  apiData?: boolean;
+  /** The board's data delay, in minutes. */
+  delayMinutes?: number;
+  /** The Options page in the app. */
+  url?: string;
+}
+
+/** Product capabilities that ride the options responses. */
+export interface OptionsCapabilities {
+  intradayBoard?: OptionsIntradayBoardCapability;
+}
+
+/**
  * The options dossier for one stock or ETF, from `client.stocks.getOptionsSummary()`.
  *
  * End of day, not live: it describes the latest completed session and refreshes the
- * following morning.
+ * following morning. The exception is the intraday session fields (`intradayFlow`,
+ * `largePrintCount`, `largestPrintPctl`, `capabilities`), which are the same on every tier,
+ * previews included, and are omitted when their source is absent: `intradayFlow` before the
+ * day's first board or when the ticker has no row on it.
  */
 export interface OptionsSummary {
   /** Session the dossier describes, ISO calendar day. */
@@ -684,6 +774,20 @@ export interface OptionsSummary {
   oiWalls?: OptionsOiWalls;
   /** Top contracts by premium. */
   unusual?: OptionsUnusualContract[];
+  /** The ticker's row on today's intraday board. */
+  intradayFlow?: OptionsIntradayFlow;
+  /**
+   * Large prints for the ticker (one contract's fills clustered into a single order after the
+   * close) in the latest published prints session, up to 25; `0` when it has none.
+   */
+  largePrintCount?: number;
+  /**
+   * Highest percentile (0-100) among those prints, each print's premium against the ticker's
+   * own trailing prints. Absent when none is scored.
+   */
+  largestPrintPctl?: number;
+  /** Where the intraday board lives and who can open it. */
+  capabilities?: OptionsCapabilities;
 }
 
 /** Trailing window for `client.stocks.getOptionsHistory()`. */
@@ -836,7 +940,10 @@ export interface OptionsHighlight {
  * `coverageCount` describe the stock board only; the four `etf`-prefixed fields describe
  * the ETF board and are omitted entirely when a build has no ETF rows.
  *
- * End of day, not live: `asOf` is the latest completed session.
+ * End of day, not live: `asOf` is the latest completed session. The exception is
+ * `intradayActiveCount`, `intradayRanking` and `capabilities`, which summarize today's
+ * intraday board across stocks, are the same on every tier, and are omitted before the day's
+ * first board.
  */
 export interface OptionsOverview {
   /** Session the build describes, ISO calendar day. */
@@ -867,6 +974,21 @@ export interface OptionsOverview {
   etfCoverageCount?: number;
   /** Full ETF board size on a FREE response, mirroring what the envelope's `totalCount` does for stocks. */
   etfTotalCount?: number;
+  /** When this board was built, Unix epoch seconds (UTC). Pair it with `asOf`. */
+  builtAt?: number;
+  /**
+   * The rule the stock `highlights` were chosen by, `"ex0dte-v1"`. Absent when that list was
+   * built before the rule existed.
+   */
+  highlightPolicy?: string;
+  /** The same for `etfHighlights`. */
+  etfHighlightPolicy?: string;
+  /** Stocks on today's intraday board with at least one unusual contract so far. Stock board only. */
+  intradayActiveCount?: number;
+  /** Up to 25 of those tickers, most unusual for their own history first. */
+  intradayRanking?: string[];
+  /** Where the intraday board lives and who can open it. */
+  capabilities?: OptionsCapabilities;
 }
 
 // ── SentiSense Rating ───────────────────────────────────────

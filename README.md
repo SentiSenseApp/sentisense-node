@@ -501,6 +501,8 @@ client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // That name's daily 
 
 The radar carries two separately-ranked boards: `data.rows` for stocks and `data.etfRows` for ETFs. Keep them apart. Every reading behind a row's `interestScore` is a percentile of that ticker's own trailing history, so a ranking built across both boards compares numbers measured against different baselines. The aggregates split the same way, with the `etf`-prefixed fields describing the ETF board alone.
 
+During the trading session the dossier and the radar also carry a few intraday fields, the same on every tier: `intradayFlow` (a count of the ticker's unusual contracts so far, when the first one was flagged, and the board's own clock), `largePrintCount` and `largestPrintPctl` on the dossier, and `intradayActiveCount` with `intradayRanking` on the radar. They carry no contract, strike, price or premium, and are absent before the day's first board. `capabilities.intradayBoard` says where the contract-level board lives; its rows are served in the SentiSense app, not by the API.
+
 A row whose baseline is still building carries its raw readings with the percentiles and `interestScore` omitted, which means "not enough history yet" rather than "nothing interesting". `getOptionsSummary` reports an uncovered ticker as a null payload inside the usual envelope, so the check is `result.data === null`: the response object itself is always truthy, and a bare `if (summary === null)` never fires. `getOptionsHistory` reports it as an empty `series` instead, so check the array's length rather than null-checking there.
 
 ### SentiSense Rating

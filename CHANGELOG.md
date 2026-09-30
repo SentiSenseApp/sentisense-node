@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.61.0
+
+### Added
+
+- Typed intraday session fields on options responses. `OptionsSummary` gains
+  `intradayFlow` (`OptionsIntradayFlow`: `unusualCount`, `firstSeenEt`, `firstSeenAt`,
+  `flowPctl1y`, `asOfEt`, `asOf`, `live`, `delayMinutes`), `largePrintCount`,
+  `largestPrintPctl` and `capabilities`. `OptionsOverview` gains `intradayActiveCount`,
+  `intradayRanking` and `capabilities`, plus `builtAt`, `highlightPolicy` and
+  `etfHighlightPolicy`. New exported types: `OptionsIntradayFlow`, `OptionsCapabilities`,
+  `OptionsIntradayBoardCapability`.
+- `maxUnusualPremiumEx0dte` and `unusualOi` (`OptionsOiFollowUp[]`) on daily aggregates.
+  New exported type: `OptionsOiFollowUp`.
+
 ## 0.60.0
 
 ### Fixed
