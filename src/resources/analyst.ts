@@ -136,8 +136,9 @@ export type AnalystEstimatePeriodType =
 /** Consensus EPS estimate for one forward period. */
 export interface AnalystEstimate {
   /**
-   * Period label as sent by the API: a date such as `"2026-10-29"` for the current
-   * quarter, a relative code such as `"+1q"`, `"0y"` or `"+1y"` otherwise. Use
+   * Period label as sent by the API: usually a date such as `"2026-10-29"` for the
+   * current quarter (a relative code such as `"0q"` when no date is known yet), a
+   * relative code such as `"+1q"`, `"0y"` or `"+1y"` otherwise. Use
    * `periodType` to tell periods apart.
    */
   periodLabel: string | null;
