@@ -1,0 +1,25 @@
+{
+  "ticker": "QQQ",
+  "currentPrice": 739.77,
+  "change": 1.84,
+  "changePercent": 0.24934614394319676,
+  "volume": 29820353,
+  "open": 740.19,
+  "dayHigh": 745.1,
+  "dayLow": 739.46,
+  "previousClose": 737.93,
+  "week52High": 748.65,
+  "week52Low": 555.6,
+  "dividendYield": 0.004179434148451546,
+  "aum": 500944241401,
+  "expenseRatio": 0.0018,
+  "nav": 744.46,
+  "inceptionDate": "1999-03-10",
+  "timestamp": 1790841279112,
+  "extendedHours": {
+    "session": "post",
+    "price": 742.8,
+    "change": 3.03,
+    "changePercent": 0.40958676345350215
+  }
+}

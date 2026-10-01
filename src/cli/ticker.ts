@@ -1,5 +1,7 @@
 import type { SentiSense } from "../client.js";
-import { NotFoundError } from "../errors.js";
+import { APIError, NotFoundError } from "../errors.js";
+import type { EtfQuote } from "../resources/etfs.js";
+import type { StockQuote } from "../types.js";
 import { CliUsageError, UnknownTickerError } from "./errors.js";
 import type { ParsedArgs } from "./parse.js";
 
@@ -68,8 +70,37 @@ export async function verifyTickerOnEmpty(
     await api.stocks.getQuote(ticker);
     return undefined;
   } catch (error) {
+    // An ETF is refused by the stock quote with this code, which is itself proof the symbol
+    // exists, so no second request is spent.
+    if (isEtfRedirect(error)) return undefined;
     if (error instanceof NotFoundError) throw new UnknownTickerError(ticker);
     return `could not verify ${ticker}, so the empty result is unconfirmed`;
+  }
+}
+
+/** True for the error the stock quote answers an ETF symbol with. */
+export function isEtfRedirect(error: unknown): boolean {
+  return error instanceof APIError && error.code === "ticker_is_etf";
+}
+
+/** A quote for either kind of symbol, tagged with the endpoint that answered it. */
+export type AnyQuote =
+  | { kind: "stock"; quote: StockQuote }
+  | { kind: "etf"; quote: EtfQuote };
+
+/**
+ * The quote for a stock or an ETF.
+ *
+ * The stock quote refuses an ETF symbol with `ticker_is_etf` rather than answering it, so
+ * that one error is retried against the ETF quote. Every other outcome is the stock
+ * quote's own, which keeps a stock symbol at exactly one request.
+ */
+export async function quoteAnyTicker(api: SentiSense, ticker: string): Promise<AnyQuote> {
+  try {
+    return { kind: "stock", quote: await api.stocks.getQuote(ticker) };
+  } catch (error) {
+    if (!isEtfRedirect(error)) throw error;
+    return { kind: "etf", quote: await api.etfs.quote(ticker) };
   }
 }
 

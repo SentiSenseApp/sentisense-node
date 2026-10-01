@@ -1,5 +1,5 @@
 import type { APIClient } from "../client.js";
-import type { PreviewResponse } from "../types.js";
+import type { ExtendedHoursInfo, PreviewResponse } from "../types.js";
 
 export interface EtfInfo {
   ticker: string;
@@ -15,6 +15,54 @@ export interface EtfInfo {
    * curated image assigned.
    */
   imageUrl: string | null;
+}
+
+/**
+ * Quote snapshot for an ETF from `GET /api/v1/etfs/{ticker}/quote`: the same price-side
+ * fields as the stock quote, with fund facts (AUM, expense ratio, NAV, inception date) in
+ * place of market cap, P/E and EPS.
+ *
+ * Every field except `ticker` and `timestamp` is left out of the response when unknown
+ * rather than sent as `null`, so check for presence before rendering.
+ */
+export interface EtfQuote {
+  ticker: string;
+  /** Regular-session price, delayed. During regular hours: the most recent regular-session value. Otherwise: the most recent regular-session close. */
+  currentPrice?: number | null;
+  change?: number | null;
+  /** Change in percentage points: `-0.21` means -0.21%. */
+  changePercent?: number | null;
+  /** Shares traded in the session. */
+  volume?: number | null;
+  open?: number | null;
+  dayHigh?: number | null;
+  dayLow?: number | null;
+  previousClose?: number | null;
+  week52High?: number | null;
+  week52Low?: number | null;
+  /**
+   * Trailing-12-month dividend yield as a fraction, not percentage points: `0.0099` is a
+   * 0.99% yield.
+   */
+  dividendYield?: number | null;
+  /** Assets under management, in USD. The fund analogue of a stock's market cap. */
+  aum?: number | null;
+  /** Annual expense ratio as a fraction: `0.0009` is 0.09%. */
+  expenseRatio?: number | null;
+  /** Net asset value per share, in USD. */
+  nav?: number | null;
+  /** Fund inception date, ISO `"YYYY-MM-DD"`. */
+  inceptionDate?: string | null;
+  /** Unix timestamp in MILLISECONDS of when this response was served. Not the age of the price. */
+  timestamp: number;
+  /**
+   * Unix timestamp in MILLISECONDS of the market data behind `currentPrice`. Read this for
+   * freshness rather than `timestamp`. Absent when the price cannot be dated, so treat an
+   * absent value as unknown age, not as fresh.
+   */
+  priceAsOf?: number | null;
+  /** Pre-market or after-hours view. Absent during regular hours, overnight and weekends. */
+  extendedHours?: ExtendedHoursInfo | null;
 }
 
 export interface EtfHolding {
@@ -169,6 +217,20 @@ export class Etfs {
    */
   async list(): Promise<EtfInfo[]> {
     return this.client.get("/api/v1/etfs");
+  }
+
+  /**
+   * Get the quote snapshot for an ETF: price, day and 52-week range, volume, dividend
+   * yield, AUM, expense ratio, NAV and inception date.
+   *
+   * Fails with a 400 `APIError` whose `code` is `"ticker_is_not_etf"` when the symbol is a
+   * stock (use `stocks.getQuote()` for those), and a `NotFoundError` when there is no
+   * price data for the fund.
+   */
+  async quote(ticker: string): Promise<EtfQuote> {
+    return this.client.get(
+      `/api/v1/etfs/${encodeURIComponent(ticker.toUpperCase())}/quote`,
+    );
   }
 
   /**

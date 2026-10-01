@@ -1,6 +1,7 @@
-import type { StockProfile, StockQuote } from "../../types.js";
+import type { StockProfile } from "../../types.js";
 import type { CommandDef } from "../command.js";
 import { CliUsageError } from "../errors.js";
+import { quoteAnyTicker, type AnyQuote } from "../ticker.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import {
   direction,
@@ -13,10 +14,43 @@ import {
   timestamp,
 } from "../render/num.js";
 
-interface Row {
+/** One symbol's answer. `kind` says whether the stock or the ETF quote produced it. */
+type Row = AnyQuote & {
   ticker: string;
-  quote: StockQuote;
   profile: StockProfile | null;
+};
+
+/** The valuation line: earnings-based for a stock, fund facts for an ETF. */
+function valuation(row: Row): Block {
+  if (row.kind === "etf") {
+    const etf = row.quote;
+    return {
+      kind: "facts",
+      items: fields(
+        field("AUM", humanize(etf.aum)),
+        // Both ratios, like `dividendYield` on the stock quote.
+        field("Expense ratio", ratioPercent(etf.expenseRatio)),
+        field("NAV", fixed(etf.nav)),
+        field("Div yield", ratioPercent(etf.dividendYield)),
+        field("52w", `${fixed(etf.week52Low)} to ${fixed(etf.week52High)}`),
+      ),
+    };
+  }
+  const quote = row.quote;
+  return {
+    kind: "facts",
+    items: fields(
+      field("Mkt cap", humanize(quote.marketCap)),
+      field("P/E", fixed(quote.peRatio)),
+      field("EPS TTM", fixed(quote.epsTTM)),
+      // A ratio, unlike `changePercent` and the other percentages in the same payload.
+      field("Div yield", ratioPercent(quote.dividendYield)),
+      field(
+        "52w",
+        `${fixed(quote.week52Low)} to ${fixed(quote.week52High)}`,
+      ),
+    ),
+  };
 }
 
 function single(row: Row, full: boolean): Block[] {
@@ -46,20 +80,7 @@ function single(row: Row, full: boolean): Block[] {
         field("Prev close", fixed(quote.previousClose)),
       ),
     },
-    {
-      kind: "facts",
-      items: fields(
-        field("Mkt cap", humanize(quote.marketCap)),
-        field("P/E", fixed(quote.peRatio)),
-        field("EPS TTM", fixed(quote.epsTTM)),
-        // A ratio, unlike `changePercent` and the other percentages in the same payload.
-        field("Div yield", ratioPercent(quote.dividendYield)),
-        field(
-          "52w",
-          `${fixed(quote.week52Low)} to ${fixed(quote.week52High)}`,
-        ),
-      ),
-    },
+    valuation(row),
   ];
 
   if (quote.extendedHours) {
@@ -80,12 +101,21 @@ function single(row: Row, full: boolean): Block[] {
     });
   }
 
-  if (full) {
+  if (full && row.kind === "etf") {
     blocks.push({
       kind: "kv",
       items: fields(
-        field("200d average", fixed(quote.movingAverage200Day)),
-        quote.reportedCurrency ? field("reported currency", quote.reportedCurrency) : undefined,
+        row.quote.inceptionDate ? field("inception", row.quote.inceptionDate) : undefined,
+      ),
+    });
+  } else if (full && row.kind === "stock") {
+    blocks.push({
+      kind: "kv",
+      items: fields(
+        field("200d average", fixed(row.quote.movingAverage200Day)),
+        row.quote.reportedCurrency
+          ? field("reported currency", row.quote.reportedCurrency)
+          : undefined,
         profile?.sector ? field("sector", String(profile.sector)) : undefined,
         profile?.industry ? field("industry", String(profile.industry)) : undefined,
         profile?.ceo ? field("ceo", String(profile.ceo)) : undefined,
@@ -93,13 +123,14 @@ function single(row: Row, full: boolean): Block[] {
     });
   }
 
-  if (quote.listingStatus === "DELISTED") {
+  const listingStatus = row.kind === "stock" ? row.quote.listingStatus : undefined;
+  if (row.kind === "stock" && listingStatus === "DELISTED") {
     blocks.push({
       kind: "text",
-      text: `Delisted on ${quote.delistedDate ?? "an unrecorded date"}. Every figure above is frozen at the last trade, not a live market move.`,
+      text: `Delisted on ${row.quote.delistedDate ?? "an unrecorded date"}. Every figure above is frozen at the last trade, not a live market move.`,
       tone: "down",
     });
-  } else if (quote.listingStatus === "PENDING_DELISTING") {
+  } else if (listingStatus === "PENDING_DELISTING") {
     blocks.push({
       kind: "text",
       text: "A merger or take-private is scheduled. The stock still trades, so these figures are current.",
@@ -137,7 +168,8 @@ function table(rows: Row[], full: boolean): Block {
         cell(signed(row.quote.change), tone),
         cell(signedPercent(row.quote.changePercent), tone),
         cell(humanize(row.quote.volume, 1)),
-        cell(humanize(row.quote.marketCap)),
+        // An ETF has no market cap; its AUM is a different number and stays out of this column.
+        cell(humanize(row.kind === "stock" ? row.quote.marketCap : undefined)),
       ];
       return full
         ? [cell(row.ticker), cell(row.profile?.name ?? ""), ...tail]
@@ -163,6 +195,8 @@ export const quoteCommand: CommandDef = {
     "One request per ticker. The company name costs a second request, so it is fetched only",
     "for the terminal layout: piped and --json output carry the quote alone.",
     "JSON is the exact quote response for one ticker, and an object keyed by ticker for more.",
+    "An ETF symbol answers with the ETF quote: AUM, expense ratio and NAV in place of market",
+    "cap, P/E and EPS. That costs one extra request per ETF symbol.",
   ],
   flags: {},
   async run({ args, client, full, mode }) {
@@ -179,12 +213,12 @@ export const quoteCommand: CommandDef = {
 
     const rows: Row[] = await Promise.all(
       tickers.map(async (ticker) => {
-        const [quote, profile] = await Promise.all([
-          api.stocks.getQuote(ticker),
+        const [answer, profile] = await Promise.all([
+          quoteAnyTicker(api, ticker),
           // A name is a nicety, not the answer. A ticker with no profile still gets a quote.
           wantName ? api.stocks.getProfile(ticker).catch(() => null) : Promise.resolve(null),
         ]);
-        return { ticker, quote, profile };
+        return { ...answer, ticker, profile };
       }),
     );
 
@@ -192,7 +226,7 @@ export const quoteCommand: CommandDef = {
       return { json: rows[0].quote, doc: doc(...single(rows[0], full)) };
     }
 
-    const json: Record<string, StockQuote> = {};
+    const json: Record<string, AnyQuote["quote"]> = {};
     for (const row of rows) json[row.ticker] = row.quote;
     return { json, doc: doc(table(rows, full)) };
   },

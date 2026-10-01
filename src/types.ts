@@ -204,11 +204,126 @@ export interface StockProfile {
   [key: string]: unknown;
 }
 
+/**
+ * A knowledge-base entity related to a stock (a person, product, partner and so on), as
+ * returned by `stocks.getEntities()`.
+ *
+ * Address the entity by `urlSlug` (the handle the metric and document endpoints take) and
+ * label it with `displayName`.
+ */
 export interface StockEntity {
-  entityId: string;
-  name: string;
+  /**
+   * Entity id as sent by the API.
+   * @deprecated Not a stable public identifier. Use `urlSlug` to refer to an entity.
+   */
+  id: string;
+  /** Human-readable name, e.g. `"Tim Cook"`. */
+  displayName: string;
+  /** Entity type, e.g. `"PERSON"`, `"COMPANY"`, `"PRODUCT_OR_SERVICE"`. */
   type: string;
+  /** Ticker of the stock this entity is related to. */
+  relatedStock?: string | null;
+  /** Handle the metric and document endpoints address this entity by. `null` when it has none. */
+  urlSlug?: string | null;
+  /** A person's title, e.g. `"Executive Chairman"`. `null` for non-people. */
+  title?: string | null;
+  /** A product's category. `null` for non-products. */
+  category?: string | null;
+  /** Icon image URL, or `null` when none is assigned. */
+  iconUrl?: string | null;
+  /** App Store id when the product has a tracked companion app. Omitted otherwise. */
+  appId?: string | null;
+  /** @deprecated Never sent by the API. To refer to the entity, use `urlSlug`. */
+  entityId: string;
+  /** @deprecated Never sent by the API; read `displayName`. */
+  name: string;
   [key: string]: unknown;
+}
+
+/** Options for `stocks.getGraph()`. */
+export interface GetStockGraphOptions {
+  /** Hops from the stock's own company node: `1` (default) or `2`. */
+  depth?: 1 | 2;
+  /** Maximum nodes in the response, 1 to 200. Omitted, the API uses 75. */
+  cap?: number;
+}
+
+/** One node in a {@link StockGraph}. Every identifier in the graph is a `slug`. */
+export interface GraphNode {
+  /** Handle for this entity, the same one the metric and document endpoints take. */
+  slug: string;
+  displayName: string;
+  /** `"COMPANY"`, `"PERSON"`, `"PRODUCT_OR_SERVICE"`, `"ORGANIZATION"`, `"PUBLISHER"`, `"TOPIC"`, ... */
+  type: string;
+}
+
+/** One typed relationship in a {@link StockGraph}, between two node slugs. */
+export interface GraphEdge {
+  /** Slug of the node the relationship starts from. */
+  source: string;
+  /** Slug of the node the relationship points to. */
+  target: string;
+  /** Relationship type, e.g. `"LEADS"`, `"FOUNDED"`, `"PRODUCT_OF"`, `"VARIANT_OF"`, `"PEER"`. */
+  type: string;
+  /** `"DIRECTED"` (source to target) or `"BIDIRECTIONAL"` (for example peers). */
+  direction: string;
+  /**
+   * Extra facts about the relationship, all values as strings. Keys depend on the edge
+   * type, for example `role` and `since` on `LEADS`, `year` on `FOUNDED`. Empty when the
+   * edge carries none.
+   */
+  properties: Record<string, string>;
+}
+
+/** A product family and the slugs of its member products. */
+export interface GraphProductFamily {
+  /** Family name, e.g. `"iPhone"`. */
+  family: string;
+  /** Slugs of the products in the family. */
+  members: string[];
+}
+
+/** Node slugs in a {@link StockGraph}, grouped by role relative to the stock. */
+export interface GraphGroups {
+  people: string[];
+  products: string[];
+  productFamilies: GraphProductFamily[];
+  /** Peer companies. */
+  peers: string[];
+  organizations: string[];
+  publishers: string[];
+  topics: string[];
+}
+
+/** Size of a {@link StockGraph}. */
+export interface GraphCounts {
+  nodes: number;
+  edges: number;
+  /** Node count per node `type`, e.g. `{ PERSON: 6, PRODUCT_OR_SERVICE: 23 }`. */
+  byType: Record<string, number>;
+}
+
+/**
+ * The company knowledge graph around one stock, from `GET /api/v1/stocks/{ticker}/graph`:
+ * the people, products, peers and other entities linked to the company, and the typed
+ * relationships between them. Every identifier is a slug.
+ */
+export interface StockGraph {
+  ticker: string;
+  /** Slug of the stock's own company node, the graph's starting point. */
+  root: string;
+  /** Depth the graph was walked to (1 or 2). */
+  depth: number;
+  /** Node cap applied to this response. */
+  cap: number;
+  /** True when the cap cut the graph short. */
+  truncated: boolean;
+  /** Nodes left out because they carry no slug. */
+  omitted: number;
+  counts: GraphCounts;
+  groups: GraphGroups;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
 }
 
 /** Per-source tone for a stock: where the conversation is, and how it leans. */
@@ -465,19 +580,86 @@ export interface FundamentalsPeriodsResponse {
   reason?: string | null;
 }
 
+/** One settlement-date reading in {@link ShortInterest}. */
+export interface ShortInterestDataPoint {
+  /** Shares sold short and not yet covered as of `settlementDate`. */
+  shortInterest: number | null;
+  /** `shortInterest` divided by `avgDailyVolume`: trading days to cover at average volume. */
+  daysToCover: number | null;
+  /** Average daily trading volume, in shares. */
+  avgDailyVolume: number | null;
+  /** ISO date `"YYYY-MM-DD"` of the settlement this reading is for. */
+  settlementDate: string | null;
+}
+
+/**
+ * Short interest history from `stocks.getShortInterest()`, newest first. An unknown
+ * ticker returns an empty `dataPoints` array and `count: 0`, not an error.
+ */
 export interface ShortInterest {
   ticker: string;
+  dataPoints: ShortInterestDataPoint[];
+  /** Number of entries in `dataPoints`. */
+  count: number;
   [key: string]: unknown;
 }
 
+/**
+ * Free float from `stocks.getFloat()`. An unknown ticker returns every field other than
+ * `ticker` as `null`, not an error.
+ */
 export interface FloatInfo {
   ticker: string;
+  /**
+   * Shares available to trade publicly. `0` means the symbol has no free float, as with
+   * funds such as SPY or QQQ. Shares outstanding is not on this response; read it from
+   * the fundamentals endpoints.
+   */
+  freeFloat: number | null;
+  /** Free float as percentage points of shares outstanding: `92.1` means 92.1%. */
+  freeFloatPercent: number | null;
+  /**
+   * Date the float figure is effective: `"YYYY-MM-DD"` or `"YYYY-MM-DD HH:mm:ss"`
+   * depending on the data source, so parse it leniently.
+   */
+  effectiveDate: string | null;
   [key: string]: unknown;
 }
 
+/** One trading day in {@link ShortVolume}. */
+export interface ShortVolumeDataPoint {
+  /** Shares sold short that day on the reporting venues. */
+  shortVolume: number | null;
+  /** Total shares traded that day on the same reporting venues, not consolidated volume. */
+  totalVolume: number | null;
+  /** `shortVolume` as percentage points of `totalVolume`: `41.04` means 41.04%. */
+  shortVolumeRatio: number | null;
+  /** ISO date `"YYYY-MM-DD"` of the trading day. */
+  date: string | null;
+}
+
+/**
+ * Daily short volume from `stocks.getShortVolume()`, newest first. An unknown ticker
+ * returns an empty `dataPoints` array and `count: 0`, not an error.
+ */
 export interface ShortVolume {
   ticker: string;
+  dataPoints: ShortVolumeDataPoint[];
+  /** Number of entries in `dataPoints`. */
+  count: number;
   [key: string]: unknown;
+}
+
+/** Options for `stocks.getShortInterest()`. */
+export interface GetShortInterestOptions {
+  /** Settlement dates to return. Omitted, the API returns 24. */
+  limit?: number;
+}
+
+/** Options for `stocks.getShortVolume()`. */
+export interface GetShortVolumeOptions {
+  /** Trading days to return. Omitted, the API returns 90. */
+  limit?: number;
 }
 
 export interface MetricsBreakdown {
@@ -2496,8 +2678,35 @@ export interface KpiTypeEntry {
 
 // ── Knowledge Base ──────────────────────────────────────────
 
+/**
+ * A knowledge-base entity, as returned by `kb.getPopularEntities()`. Address it by
+ * `urlSlug` and label it with `displayName`.
+ */
 export interface KBEntity {
+  /**
+   * Entity id as sent by the API.
+   * @deprecated Not a stable public identifier. Use `urlSlug` to refer to an entity.
+   */
+  id: string;
+  /** Human-readable name, e.g. `"Elon Musk"`. */
+  displayName: string;
+  /** Entity type, e.g. `"PERSON"`, `"COMPANY"`, `"PRODUCT_OR_SERVICE"`. */
+  type: string;
+  /** Ticker of the stock this entity is most closely related to, when it has one. */
+  relatedStock?: string | null;
+  /** Handle the metric and document endpoints address this entity by. `null` when it has none. */
+  urlSlug?: string | null;
+  /** A person's title. `null` for non-people. */
+  title?: string | null;
+  /** A product's category. `null` for non-products. */
+  category?: string | null;
+  /** Icon image URL, or `null` when none is assigned. */
+  iconUrl?: string | null;
+  /** App Store id when the product has a tracked companion app. Omitted otherwise. */
+  appId?: string | null;
+  /** @deprecated Never sent by the API. To refer to the entity, use `urlSlug`. */
   entityId: string;
+  /** @deprecated Never sent by the API; read `displayName`. */
   name: string;
   [key: string]: unknown;
 }

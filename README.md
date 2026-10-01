@@ -68,7 +68,7 @@ npx -y sentisense@latest health
 |---------|--------------|
 | `auth [key]` | Store a key, show what is configured, or `--remove` it |
 | `health` | Reachability, key validity, latency, and the resolved base URL |
-| `quote <ticker>...` | Price, day range, 52-week range, market cap, P/E. One request per ticker |
+| `quote <ticker>...` | Price, day range, 52-week range, market cap, P/E. One request per ticker; ETFs show AUM, expense ratio and NAV |
 | `sentiment <ticker>` | SentiSense Score, tone, attention, per-source breakdown, `--days N` history |
 | `mood` | Composite market sentiment, the signals behind it, and the sector map |
 | `analysts <ticker>` | Consensus, price target band, recent upgrades and downgrades. `--coverage` for who covers it, by firm |
@@ -238,7 +238,10 @@ client.stocks.getProfile("AAPL")                        // Company profile
 client.stocks.getChart("AAPL", { timeframe: "6M" })     // OHLCV chart data
 client.stocks.getMarketStatus()                         // Market open/closed
 client.stocks.getFundamentals("AAPL")                   // Financial data
-client.stocks.getShortInterest("GME")                   // Short interest
+client.stocks.getShortInterest("GME", { limit: 12 })    // Short interest by settlement date
+client.stocks.getShortVolume("GME")                     // Daily short volume
+client.stocks.getFloat("GME")                           // Free float
+client.stocks.getGraph("AAPL", { depth: 1 })            // Company knowledge graph: people, products, peers
 client.stocks.getOptionsSummary("NVDA")                 // End-of-day options dossier
 client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // Daily options aggregates over time
 client.stocks.getRating("AAPL")                         // SentiSense Rating: score, letter, percentile, dimensions
@@ -246,6 +249,8 @@ client.stocks.getAISummary("AAPL", { depth: "deep" })   // AI report (PRO)
 ```
 
 Price fields carry `priceAsOf` (Unix milliseconds) for the age of the market data; read that for freshness rather than `timestamp`, which is when the response was served.
+
+Short interest and short volume come back newest first, and an unknown ticker returns an empty `dataPoints` array rather than an error. Every identifier in `getGraph` is a slug, the same handle the metric and document endpoints take. An ETF symbol is refused by `getQuote` with an `APIError` whose `code` is `"ticker_is_etf"`; use `etfs.quote()` for funds.
 
 ### Documents & news
 
@@ -459,6 +464,7 @@ Composition data is public; the holdings-weighted aggregate views follow the sam
 
 ```typescript
 client.etfs.list()                                              // Every ETF tracked
+client.etfs.quote("SPY")                                        // Price, ranges, AUM, expense ratio, NAV
 client.etfs.holdings("QQQ")                                     // Full composition + freshness metadata
 client.etfs.analystAggregate("QQQ")                             // Holdings-weighted analyst consensus
 client.etfs.insiderAggregate("ARKK", { lookbackDays: 90 })      // Holdings-weighted Form 4 net flow

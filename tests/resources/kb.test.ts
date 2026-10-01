@@ -61,3 +61,27 @@ describe("kb.searchEntities", () => {
     expect(results[0].type).toBe("person");
   });
 });
+
+describe("kb.getPopularEntities", () => {
+  it("reads the fields the API sends without a cast", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse([
+        {
+          id: "e-65",
+          displayName: "Elon Musk",
+          type: "PERSON",
+          relatedStock: "TSLA",
+          iconUrl: null,
+          title: null,
+          category: null,
+          urlSlug: "Elon-Musk",
+        },
+      ]),
+    );
+    const [entity] = await client.kb.getPopularEntities();
+    expect(mockFetch.mock.calls[0][0] as string).toContain("/api/v1/kb/entities/popular");
+    expect(entity.displayName).toBe("Elon Musk");
+    expect(entity.urlSlug).toBe("Elon-Musk");
+    expect(entity.relatedStock).toBe("TSLA");
+  });
+});

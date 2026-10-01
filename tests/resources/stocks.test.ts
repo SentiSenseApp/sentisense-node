@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import SentiSense from "../../src/index.js";
+import SentiSense, { type StockEntity, type StockGraph } from "../../src/index.js";
 
 const mockFetch = vi.fn();
 
@@ -182,6 +184,149 @@ describe("stocks.getShortInterest", () => {
     await client.stocks.getShortInterest("GME");
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("ticker=GME");
+    expect(url).not.toContain("limit=");
+  });
+
+  it("sends limit when given and reads the data points without a cast", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        ticker: "AAPL",
+        dataPoints: [
+          { shortInterest: 128753092, daysToCover: 2.85, avgDailyVolume: 45135477, settlementDate: "2026-09-15" },
+          { shortInterest: 139749097, daysToCover: 3.53, avgDailyVolume: 39537335, settlementDate: "2026-08-31" },
+        ],
+        count: 2,
+      }),
+    );
+    const result = await client.stocks.getShortInterest("AAPL", { limit: 2 });
+    expect(mockFetch.mock.calls[0][0] as string).toContain("limit=2");
+    expect(result.count).toBe(2);
+    // Newest first.
+    expect(result.dataPoints[0].settlementDate).toBe("2026-09-15");
+    expect(result.dataPoints[0].daysToCover).toBe(2.85);
+  });
+
+  it("returns an empty series for an unknown ticker", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ticker: "ZZZZQ", dataPoints: [], count: 0 }));
+    const result = await client.stocks.getShortInterest("ZZZZQ");
+    expect(result.dataPoints).toEqual([]);
+    expect(result.count).toBe(0);
+  });
+});
+
+describe("stocks.getFloat", () => {
+  it("reads the float fields, all null for an unknown ticker", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ticker: "AAPL", freeFloat: 13521179933, freeFloatPercent: 92.1, effectiveDate: "2026-05-14" }),
+    );
+    const known = await client.stocks.getFloat("AAPL");
+    expect(mockFetch.mock.calls[0][0] as string).toContain("/api/v1/stocks/float?ticker=AAPL");
+    // Percentage points, not a fraction.
+    expect(known.freeFloatPercent).toBe(92.1);
+
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ticker: "ZZZZQ", freeFloat: null, freeFloatPercent: null, effectiveDate: null }),
+    );
+    const unknown = await client.stocks.getFloat("ZZZZQ");
+    expect(unknown.freeFloat).toBeNull();
+    expect(unknown.effectiveDate).toBeNull();
+  });
+});
+
+describe("stocks.getShortVolume", () => {
+  it("sends limit when given and reads the data points without a cast", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        ticker: "AAPL",
+        dataPoints: [{ shortVolume: 6527108, totalVolume: 15902818, shortVolumeRatio: 41.04, date: "2026-09-30" }],
+        count: 1,
+      }),
+    );
+    const result = await client.stocks.getShortVolume("AAPL", { limit: 1 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/stocks/short-volume");
+    expect(url).toContain("ticker=AAPL");
+    expect(url).toContain("limit=1");
+    expect(result.dataPoints[0].shortVolumeRatio).toBe(41.04);
+  });
+
+  it("sends no limit by default", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ticker: "AAPL", dataPoints: [], count: 0 }));
+    await client.stocks.getShortVolume("AAPL");
+    expect(mockFetch.mock.calls[0][0] as string).not.toContain("limit=");
+  });
+});
+
+describe("stocks.getEntities", () => {
+  it("reads the fields the API sends without a cast", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse([
+        {
+          id: "e-1",
+          displayName: "Tim Cook",
+          type: "PERSON",
+          relatedStock: "AAPL",
+          iconUrl: null,
+          title: "Executive Chairman",
+          category: null,
+          urlSlug: "Tim-Cook",
+        },
+      ]),
+    );
+    const [entity]: StockEntity[] = await client.stocks.getEntities("AAPL");
+    expect(entity.displayName).toBe("Tim Cook");
+    expect(entity.urlSlug).toBe("Tim-Cook");
+    expect(entity.title).toBe("Executive Chairman");
+    expect(entity.appId).toBeUndefined();
+  });
+});
+
+// A real response captured from the live API.
+function graphFixture(): StockGraph {
+  return JSON.parse(
+    readFileSync(
+      fileURLToPath(new URL("../fixtures/stock_graph_aapl_live.json", import.meta.url)),
+      "utf8",
+    ),
+  );
+}
+
+describe("stocks.getGraph", () => {
+  it("calls GET /api/v1/stocks/{TICKER}/graph with no params by default", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(graphFixture()));
+    await client.stocks.getGraph("aapl");
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/stocks/AAPL/graph");
+    expect(url).not.toContain("depth=");
+    expect(url).not.toContain("cap=");
+  });
+
+  it("sends depth and cap", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(graphFixture()));
+    await client.stocks.getGraph("AAPL", { depth: 2, cap: 20 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("depth=2");
+    expect(url).toContain("cap=20");
+  });
+
+  it("reads the slug-keyed graph without a cast", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(graphFixture()));
+    const graph = await client.stocks.getGraph("AAPL");
+    expect(graph.root).toBe("Apple-Inc");
+    expect(graph.counts.nodes).toBe(graph.nodes.length);
+    expect(graph.counts.edges).toBe(graph.edges.length);
+    const slugs = new Set(graph.nodes.map((node) => node.slug));
+    for (const edge of graph.edges) {
+      expect(slugs.has(edge.source)).toBe(true);
+      expect(slugs.has(edge.target)).toBe(true);
+    }
+    const leads = graph.edges.find((edge) => edge.type === "LEADS");
+    expect(typeof leads?.properties.role).toBe("string");
+    expect(graph.groups.productFamilies[0].members.length).toBeGreaterThan(0);
+  });
+
+  it("carries no internal entity ids anywhere in the payload", () => {
+    expect(JSON.stringify(graphFixture())).not.toContain("kb/");
   });
 });
 

@@ -24,13 +24,18 @@ function actionTone(actionType: string | undefined | null): Tone | undefined {
  * first named analyst. The count suffix says the desk has more without spending a row each.
  */
 function primaryAnalyst(row: AnalystCoverageFirm): { name: string; slug: string } {
-  const named = row.latestNote?.analyst;
+  // The note names its analyst as `{ slug, name }`, not a bare string.
+  const named = row.latestNote?.analyst ?? null;
   const match =
-    (named ? row.analysts.find((analyst) => analyst.name === named) : undefined) ??
-    row.analysts[0];
-  const name = match?.name ?? named ?? "";
+    (named
+      ? row.analysts.find(
+          (analyst) =>
+            (named.slug !== null && analyst.slug === named.slug) || analyst.name === named.name,
+        )
+      : undefined) ?? row.analysts[0];
+  const name = match?.name ?? named?.name ?? "";
   const extra = row.analysts.length > 1 ? ` +${row.analysts.length - 1}` : "";
-  return { name: name ? `${name}${extra}` : "", slug: match?.slug ?? "" };
+  return { name: name ? `${name}${extra}` : "", slug: match?.slug ?? named?.slug ?? "" };
 }
 
 export const analystsCommand: CommandDef = {

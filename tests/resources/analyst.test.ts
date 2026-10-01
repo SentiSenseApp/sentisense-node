@@ -195,6 +195,33 @@ describe("analyst.actions", () => {
 });
 
 describe("analyst.estimates", () => {
+  it("reads the estimate and surprise fields without a cast", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: {
+          estimates: [
+            { periodLabel: "2026-10-29", periodType: "CURRENT_QUARTER", estimateLow: 1.93, estimateMean: 1.98, estimateHigh: 2.07, numberOfAnalysts: 27 },
+            { periodLabel: "+1y", periodType: "NEXT_YEAR", estimateLow: 8.69, estimateMean: 9.5783, estimateHigh: 10.67, numberOfAnalysts: 40 },
+          ],
+          surprises: [
+            { periodLabel: "2026-07-30", reportDate: "2026-07-30", estimateEps: 1.89, actualEps: 2.02, surprisePercent: 0.07 },
+          ],
+        },
+      }),
+    );
+    const result = await client.analyst.estimates("AAPL");
+    const [current] = result.data.estimates;
+    expect(current.periodType).toBe("CURRENT_QUARTER");
+    expect(current.estimateMean).toBe(1.98);
+    expect(current.numberOfAnalysts).toBe(27);
+    const [surprise] = result.data.surprises;
+    expect(surprise.actualEps).toBe(2.02);
+    // Passed through as sent: a fraction, so 0.07 is a 7% beat.
+    expect(surprise.surprisePercent).toBe(0.07);
+  });
+
   it("calls GET /api/v1/analyst/{TICKER}/estimates", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ isPreview: false, previewReason: null, data: { estimates: [], surprises: [] } }));
     await client.analyst.estimates("nvda");
@@ -277,7 +304,7 @@ describe("analyst.coverage", () => {
               lastNote: "2026-08-27",
               latestNote: {
                 publishedDate: "2026-08-27",
-                analyst: "Gil Luria",
+                analyst: { slug: "gil-luria", name: "Gil Luria" },
                 priceTarget: 300.0,
                 adjPriceTarget: 300.0,
                 priceWhenPosted: 225.64,
@@ -304,6 +331,9 @@ describe("analyst.coverage", () => {
     expect(result.data.ratingOnlyFirmCount).toBe(6);
     // The named analyst carries the slug that addresses profile() and calls().
     expect(result.data.coverage[0].analysts[0].slug).toBe("gil-luria");
+    // The note's analyst is an object on the wire, not a bare name.
+    expect(result.data.coverage[0].latestNote?.analyst?.slug).toBe("gil-luria");
+    expect(result.data.coverage[0].latestNote?.analyst?.name).toBe("Gil Luria");
   });
 
   it("counts the whole book in ratingBuckets even when the rows are truncated", async () => {

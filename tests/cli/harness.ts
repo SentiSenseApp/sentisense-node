@@ -224,7 +224,7 @@ export const COVERAGE_NVDA = {
         lastNote: "2026-08-18",
         latestNote: {
           publishedDate: "2026-08-18",
-          analyst: "Ada Example",
+          analyst: { slug: "ada-example", name: "Ada Example" },
           priceTarget: 240,
           adjPriceTarget: 240,
           priceWhenPosted: 182.14,

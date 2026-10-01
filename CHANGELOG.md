@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.62.0
+
+### Added
+
+- **`etfs.quote(ticker)`**, the quote snapshot for an ETF (`GET /api/v1/etfs/{ticker}/quote`):
+  price, change, day and 52-week range, volume, dividend yield, plus the fund facts `aum`
+  (USD), `expenseRatio` (a fraction), `nav` and `inceptionDate`. Fields the API cannot fill
+  are left out of the response rather than sent as `null`. `timestamp` and `priceAsOf` are
+  epoch milliseconds. New exported type: `EtfQuote`. `ExtendedHoursInfo` is now exported too.
+- **`stocks.getGraph(ticker, { depth, cap })`**, the company knowledge graph around a stock:
+  nodes, typed edges with their `properties`, nodes grouped by role (people, products,
+  product families, peers, ...) and counts. Every identifier is a slug, the same handle the
+  metric and document endpoints take. New exported types: `StockGraph`, `GraphNode`,
+  `GraphEdge`, `GraphGroups`, `GraphProductFamily`, `GraphCounts`, `GetStockGraphOptions`.
+- An optional `{ limit }` on `stocks.getShortInterest()` (server default 24 settlement dates)
+  and `stocks.getShortVolume()` (server default 90 trading days). New exported types:
+  `GetShortInterestOptions`, `GetShortVolumeOptions`.
+- Typed fields, type-only, no runtime change:
+  - `ShortInterest`: `dataPoints` (`ShortInterestDataPoint`: `shortInterest`, `daysToCover`,
+    `avgDailyVolume`, `settlementDate`) and `count`. `ShortVolume`: `dataPoints`
+    (`ShortVolumeDataPoint`: `shortVolume`, `totalVolume`, `shortVolumeRatio` in percentage
+    points, `date`) and `count`. Both newest first. `FloatInfo`: `freeFloat`,
+    `freeFloatPercent` (percentage points) and `effectiveDate`.
+  - `AnalystEstimate`: `periodLabel`, `periodType` (`AnalystEstimatePeriodType`),
+    `estimateLow`, `estimateMean`, `estimateHigh`, `numberOfAnalysts`.
+    `AnalystEarningsSurprise`: `periodLabel`, `reportDate`, `estimateEps`, `actualEps`,
+    `surprisePercent`, which the API sends as a fraction rounded to 2 decimals (0.07 = 7%),
+    despite the name.
+  - `StockEntity` and `KBEntity`: `id`, `displayName`, `type`, `relatedStock`, `urlSlug`,
+    `title`, `category`, `iconUrl`, `appId`.
+- CLI: `sentisense quote` answers an ETF symbol from the ETF quote, showing AUM, expense
+  ratio and NAV in place of market cap, P/E and EPS. Commands that verify a symbol after an
+  empty result now count an ETF as a known symbol.
+
+### Fixed
+
+- `AnalystNote.analyst` is typed as `AnalystRef` (`{ slug, name }`), a new exported type. The
+  API has always sent an object there, so code that treated it as a string was already
+  receiving an object at runtime.
+- CLI: `sentisense analysts <ticker> --coverage` matches a firm's latest note to the right
+  named analyst on the desk.
+
+### Deprecated
+
+- `StockEntity.entityId`, `StockEntity.name`, `KBEntity.entityId` and `KBEntity.name` were
+  never sent by the API. Read `displayName` for the name and refer to the entity by
+  `urlSlug`. The fields stay in the types for compatibility.
+- The entity `id` is not a stable public identifier. Use `urlSlug` to refer to an entity.
+
 ## 0.61.0
 
 ### Added

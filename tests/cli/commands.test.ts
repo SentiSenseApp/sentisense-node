@@ -26,6 +26,31 @@ afterEach(() => {
 });
 
 const KEYED = { SENTISENSE_API_KEY: "ssk_test" };
+
+// The stock quote's answer to an ETF symbol, and a captured live ETF quote.
+const ETF_REFUSAL = errorResponse(400, {
+  error: "ticker_is_etf",
+  message: "SPY is an ETF; use /api/v1/etfs/SPY/quote",
+});
+const QUOTE_SPY = {
+  ticker: "SPY",
+  currentPrice: 762.63,
+  change: -1.57,
+  changePercent: -0.20544360115153756,
+  volume: 62110242,
+  open: 766.45,
+  dayHigh: 769.41,
+  dayLow: 762.18,
+  previousClose: 764.2,
+  week52High: 779.37,
+  week52Low: 629.28,
+  dividendYield: 0.009942851710528042,
+  aum: 818687280000,
+  expenseRatio: 0.0009,
+  nav: 767.44,
+  inceptionDate: "1993-01-22",
+  timestamp: 1790841278705,
+};
 const preview = <T>(data: T) => ({ isPreview: false, previewReason: null, data });
 
 function url(result: { urls: string[] }, fragment: string): string {
@@ -84,6 +109,66 @@ describe("command wiring", () => {
     expect(result.code).toBe(0);
     expect(result.stdout).toContain("NVDA");
     expect(result.stdout).not.toContain("NVIDIA Corporation");
+  });
+
+  it("quote answers an ETF symbol from the ETF quote", async () => {
+    // The stock quote refuses an ETF with `ticker_is_etf`; that one error is retried.
+    const result = await run(["quote", "spy", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/SPY\/quote/, ETF_REFUSAL],
+        [/\/etfs\/SPY\/quote/, QUOTE_SPY],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.urls).toHaveLength(2);
+    expect(url(result, "/api/v1/stocks/SPY/quote")).toBeDefined();
+    expect(url(result, "/api/v1/etfs/SPY/quote")).toBeDefined();
+    expect(result.stdout).toContain("762.63");
+    expect(result.stdout).toContain("AUM");
+    expect(result.stdout).toContain("Expense ratio");
+    expect(result.stdout).toContain("0.09%");
+    expect(result.stdout).not.toContain("P/E");
+  });
+
+  it("quote --json for an ETF is the exact ETF quote response", async () => {
+    const result = await run(["quote", "SPY", "--json"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/SPY\/quote/, ETF_REFUSAL],
+        [/\/etfs\/SPY\/quote/, QUOTE_SPY],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual(QUOTE_SPY);
+  });
+
+  it("quote mixes stocks and ETFs in one table", async () => {
+    const result = await run(["quote", "NVDA", "SPY", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
+        [/\/stocks\/SPY\/quote/, ETF_REFUSAL],
+        [/\/etfs\/SPY\/quote/, QUOTE_SPY],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.urls).toHaveLength(3);
+    expect(result.stdout).toContain("NVDA");
+    expect(result.stdout).toContain("SPY");
+    // A stock still costs exactly one request.
+    expect(result.urls.some((candidate) => candidate.includes("/etfs/NVDA/"))).toBe(false);
+  });
+
+  it("quote does not retry a stock refusal with any other code", async () => {
+    const result = await run(["quote", "NVDA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/NVDA\/quote/, errorResponse(400, { error: "invalid_ticker", message: "bad" })],
+      ]),
+    });
+    expect(result.code).not.toBe(0);
+    expect(result.urls).toHaveLength(1);
   });
 
   it("sentiment asks for the Score series over the requested window", async () => {
@@ -1121,6 +1206,20 @@ describe("unknown ticker verification on an empty result", () => {
       expect(result.stderr).toBe("");
     });
   }
+
+  it("counts the stock quote's ETF refusal as a verified symbol", async () => {
+    // `ticker_is_etf` already says the symbol exists, so no second request is spent.
+    const result = await run(["options", "SPY", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/stocks\/SPY\/options\/summary/, { isPreview: false, previewReason: null, data: null }],
+        [/\/stocks\/SPY\/quote/, ETF_REFUSAL],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.urls.some((candidate) => candidate.includes("/etfs/"))).toBe(false);
+  });
 
   it("spends the verification call only on the empty path", async () => {
     const result = await run(["insiders", "NVDA", "--plain"], {

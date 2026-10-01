@@ -126,13 +126,47 @@ export interface AnalystAction {
   toGrade: string | null;
 }
 
+/** Which forward period an {@link AnalystEstimate} covers. */
+export type AnalystEstimatePeriodType =
+  | "CURRENT_QUARTER"
+  | "NEXT_QUARTER"
+  | "CURRENT_YEAR"
+  | "NEXT_YEAR";
+
+/** Consensus EPS estimate for one forward period. */
 export interface AnalystEstimate {
-  /** Fiscal period descriptor (provider-specific shape). */
+  /**
+   * Period label as sent by the API: a date such as `"2026-10-29"` for the current
+   * quarter, a relative code such as `"+1q"`, `"0y"` or `"+1y"` otherwise. Use
+   * `periodType` to tell periods apart.
+   */
+  periodLabel: string | null;
+  periodType: AnalystEstimatePeriodType | null;
+  /** Lowest analyst EPS estimate for the period. */
+  estimateLow: number | null;
+  /** Mean analyst EPS estimate for the period. */
+  estimateMean: number | null;
+  /** Highest analyst EPS estimate for the period. */
+  estimateHigh: number | null;
+  /** Analysts contributing to the estimate. */
+  numberOfAnalysts: number | null;
   [key: string]: unknown;
 }
 
+/** Reported EPS against the consensus estimate for one past report. */
 export interface AnalystEarningsSurprise {
-  /** Past report descriptor (provider-specific shape). */
+  /** Period label as sent by the API, e.g. `"2026-07-30"`. */
+  periodLabel: string | null;
+  /** ISO date `"YYYY-MM-DD"` the results were reported. */
+  reportDate: string | null;
+  /** Consensus EPS estimate going into the report. */
+  estimateEps: number | null;
+  /** Reported EPS. */
+  actualEps: number | null;
+  /**
+   * As sent by the API: a fraction rounded to 2 decimals (0.07 = 7%), despite the name.
+   */
+  surprisePercent: number | null;
   [key: string]: unknown;
 }
 
@@ -160,6 +194,16 @@ export interface GetAnalystMarketActivityOptions {
   lookbackDays?: number;
 }
 
+/** A named analyst, as referenced from a note. */
+export interface AnalystRef {
+  /**
+   * Addresses `analyst.profile(slug)` and `analyst.calls(slug)`. `null` when we hold no
+   * profile for the named analyst; the `name` is still returned.
+   */
+  slug: string | null;
+  name: string;
+}
+
 /** One price target note. */
 export interface AnalystNote {
   /** ISO date the note was published, `"YYYY-MM-DD"`. */
@@ -168,7 +212,7 @@ export interface AnalystNote {
    * The individual named on the note, or `null` when the report named nobody.
    * Absent means the report did not identify one, never that the note did not happen.
    */
-  analyst: string | null;
+  analyst: AnalystRef | null;
   priceTarget: number | null;
   adjPriceTarget: number | null;
   priceWhenPosted: number | null;

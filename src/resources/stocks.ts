@@ -17,6 +17,9 @@ import type {
   GetProfileOptions,
   GetOptionsHistoryOptions,
   GetSimilarOptions,
+  GetShortInterestOptions,
+  GetShortVolumeOptions,
+  GetStockGraphOptions,
   KpiCoverageResponse,
   KpiTypeEntry,
   MarketStatus,
@@ -29,6 +32,7 @@ import type {
   ShortVolume,
   StockDetail,
   StockEntity,
+  StockGraph,
   StockSentiment,
   StockImage,
   StockPrice,
@@ -152,6 +156,22 @@ export class Stocks {
   }
 
   /**
+   * Get the company knowledge graph around a stock: the people, products, peers and other
+   * entities linked to the company, and the typed relationships between them.
+   *
+   * Every identifier in the response is a slug, the same handle the metric and document
+   * endpoints take, so a node can be passed straight to them. `depth` is 1 (default) or 2,
+   * `cap` limits the node count (1 to 200, default 75); out-of-range values are rejected
+   * with a 400. A ticker with no graph returns a `NotFoundError`.
+   */
+  async getGraph(ticker: string, options?: GetStockGraphOptions): Promise<StockGraph> {
+    return this.client.get(
+      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/graph`,
+      options,
+    );
+  }
+
+  /**
    * Get AI-generated stock analysis report. Requires PRO tier.
    *
    * `depth: "deep"` returns the full curated report and consumes one report view on
@@ -225,9 +245,15 @@ export class Stocks {
     return this.client.get("/api/v1/stocks/fundamentals/historical/revenue", { ticker });
   }
 
-  /** Get short interest metrics (FINRA). */
-  async getShortInterest(ticker: string): Promise<ShortInterest> {
-    return this.client.get("/api/v1/stocks/short-interest", { ticker });
+  /**
+   * Get short interest history (FINRA), newest first: shares short, days to cover and
+   * average daily volume per settlement date. `limit` defaults to 24 settlement dates.
+   */
+  async getShortInterest(
+    ticker: string,
+    options?: GetShortInterestOptions,
+  ): Promise<ShortInterest> {
+    return this.client.get("/api/v1/stocks/short-interest", { ticker, ...options });
   }
 
   /** Get float information. */
@@ -235,9 +261,15 @@ export class Stocks {
     return this.client.get("/api/v1/stocks/float", { ticker });
   }
 
-  /** Get short volume trading data. */
-  async getShortVolume(ticker: string): Promise<ShortVolume> {
-    return this.client.get("/api/v1/stocks/short-volume", { ticker });
+  /**
+   * Get daily short volume, newest first: shares sold short against total volume on the
+   * reporting venues. `limit` defaults to 90 trading days.
+   */
+  async getShortVolume(
+    ticker: string,
+    options?: GetShortVolumeOptions,
+  ): Promise<ShortVolume> {
+    return this.client.get("/api/v1/stocks/short-volume", { ticker, ...options });
   }
 
   /**
