@@ -244,7 +244,7 @@ export interface StockEntity {
 export interface GetStockGraphOptions {
   /** Hops from the stock's own company node: `1` (default) or `2`. */
   depth?: 1 | 2;
-  /** Maximum nodes in the response, 1 to 200. Omitted, the API uses 75. */
+  /** Maximum non-root nodes, 1 to 200 (default 75). The root is always included in addition. */
   cap?: number;
 }
 
@@ -255,6 +255,8 @@ export interface GraphNode {
   displayName: string;
   /** `"COMPANY"`, `"PERSON"`, `"PRODUCT_OR_SERVICE"`, `"ORGANIZATION"`, `"PUBLISHER"`, `"TOPIC"`, ... */
   type: string;
+  /** Product category, present only on PRODUCT_OR_SERVICE nodes when known. */
+  category?: string;
 }
 
 /** One typed relationship in a {@link StockGraph}, between two node slugs. */
@@ -277,7 +279,7 @@ export interface GraphEdge {
 
 /** A product family and the slugs of its member products. */
 export interface GraphProductFamily {
-  /** Family name, e.g. `"iPhone"`. */
+  /** Parent product's slug, e.g. `"iPhone"`. Join to nodes[].slug for its displayName label. */
   family: string;
   /** Slugs of the products in the family. */
   members: string[];
@@ -970,6 +972,10 @@ export interface OptionsSummary {
   largestPrintPctl?: number;
   /** Where the intraday board lives and who can open it. */
   capabilities?: OptionsCapabilities;
+  /** DELISTED marks a frozen last dossier; absent for listed or pending symbols. */
+  listingStatus?: "DELISTED";
+  /** ISO day (YYYY-MM-DD) trading stopped; absent when the date is unknown. */
+  delistedDate?: string;
 }
 
 /** Trailing window for `client.stocks.getOptionsHistory()`. */
@@ -1760,6 +1766,39 @@ export interface GetHoldersOptions {
   sortBy?: "shares" | "valueUsd" | "sharesChangePct";
   /** Sort direction. Server default is `"desc"`. Requires `limit`. */
   sortDir?: "asc" | "desc";
+}
+
+/**
+ * Optional wire keys inside an institution detail's preview envelope.
+ * Opt in with PreviewResponse<InstitutionDetail>; getInstitutionDetail retains
+ * Promise<unknown> for compatibility with existing callers and implementations.
+ */
+export interface InstitutionDetail {
+  filerCik?: string | null;
+  displayName?: string | null;
+  urlSlug?: string | null;
+  filerCategory?: string | null;
+  /** Equity portfolio value in USD. */
+  totalValueUsd?: number;
+  /** Full row count, including synthetic SOLD_OUT rows. */
+  holdingsCount?: number;
+  /** Latest report's ISO calendar day (YYYY-MM-DD). */
+  latestReportDate?: string | null;
+  quartersTracked?: number;
+  newPositions?: number;
+  increasedPositions?: number;
+  decreasedPositions?: number;
+  soldOutPositions?: number;
+  multiCikRollup?: boolean | null;
+  childCikCount?: number | null;
+  childCiks?: string[] | null;
+  holdings?: Record<string, unknown>[] | null;
+  optionPositions?: Record<string, unknown>[];
+  returnedCount?: number;
+  offset?: number;
+  /** max(0, holdingsCount - soldOutPositions), for the full portfolio on every tier. */
+  positionsHeld?: number;
+  [key: string]: unknown;
 }
 
 /** A single institution summary from the discovery list. */

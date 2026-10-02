@@ -237,6 +237,7 @@ function undeclared(wire: Record<string, unknown>, keys: Record<string, true>): 
 const SUMMARY_KEYS = {
   asOf: true, sentiment: true, latest: true, context: true, oiWalls: true, unusual: true,
   intradayFlow: true, largePrintCount: true, largestPrintPctl: true, capabilities: true,
+  listingStatus: true, delistedDate: true,
 } satisfies Record<keyof OptionsSummary, true>;
 
 const FLOW_KEYS = {

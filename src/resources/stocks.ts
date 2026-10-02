@@ -161,8 +161,9 @@ export class Stocks {
    *
    * Every identifier in the response is a slug, the same handle the metric and document
    * endpoints take, so a node can be passed straight to them. `depth` is 1 (default) or 2,
-   * `cap` limits the node count (1 to 200, default 75); out-of-range values are rejected
-   * with a 400. A ticker with no graph returns a `NotFoundError`.
+   * `cap` limits the number of non-root nodes (1 to 200, default 75); the root is always
+   * included in addition. Out-of-range values are rejected with a 400. A ticker with no
+   * graph returns a `NotFoundError`.
    */
   async getGraph(ticker: string, options?: GetStockGraphOptions): Promise<StockGraph> {
     return this.client.get(

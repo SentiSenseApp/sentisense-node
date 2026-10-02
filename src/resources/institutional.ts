@@ -103,6 +103,10 @@ export class Institutional {
    * Resolved by URL slug (e.g. `Berkshire-Hathaway`) or numeric SEC CIK.
    * Free users receive the profile and top 10 holdings; PRO users receive the
    * full holdings array. Returns 404 if the slug or CIK is unknown.
+   *
+   * The signature remains unknown for compatibility. Opt in to the exported
+   * PreviewResponse<InstitutionDetail> type to read data.positionsHeld, the full
+   * portfolio count excluding SOLD_OUT rows, even on a truncated holdings list.
    */
   async getInstitutionDetail(slugOrCik: string): Promise<unknown> {
     return this.client.get(

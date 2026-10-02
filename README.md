@@ -252,6 +252,8 @@ Price fields carry `priceAsOf` (Unix milliseconds) for the age of the market dat
 
 Short interest and short volume come back newest first, and an unknown ticker returns an empty `dataPoints` array rather than an error. Every identifier in `getGraph` is a slug, the same handle the metric and document endpoints take. An ETF symbol is refused by `getQuote` with an `APIError` whose `code` is `"ticker_is_etf"`; use `etfs.quote()` for funds.
 
+Product nodes (`type === "PRODUCT_OR_SERVICE"`) in `stocks.getGraph` now carry optional `category` when known. Other nodes and products without a category omit it.
+
 ### Documents & news
 
 ```typescript
@@ -290,6 +292,18 @@ client.institutional.getQuarters()
 client.institutional.getFlows("2025-02-14", { limit: 20 })
 client.institutional.getHolders("AAPL", "2025-02-14")
 client.institutional.getActivists("2025-02-14")
+```
+
+`positionsHeld` on an institution detail counts the full portfolio's held positions:
+`max(0, holdingsCount - soldOutPositions)`, even when the holdings list is truncated.
+`getInstitutionDetail` keeps its `Promise<unknown>` signature. The exported all-optional
+`InstitutionDetail` type is available for callers who want to opt in:
+
+```typescript
+import type { InstitutionDetail, PreviewResponse } from "sentisense";
+
+const detail = await client.institutional.getInstitutionDetail("1067983") as PreviewResponse<InstitutionDetail>;
+console.log(detail.data.positionsHeld); // undefined when an older response omits it
 ```
 
 **Paging the holder list.** A widely held ticker returns thousands of rows: a megacap quarter is roughly 6,000 holders and 1.5 MB on the wire. Pass `limit` unless you really want the whole list; omitting the options object sends the original unbounded request, so existing code keeps working.
@@ -417,6 +431,8 @@ Two shapes to read rather than assume. A firm can appear with `noteCount: 0`, a 
 
 `ratingBuckets` sizes the same book by rating tier: `buy`, `hold`, `sell`, `unrated` and `total`, counted over every covering firm before the free truncation, so `buy + hold + sell + unrated === total` and a free key reads the same numbers as a PRO one. `unrated` is a desk with no current rating on record, such as a price-target-only firm. These count the firms in this coverage book, a different population from the `strongBuy` through `strongSell` figures on `client.analyst.consensus`, which come from the provider's analyst survey. Read one or the other, do not reconcile them.
 
+Surprise rows now carry optional `surprisePct`, the signed true percent rounded half-up to two decimals: `(actualEps - estimateEps) * 100 / abs(estimateEps)`. It is `null` when either EPS is missing or the estimate is zero, and `undefined` on older responses. The existing `surprisePercent` fraction is unchanged (`0.03` means about 3%).
+
 ### Earnings
 
 The earnings analysis report is the assembled version of a quarter: one object per fiscal period carrying the editorial headline, the KPI cards with year-over-year deltas, the guidance language as management phrased it, and a summary of the earnings call. Pair it with the recent-reporters feed to drive a post-earnings sweep. Summaries, recent reports, statistics, and rankings return the preview envelope; per-ticker reactions return a direct payload.
@@ -450,6 +466,8 @@ if (quarter) {
 ```
 
 The forward-looking half of the family is `client.calendar.getEarnings()`, which covers scheduled dates and consensus EPS rather than results.
+
+`earnings.getSummaries` exposes optional `totalCount` on the envelope on both PRO and FREE. It counts indexed quarters; returned rows can be fewer because of `limit` or an unavailable body. Older responses without the count still read as `undefined`.
 
 ### Company KPIs (PRO)
 
@@ -510,6 +528,8 @@ The radar carries two separately-ranked boards: `data.rows` for stocks and `data
 During the trading session the dossier and the radar also carry a few intraday fields, the same on every tier: `intradayFlow` (a count of the ticker's unusual contracts so far, when the first one was flagged, and the board's own clock), `largePrintCount` and `largestPrintPctl` on the dossier, and `intradayActiveCount` with `intradayRanking` on the radar. They carry no contract, strike, price or premium, and are absent before the day's first board. `capabilities.intradayBoard` says where the contract-level board lives; its rows are served in the SentiSense app, not by the API.
 
 A row whose baseline is still building carries its raw readings with the percentiles and `interestScore` omitted, which means "not enough history yet" rather than "nothing interesting". `getOptionsSummary` reports an uncovered ticker as a null payload inside the usual envelope, so the check is `result.data === null`: the response object itself is always truthy, and a bare `if (summary === null)` never fires. `getOptionsHistory` reports it as an empty `series` instead, so check the array's length rather than null-checking there.
+
+On a delisted symbol, the options summary carries `listingStatus === "DELISTED"` and, when known, `delistedDate` (YYYY-MM-DD). This marks a frozen last dossier, so read `asOf` before treating it as current. Listed and pending symbols omit both fields.
 
 ### SentiSense Rating
 

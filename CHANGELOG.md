@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.63.0
+
+- Docs: graph `cap` limits non-root nodes with the root included in addition; product-family `family` is the parent product's slug, joined to `nodes[].slug` for its label.
+
+### Added
+
+- Optional `listingStatus` and `delistedDate` on `OptionsSummary`. `DELISTED` marks
+  a frozen last dossier; the ISO date can be absent when unknown. Listed and pending
+  symbols omit both fields.
+- Optional product `category` on `GraphNode` and nullable `surprisePct` on
+  `AnalystEarningsSurprise`. `surprisePct` is the signed true percent rounded half-up
+  to two decimals; the legacy `surprisePercent` fraction is unchanged.
+- Exported all-optional `InstitutionDetail`, including `positionsHeld`, the full
+  portfolio count excluding sold-out positions. `getInstitutionDetail` retains
+  `Promise<unknown>`; callers can opt in with `PreviewResponse<InstitutionDetail>`.
+- Earnings summaries already support optional envelope `totalCount`; it now counts
+  indexed quarters on PRO as well as FREE. Returned rows can be fewer when a body is
+  unavailable or the request is limited. Existing method signatures are unchanged.
+
 ## 0.62.0
 
 ### Added

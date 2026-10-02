@@ -222,6 +222,7 @@ export type {
   TickerHolders,
   GetHoldersOptions,
   InstitutionSummary,
+  InstitutionDetail,
   InstitutionList,
   InstitutionListResponse,
   ListInstitutionsOptions,

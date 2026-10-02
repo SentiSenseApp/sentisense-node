@@ -168,6 +168,12 @@ export interface AnalystEarningsSurprise {
    * As sent by the API: a fraction rounded to 2 decimals (0.07 = 7%), despite the name.
    */
   surprisePercent: number | null;
+  /**
+   * Signed true percent: (actualEps - estimateEps) * 100 / abs(estimateEps),
+   * rounded half-up to 2 decimals. Null when either EPS is missing or the estimate
+   * is zero. The legacy surprisePercent fraction is unchanged.
+   */
+  surprisePct?: number | null;
   [key: string]: unknown;
 }
 

@@ -37,9 +37,11 @@ export class Earnings {
    * management phrased it, and a summary of the earnings call.
    *
    * Branch on `isPreview`: a PRO key receives every hydrated quarter in full, a
-   * FREE key receives the latest quarter shaped rather than truncated, plus
-   * `totalCount`. {@link EarningsQuarter} documents which fields each tier
-   * carries.
+   * FREE key receives the latest quarter shaped rather than truncated.
+   * `totalCount` on the envelope counts indexed quarters on both tiers. The
+   * returned array can be shorter when a body is unavailable or limit cuts it.
+   * Older responses may omit the count. {@link EarningsQuarter} documents
+   * which fields each tier carries.
    *
    * A quarter typically appears within 48 hours of the company reporting, and
    * the call summary can arrive after the press-release content for the same
