@@ -27,11 +27,15 @@ export const EXIT_TABLE: Array<[number, string]> = [
   [EXIT.USAGE, "bad usage, caught before any request was sent"],
   [EXIT.AUTH, "missing or rejected API key"],
   [EXIT.NOT_FOUND, "no data for that symbol or identifier"],
-  [EXIT.RATE_LIMIT, "rate limited"],
+  [EXIT.RATE_LIMIT, "rate limited, or the monthly request allowance is used up"],
   [EXIT.NETWORK, "network failure or timeout"],
 ];
 
 export const KEY_URL = "https://app.sentisense.ai/get-api-key";
+export const PRICING_URL = "https://app.sentisense.ai/pricing";
+
+/** Error code of the monthly-allowance 429. It carries no Retry-After: waiting a minute cannot clear it. */
+export const QUOTA_EXCEEDED = "quota_exceeded";
 
 /** A mistake in how the command was invoked. Never reaches the network. */
 export class CliUsageError extends Error {
@@ -169,6 +173,18 @@ function classify(error: unknown, command?: string): ErrorReport {
   }
 
   if (error instanceof RateLimitError) {
+    // Two different 429s share this class. The per-minute limit clears after Retry-After;
+    // the monthly allowance does not clear until the month turns, so telling the caller to
+    // wait a minute would send a script into a retry loop that cannot succeed.
+    if (error.code === QUOTA_EXCEEDED) {
+      return {
+        exitCode: EXIT.RATE_LIMIT,
+        lines: [
+          `error: monthly request allowance used up: ${error.message}`,
+          `next: the free monthly allowance resets at the start of next month, so running it again before then will not help. PRO has no monthly cap: ${PRICING_URL}`,
+        ],
+      };
+    }
     const wait = error.retryAfter ? Math.ceil(error.retryAfter) : 60;
     return {
       exitCode: EXIT.RATE_LIMIT,

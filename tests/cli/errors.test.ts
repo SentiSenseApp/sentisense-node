@@ -78,6 +78,39 @@ describe("exit codes", () => {
     expect(result.stderr).toContain("wait 30 seconds");
   });
 
+  it("on the monthly allowance, says when it resets instead of telling the caller to wait", async () => {
+    const result = await run(["quote", "NVDA"], {
+      env: KEYED,
+      fetch: vi.fn(async () =>
+        errorResponse(429, {
+          error: "quota_exceeded",
+          message: "Monthly API request quota exceeded for your current plan",
+        }),
+      ),
+    });
+    expect(result.code).toBe(EXIT.RATE_LIMIT);
+    expect(result.stderr).toContain("monthly request allowance used up");
+    expect(result.stderr).toContain("resets at the start of next month");
+    expect(result.stderr).toContain("https://app.sentisense.ai/pricing");
+    expect(result.stderr).not.toContain("wait 60 seconds");
+  });
+
+  it("keeps the wait advice for the per-minute limit, which names its code", async () => {
+    const result = await run(["quote", "NVDA"], {
+      env: KEYED,
+      fetch: vi.fn(async () =>
+        errorResponse(
+          429,
+          { error: "rate_limit_exceeded", message: "Rate limit exceeded (30 requests/minute)." },
+          { "Retry-After": "60" },
+        ),
+      ),
+    });
+    expect(result.code).toBe(EXIT.RATE_LIMIT);
+    expect(result.stderr).toContain("wait 60 seconds");
+    expect(result.stderr).not.toContain("resets at the start of next month");
+  });
+
   it("does not sit through a rate-limit backoff before reporting", async () => {
     // The library would sleep for the whole Retry-After window on its own. A command has to
     // hand control back instead, which is what exit code 5 is for.

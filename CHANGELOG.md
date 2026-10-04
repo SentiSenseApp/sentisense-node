@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.63.1
+
+### Fixed
+
+- CLI: a `429` with error code `quota_exceeded` (the monthly request allowance) no longer tells
+  the caller to wait 60 seconds. It says the free monthly allowance resets at the start of next
+  month and links the pricing page. The per-minute limit keeps the wait advice. Exit code `5`
+  is unchanged for both.
+
 ## 0.63.0
 
 - Docs: graph `cap` limits non-root nodes with the root included in addition; product-family `family` is the parent product's slug, joined to `nodes[].slug` for its label.
