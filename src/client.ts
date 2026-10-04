@@ -43,6 +43,24 @@ const MAX_DEEP_HISTORY_WAIT_S = 30;
 const MAX_RATE_LIMIT_WAIT_S = 120;
 const RATE_LIMIT_FALLBACK_WAIT_S = 60;
 
+// Error code of the monthly-allowance 429. Unlike the per-minute limit it carries no
+// Retry-After and does not clear until the next month, so retrying it only stalls the caller.
+const QUOTA_EXCEEDED_CODE = "quota_exceeded";
+
+/**
+ * Whether a 429 is the monthly allowance rather than the per-minute limit. Reads a clone so
+ * the original body is still there for the error. A body that is not JSON, or has no error
+ * code, answers false and keeps the normal retry behaviour.
+ */
+async function isQuotaExceeded(response: Response): Promise<boolean> {
+  try {
+    const body = (await response.clone().json()) as { error?: unknown } | null;
+    return body?.error === QUOTA_EXCEEDED_CODE;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * A `Retry-After` header as a usable number of seconds, clamped to `[0.5, maxWaitS]`, or
  * `undefined` when there is no usable value.
@@ -196,6 +214,11 @@ export class SentiSense implements APIClient {
         }
 
         if (!response.ok) {
+          // The monthly allowance is spent: no wait inside this process will clear it.
+          // Surface it at once with the server's message, which says when it resets.
+          if (response.status === 429 && (await isQuotaExceeded(response))) {
+            await this.handleErrorResponse(response);
+          }
           const isRetryable = response.status === 429 || response.status >= 500;
           if (isRetryable && attempt < this.maxRetries) {
             if (response.status === 429 || response.status === 503) {

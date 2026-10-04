@@ -8,6 +8,13 @@
   the caller to wait 60 seconds. It says the free monthly allowance resets at the start of next
   month and links the pricing page. The per-minute limit keeps the wait advice. Exit code `5`
   is unchanged for both.
+- Client: a `429` with error code `quota_exceeded` is no longer retried. It has no
+  `Retry-After` and does not clear until the allowance resets, so the default three retries
+  used to hold the call for about three minutes before throwing. It now throws
+  `RateLimitError` on the first response, with the server's message (which says when the
+  allowance resets) and `code: "quota_exceeded"`. The per-minute `rate_limit_exceeded` 429
+  is still retried after `Retry-After`. A `429` whose body cannot be read keeps the old
+  behavior.
 
 ## 0.63.0
 

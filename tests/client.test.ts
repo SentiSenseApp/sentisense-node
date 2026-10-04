@@ -341,3 +341,124 @@ describe("RateLimitError.retryAfter", () => {
     expect(await retryAfterOf()).toBeUndefined();
   });
 });
+
+describe("two kinds of 429", () => {
+  // The per-minute limit clears in a minute, so the client waits and retries. The monthly
+  // allowance does not clear until next month and carries no Retry-After, so retrying it
+  // only stalls the caller for minutes before the same error arrives.
+
+  const QUOTA_MESSAGE =
+    "Monthly API request quota exceeded for your current plan. It resets on the 1st of next " +
+    "month. PRO raises this: https://app.sentisense.ai/pricing";
+
+  function quotaResponse(): Response {
+    return new Response(JSON.stringify({ error: "quota_exceeded", message: QUOTA_MESSAGE }), {
+      status: 429,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  function perMinuteResponse(retryAfter = "60"): Response {
+    return new Response(
+      JSON.stringify({ error: "rate_limit_exceeded", message: "Rate limit exceeded" }),
+      {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": retryAfter },
+      },
+    );
+  }
+
+  it("throws a monthly-quota 429 on the first response with the server's message", async () => {
+    const c = new SentiSense({ apiKey: "ssk_test" }); // default retries
+    mockFetch.mockResolvedValueOnce(quotaResponse());
+
+    try {
+      await c.stocks.list();
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(RateLimitError);
+      expect(e).toBeInstanceOf(SentiSenseError);
+      const err = e as RateLimitError;
+      expect(err.status).toBe(429);
+      expect(err.code).toBe("quota_exceeded");
+      expect(err.message).toBe(QUOTA_MESSAGE);
+      expect(err.retryAfter).toBeUndefined();
+    }
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry a monthly-quota 429 even if it carries a Retry-After", async () => {
+    const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 3 });
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "quota_exceeded", message: QUOTA_MESSAGE }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": "60" },
+      }),
+    );
+
+    await expect(c.stocks.list()).rejects.toMatchObject({
+      name: "RateLimitError",
+      code: "quota_exceeded",
+      message: QUOTA_MESSAGE,
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("still waits out and retries a per-minute 429", async () => {
+    vi.useFakeTimers();
+    try {
+      const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 2 });
+      mockFetch
+        .mockResolvedValueOnce(perMinuteResponse("60"))
+        .mockResolvedValueOnce(jsonResponse(["AAPL"]));
+
+      const pending = c.stocks.list();
+      await vi.advanceTimersByTimeAsync(60_000);
+      await expect(pending).resolves.toEqual(["AAPL"]);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("throws a per-minute 429 once retries are used up", async () => {
+    vi.useFakeTimers();
+    try {
+      const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 1 });
+      mockFetch
+        .mockResolvedValueOnce(perMinuteResponse("5"))
+        .mockResolvedValueOnce(perMinuteResponse("5"));
+
+      const pending = c.stocks.list();
+      const assertion = expect(pending).rejects.toMatchObject({
+        name: "RateLimitError",
+        code: "rate_limit_exceeded",
+        retryAfter: 5,
+      });
+      await vi.advanceTimersByTimeAsync(5_000);
+      await assertion;
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps retrying a 429 whose body is not JSON", async () => {
+    vi.useFakeTimers();
+    try {
+      const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 1 });
+      mockFetch
+        .mockResolvedValueOnce(
+          new Response("Too Many Requests", { status: 429, headers: { "Retry-After": "2" } }),
+        )
+        .mockResolvedValueOnce(jsonResponse(["AAPL"]));
+
+      const pending = c.stocks.list();
+      await vi.advanceTimersByTimeAsync(2_000);
+      await expect(pending).resolves.toEqual(["AAPL"]);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

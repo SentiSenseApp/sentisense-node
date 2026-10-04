@@ -41,6 +41,14 @@ export class DeepHistoryUnavailableError extends SentiSenseError {
   }
 }
 
+/**
+ * A 429. Check `code` to tell the two apart:
+ *
+ * - `"rate_limit_exceeded"`: the per-minute limit. The client retries it after `Retry-After`
+ *   before throwing, so you see this only once retries are used up.
+ * - `"quota_exceeded"`: the monthly request allowance is used up. It is thrown on the first
+ *   response without retrying, and `message` says when the allowance resets.
+ */
 export class RateLimitError extends SentiSenseError {
   /**
    * Seconds to wait before retrying, from the server's `Retry-After` header, clamped to

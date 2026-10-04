@@ -135,8 +135,8 @@ export interface ClientOptions {
 /**
  * A client wired for one CLI invocation.
  *
- * `maxRetries: 0` is deliberate. The library retries a 429 by sleeping for as long as the
- * server asks, which is right for a long-lived process and wrong for a command: the caller
+ * `maxRetries: 0` is deliberate. The library retries a per-minute 429 by sleeping for as long
+ * as the server asks, which is right for a long-lived process and wrong for a command: the caller
  * would sit there for a minute with no output. The CLI fails fast with exit code 5 instead
  * and lets the caller decide when to come back.
  */

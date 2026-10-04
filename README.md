@@ -157,7 +157,7 @@ const client = new SentiSense({
 | `apiKey` | none | Sent as `X-SentiSense-API-Key`. Required by every endpoint. |
 | `baseUrl` | `https://app.sentisense.ai` | Override for a non-production host. |
 | `timeout` | `30000` | Per-request timeout in milliseconds. |
-| `maxRetries` | `3` | Retries on 429 and 5xx, honouring `Retry-After`. Set `0` to fail fast. |
+| `maxRetries` | `3` | Retries the per-minute 429 and 5xx, honouring `Retry-After`. The monthly-allowance 429 is never retried. Set `0` to fail fast. |
 | `userAgentSuffix` | none | Appended to the User-Agent, after `sentisense-node/{version}`. |
 
 `userAgentSuffix` is how you say what is calling on top of the SDK, so your traffic is legible in your own logs and in ours. A tool name and version works (`"my-bot/1.4"`), optionally with an agent label (`"my-bot/1.4 agent/research-desk"`). Node only, since browsers set the header themselves. Newlines are collapsed and an empty value is ignored.
@@ -636,7 +636,12 @@ try {
   if (error instanceof AuthenticationError) {
     // 401 or 403: invalid/missing API key or insufficient tier
   } else if (error instanceof RateLimitError) {
-    // 429: quota exceeded
+    if (error.code === "quota_exceeded") {
+      // 429: monthly allowance used up. Not retried; error.message says when it resets.
+    } else {
+      // 429: per-minute limit ("rate_limit_exceeded"), thrown once retries are used up.
+      // error.retryAfter is the server's wait in seconds.
+    }
   }
 }
 ```
@@ -645,7 +650,7 @@ try {
 |------------|-------------|------|
 | `AuthenticationError` | 401, 403 | Invalid API key or insufficient tier |
 | `NotFoundError` | 404 | Resource not found |
-| `RateLimitError` | 429 | Quota exceeded |
+| `RateLimitError` | 429 | Per-minute limit (`code: "rate_limit_exceeded"`, retried first) or monthly allowance used up (`code: "quota_exceeded"`, thrown immediately) |
 | `APIError` | Other 4xx/5xx | General API error |
 
 All errors extend `SentiSenseError` and include `status`, `code`, and `message` properties.
