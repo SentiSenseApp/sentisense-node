@@ -49,8 +49,12 @@ import type {
  * neither result. If a screen returns fewer rows than you expect, check
  * coverage before you check your thresholds.
  *
- * Screens read a snapshot that refreshes every 20 minutes, so this is not a
- * quote feed. Use `client.stocks.getQuote()` for live prices.
+ * Prices are 15-minute delayed quotes, refreshed at request time during the
+ * regular session from a cache at most 5 minutes old; each stock row's
+ * `priceAsOf` (epoch milliseconds, `null` when unknown) says when its price is
+ * from. Everything else on a row comes from a snapshot rebuilt about every 20
+ * minutes during the session, so this is not a quote feed. Use
+ * `client.stocks.getQuote()` for one ticker's current quote.
  */
 export class Screener {
   constructor(private client: APIClient) {}

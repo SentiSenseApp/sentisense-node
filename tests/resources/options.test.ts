@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import SentiSense from "../../src/index.js";
+import SentiSense, { APIError } from "../../src/index.js";
 import type {
   OptionsAggregate,
   OptionsCapabilities,
   OptionsHighlight,
   OptionsIntradayBoardCapability,
   OptionsIntradayFlow,
+  OptionsIntradayHistory,
+  OptionsIntradayPoint,
   OptionsOiFollowUp,
   OptionsOverview,
   OptionsSummary,
@@ -237,7 +239,8 @@ function undeclared(wire: Record<string, unknown>, keys: Record<string, true>): 
 const SUMMARY_KEYS = {
   asOf: true, sentiment: true, latest: true, context: true, oiWalls: true, unusual: true,
   intradayFlow: true, largePrintCount: true, largestPrintPctl: true, capabilities: true,
-  listingStatus: true, delistedDate: true,
+  listingStatus: true, delistedDate: true, ivRank1y: true, atmIv: true, expectedMove1d: true,
+  pcVol: true, pcVolPctl1y: true, maxPain: true,
 } satisfies Record<keyof OptionsSummary, true>;
 
 const FLOW_KEYS = {
@@ -256,8 +259,18 @@ const OVERVIEW_KEYS = {
   rows: true, etfRows: true, highlights: true, etfHighlights: true, etfMedianIvRank: true,
   etfMarketPcVol: true, etfExtremeCount: true, etfCoverageCount: true, etfTotalCount: true,
   builtAt: true, highlightPolicy: true, etfHighlightPolicy: true, intradayActiveCount: true,
-  intradayRanking: true, capabilities: true,
+  intradayRanking: true, intradayAsOf: true, intradayAsOfEt: true, capabilities: true,
 } satisfies Record<keyof OptionsOverview, true>;
+
+const INTRADAY_HISTORY_KEYS = {
+  ticker: true, session: true, live: true, delayMinutes: true, cycles: true,
+  missingCycles: true, series: true,
+} satisfies Record<keyof OptionsIntradayHistory, true>;
+
+const INTRADAY_POINT_KEYS = {
+  cycle: true, asOf: true, asOfEt: true, callVol: true, putVol: true, pcVol: true,
+  unusualCount: true, maxPremiumPctl1y: true, atmIv: true,
+} satisfies Record<keyof OptionsIntradayPoint, true>;
 
 const AGGREGATE_KEYS = {
   date: true, callVol: true, putVol: true, callOi: true, putOi: true, pcVol: true, pcOi: true,
@@ -349,5 +362,150 @@ describe("options intraday session fields", () => {
       "capabilities"] as const) {
       expect(summary.data?.[field]).toBeUndefined();
     }
+  });
+});
+
+describe("options intraday clock on the radar", () => {
+  it("dates the intraday ranking", async () => {
+    const wire = {
+      asOf: "2026-10-13",
+      intradayActiveCount: 2,
+      intradayRanking: ["NVDA", "TSLA"],
+      intradayAsOf: 1791988200,
+      intradayAsOfEt: "10:30 ET",
+    };
+    expect(undeclared(wire, OVERVIEW_KEYS)).toEqual([]);
+    mockFetch.mockResolvedValueOnce(jsonResponse({ isPreview: false, previewReason: null, data: wire }));
+    const overview = await client.options.getOverview();
+    // Epoch seconds for the board, while the end-of-day asOf stays an ISO date.
+    const asOf: number | undefined = overview.data?.intradayAsOf;
+    expect(asOf).toBe(1791988200);
+    expect(overview.data?.intradayAsOfEt).toBe("10:30 ET");
+    expect(typeof overview.data?.asOf).toBe("string");
+  });
+});
+
+describe("options summary headline preview", () => {
+  // A FREE key past its monthly dossiers gets the readings flat on the payload, with no
+  // latest, context or oiWalls wrapper. Before these were declared, reading them was a type
+  // error even though the values were on the wire.
+  const PREVIEW = {
+    isPreview: true,
+    previewReason: "PRO_REQUIRED",
+    upgrade: { plan: "PRO", url: "https://app.sentisense.ai/pricing" },
+    data: {
+      asOf: "2026-09-28",
+      sentiment: 0.2,
+      ivRank1y: 45,
+      atmIv: 0.4,
+      expectedMove1d: 0.0373,
+      pcVol: 0.7,
+      pcVolPctl1y: 60,
+      maxPain: 150,
+    },
+  };
+
+  it("declares every headline reading", async () => {
+    expect(undeclared(PREVIEW.data, SUMMARY_KEYS)).toEqual([]);
+    mockFetch.mockResolvedValueOnce(jsonResponse(PREVIEW));
+    const summary = await client.stocks.getOptionsSummary("NVDA");
+    expect(summary.isPreview).toBe(true);
+    expect(summary.data?.ivRank1y).toBe(45);
+    expect(summary.data?.atmIv).toBe(0.4);
+    expect(summary.data?.expectedMove1d).toBe(0.0373);
+    expect(summary.data?.pcVol).toBe(0.7);
+    expect(summary.data?.pcVolPctl1y).toBe(60);
+    expect(summary.data?.maxPain).toBe(150);
+    expect(summary.data?.latest).toBeUndefined();
+    expect(summary.data?.context).toBeUndefined();
+  });
+});
+
+describe("stocks.getOptionsIntradayHistory", () => {
+  // Built from the published example and the response class, pending a capture from the
+  // live endpoint.
+  const payload = fixture("options_intraday_history.json");
+
+  it("calls the per-ticker path and sends the session", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(payload));
+    await client.stocks.getOptionsIntradayHistory("nvda", { session: "2026-10-14" });
+    const url = new URL(mockFetch.mock.calls[0][0] as string);
+    expect(url.pathname).toBe("/api/v1/stocks/NVDA/options/intraday-history");
+    expect(url.searchParams.get("session")).toBe("2026-10-14");
+  });
+
+  it("leaves the session to the server when omitted", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(payload));
+    await client.stocks.getOptionsIntradayHistory("NVDA");
+    const url = new URL(mockFetch.mock.calls[0][0] as string);
+    expect(url.searchParams.has("session")).toBe(false);
+  });
+
+  it("declares every field the server sends", async () => {
+    const wire = payload.data;
+    expect(undeclared(wire, INTRADAY_HISTORY_KEYS)).toEqual([]);
+    for (const point of wire.series) {
+      expect(undeclared(point, INTRADAY_POINT_KEYS)).toEqual([]);
+    }
+  });
+
+  it("types the series oldest cycle first, gaps and unknown cycles included", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(payload));
+    const result = await client.stocks.getOptionsIntradayHistory("NVDA");
+    expect(result.isPreview).toBe(false);
+    const day = result.data!;
+    expect(day.ticker).toBe("NVDA");
+    expect(day.session).toBe("2026-10-14");
+    expect(day.live).toBe(true);
+    expect(day.delayMinutes).toBe(15);
+    expect(day.cycles).toBe(day.series.length);
+    expect(day.series.map((p) => p.cycle)).toEqual([1, 2, 4, 5]);
+    expect(day.missingCycles).toEqual([3]);
+    const [first, , , last] = day.series;
+    expect(first.asOfEt).toBe("09:45 ET");
+    expect(typeof first.asOf).toBe("number");
+    expect(first.pcVol).toBe(0.53);
+    // Unavailable readings are omitted, never zero.
+    expect(first.maxPremiumPctl1y).toBeUndefined();
+    expect(last.maxPremiumPctl1y).toBe(93);
+    expect(last.atmIv).toBeUndefined();
+  });
+
+  it("reports nothing stored as an empty series, not a null payload", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      isPreview: false, previewReason: null,
+      data: { ticker: "KO", session: "2026-10-11", live: false, delayMinutes: 15, cycles: 0, series: [] },
+    }));
+    const result = await client.stocks.getOptionsIntradayHistory("KO", { session: "2026-10-11" });
+    expect(result.data).not.toBeNull();
+    expect(result.data?.series).toEqual([]);
+    expect(result.data?.missingCycles).toBeUndefined();
+  });
+
+  it("gives a FREE key the preview with a null payload", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      isPreview: true,
+      previewReason: "PRO_REQUIRED",
+      upgrade: { plan: "PRO", url: "https://app.sentisense.ai/pricing" },
+      data: null,
+    }));
+    const result = await client.stocks.getOptionsIntradayHistory("NVDA");
+    expect(result.isPreview).toBe(true);
+    expect(result.previewReason).toBe("PRO_REQUIRED");
+    expect(result.upgrade?.plan).toBe("PRO");
+    expect(result.data).toBeNull();
+  });
+
+  it("rejects a bad session with the error code", async () => {
+    mockFetch.mockResolvedValueOnce(new Response(
+      JSON.stringify({ error: "invalid_session", message: "session must be YYYY-MM-DD" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    ));
+    const error = await client.stocks
+      .getOptionsIntradayHistory("NVDA", { session: "10/14/2026" })
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(APIError);
+    expect((error as APIError).status).toBe(400);
+    expect((error as APIError).code).toBe("invalid_session");
   });
 });

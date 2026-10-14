@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.64.0
+
+### Added
+
+- `client.stocks.getOptionsIntradayHistory(ticker, { session })`, returning
+  `PreviewResponse<OptionsIntradayHistory | null>`: one ticker's numbers at every 15-minute
+  cycle of one session's intraday options board, oldest first. `OptionsIntradayHistory`
+  carries `ticker`, `session`, `live`, `delayMinutes`, `cycles`, optional `missingCycles` and
+  `series`; each `OptionsIntradayPoint` carries `cycle`, `asOf` (epoch seconds), `asOfEt`,
+  `callVol`, `putVol`, optional `pcVol`, `unusualCount`, optional `maxPremiumPctl1y` and
+  optional `atmIv`. PRO keys only: a FREE key receives a `PRO_REQUIRED` preview with
+  `data: null`. No data is an empty `series`; a malformed or future `session` rejects with
+  `code: "invalid_session"`.
+- CLI: `sentisense options <ticker> --intraday` prints that series as a table, and
+  `--session YYYY-MM-DD` picks the day (it implies `--intraday`).
+- Optional `intradayAsOf` (epoch seconds) and `intradayAsOfEt` (`"HH:mm ET"`) on
+  `OptionsOverview`, the time of the intraday board behind `intradayActiveCount` and
+  `intradayRanking`.
+- Optional `priceAsOf` (epoch milliseconds, `null` when unknown) and the SentiSense Rating
+  fields `ratingLetter`, `ratingScore` and `ratingPercentile` on `ScreenerRow`.
+- Optional headline preview fields on `OptionsSummary`: `ivRank1y`, `atmIv`,
+  `expectedMove1d`, `pcVol`, `pcVolPctl1y` and `maxPain`, the flat readings a FREE key
+  receives once its monthly dossiers are spent. Absent on a full dossier.
+
+### Fixed
+
+- CLI: `sentisense options <ticker>` on a headline preview now prints its IV rank, put/call
+  ratio, ATM IV, expected move and max pain instead of `n/a` for each.
+
 ## 0.63.1
 
 ### Fixed

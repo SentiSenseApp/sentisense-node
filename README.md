@@ -79,7 +79,7 @@ npx -y sentisense@latest health
 | `congress [ticker]` | Congressional disclosures, market-wide or for one symbol |
 | `news [ticker]` | Clustered news stories with impact and tone |
 | `flows [ticker]` | Institutional 13F flows, or one ticker's holders and notable changes |
-| `options <ticker>` | End-of-day options positioning, IV rank, walls, unusual contracts |
+| `options <ticker>` | End-of-day options positioning, IV rank, walls, unusual contracts; `--intraday` for the session's 15-minute series (PRO) |
 | `screen --filter ...` | Screen the universe on Score, analyst, technical, and price fields |
 | `search <name>` | Resolve a name, alias, ticker or slug to a symbol and the entity handle |
 
@@ -183,9 +183,9 @@ Affected: every method whose declared return type is `PreviewResponse<T>`. A tes
 | `institutional` | `getFlows` `getHolders` `getActivists` |
 | `options` | `getOverview` |
 | `politicians` | `getActivity` `getFilings` `getMembers` `getMember` |
-| `stocks` | `getSentiment` `getKpis` `getOptionsSummary` `getOptionsHistory` |
+| `stocks` | `getSentiment` `getKpis` `getOptionsSummary` `getOptionsHistory` `getOptionsIntradayHistory` |
 
-The envelope itself is always an object, so test the payload rather than the response. Two of these declare a `data` that can be null: `stocks.getOptionsSummary`, for a ticker outside the covered options universe, and `options.getOverview`, before its first nightly build. Everywhere else `data` is an array or an object.
+The envelope itself is always an object, so test the payload rather than the response. Three of these declare a `data` that can be null: `stocks.getOptionsSummary`, for a ticker outside the covered options universe, `options.getOverview`, before its first nightly build, and `stocks.getOptionsIntradayHistory`, on a FREE key's `PRO_REQUIRED` preview. Everywhere else `data` is an array or an object.
 
 ```typescript
 const flows = await client.institutional.getFlows();
@@ -244,6 +244,7 @@ client.stocks.getFloat("GME")                           // Free float
 client.stocks.getGraph("AAPL", { depth: 1 })            // Company knowledge graph: people, products, peers
 client.stocks.getOptionsSummary("NVDA")                 // End-of-day options dossier
 client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // Daily options aggregates over time
+client.stocks.getOptionsIntradayHistory("NVDA")         // One session's intraday options series (PRO)
 client.stocks.getRating("AAPL")                         // SentiSense Rating: score, letter, percentile, dimensions
 client.stocks.getAISummary("AAPL", { depth: "deep" })   // AI report (PRO)
 ```
@@ -521,11 +522,29 @@ End-of-day options positioning: where implied volatility, put/call flow and skew
 client.options.getOverview()                            // Market-wide radar, ranked
 client.stocks.getOptionsSummary("NVDA")                 // One name's full dossier
 client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // That name's daily series
+client.stocks.getOptionsIntradayHistory("NVDA", { session: "2026-10-14" })  // Every 15-minute cycle of one session (PRO)
 ```
 
 The radar carries two separately-ranked boards: `data.rows` for stocks and `data.etfRows` for ETFs. Keep them apart. Every reading behind a row's `interestScore` is a percentile of that ticker's own trailing history, so a ranking built across both boards compares numbers measured against different baselines. The aggregates split the same way, with the `etf`-prefixed fields describing the ETF board alone.
 
-During the trading session the dossier and the radar also carry a few intraday fields, the same on every tier: `intradayFlow` (a count of the ticker's unusual contracts so far, when the first one was flagged, and the board's own clock), `largePrintCount` and `largestPrintPctl` on the dossier, and `intradayActiveCount` with `intradayRanking` on the radar. They carry no contract, strike, price or premium, and are absent before the day's first board. `capabilities.intradayBoard` says where the contract-level board lives; its rows are served in the SentiSense app, not by the API.
+During the trading session the dossier and the radar also carry a few intraday fields, the same on every tier: `intradayFlow` (a count of the ticker's unusual contracts so far, when the first one was flagged, and the board's own clock), `largePrintCount` and `largestPrintPctl` on the dossier, and `intradayActiveCount` with `intradayRanking` on the radar. They carry no contract, strike, price or premium, and are absent before the day's first board. On the radar, `intradayAsOf` (epoch seconds) and `intradayAsOfEt` date the board the ranking was read from. `capabilities.intradayBoard` says where the contract-level board lives; its rows are served in the SentiSense app, not by the API.
+
+`getOptionsIntradayHistory` keeps every cycle of that board for one ticker, so you can test an intraday signal against what the board showed at each point in the day and then compare it with the session's end-of-day row from `getOptionsHistory`:
+
+```typescript
+const day = await client.stocks.getOptionsIntradayHistory("NVDA", { session: "2026-10-14" });
+if (day.data === null) {
+  console.log(day.upgrade?.message);    // PRO only: a FREE key gets a preview with no series
+} else {
+  for (const point of day.data.series) { // oldest cycle first
+    console.log(point.asOfEt, point.callVol, point.putVol, point.pcVol, point.unusualCount, point.atmIv);
+  }
+}
+```
+
+Each point carries call and put volume so far, the put/call ratio, the unusual-contract count, the percentile of the largest qualifying contract against the ticker's own year (`maxPremiumPctl1y`) and the ATM implied volatility; readings that are unavailable are absent, never zero. Omit `session` for the session the board ran most recently, and read `data.session` for the date served. A ticker appears only on cycles where it was on the board, so gaps show in each point's `cycle`, and `missingCycles` lists cycles whose stored point could not be read. A weekend, a holiday, a ticker outside the board and an unknown symbol all return an empty `series`, not a null payload. A malformed or future date rejects with an `APIError` whose `code` is `"invalid_session"`. From the CLI: `sentisense options NVDA --intraday`, or `--session YYYY-MM-DD` for another day.
+
+A FREE key that has spent its ten monthly dossiers receives a headline preview from `getOptionsSummary`: `asOf`, `sentiment` and six flat readings, `ivRank1y`, `atmIv`, `expectedMove1d`, `pcVol`, `pcVolPctl1y` and `maxPain`, with no `latest`, `context` or `oiWalls`. On a full dossier those six are absent and the same readings live in the nested objects, so branch on `isPreview`.
 
 A row whose baseline is still building carries its raw readings with the percentiles and `interestScore` omitted, which means "not enough history yet" rather than "nothing interesting". `getOptionsSummary` reports an uncovered ticker as a null payload inside the usual envelope, so the check is `result.data === null`: the response object itself is always truthy, and a bare `if (summary === null)` never fires. `getOptionsHistory` reports it as an empty `series` instead, so check the array's length rather than null-checking there.
 
@@ -623,7 +642,9 @@ The Score fields (`SENTI_SCORE_7D`, `SENTI_SCORE_1M`, `SCORE_CHANGE_7D`) are the
 
 On the ETF side, `CONSTITUENTS_WEIGHTED_SENTISENSE` is the holdings-weighted Score across what the fund owns and is usually the one you want; `DIRECT_SENTISENSE` is the Score from chatter about the fund ticker itself. `WEIGHT_COVERED_PCT` tells you how much of the fund's weight had constituent data behind the weighted number.
 
-Screens read a snapshot that refreshes every 20 minutes, so this is not a quote feed. Use `client.stocks.getQuote()` for current quotes.
+Every stock row carries `priceAsOf`, when the market data behind `currentPrice`, `change` and `changePercent` is from, in epoch milliseconds (the same unit as the quote endpoints). It is `null` outside regular hours, on a previous-close fallback and when no quote was available, so read `null` as unknown rather than fresh, and judge a price's age from `priceAsOf`, not `lastUpdated`. Rated stocks also carry `ratingLetter`, `ratingScore` and `ratingPercentile`; all three are `null` for an unrated one.
+
+Prices are 15-minute delayed quotes, refreshed at request time during the regular session from a cache at most 5 minutes old. Everything else on a row comes from a snapshot rebuilt about every 20 minutes during the session, so this is not a quote feed: use `client.stocks.getQuote()` for one ticker's current quote.
 
 ## Error handling
 

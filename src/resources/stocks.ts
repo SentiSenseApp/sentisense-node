@@ -16,6 +16,7 @@ import type {
   GetMetricsBreakdownOptions,
   GetProfileOptions,
   GetOptionsHistoryOptions,
+  GetOptionsIntradayHistoryOptions,
   GetSimilarOptions,
   GetShortInterestOptions,
   GetShortVolumeOptions,
@@ -25,6 +26,7 @@ import type {
   MarketStatus,
   MetricsBreakdown,
   OptionsHistory,
+  OptionsIntradayHistory,
   OptionsSummary,
   PreviewResponse,
   SimilarStock,
@@ -334,7 +336,9 @@ export class Stocks {
    *
    * Tiering: a PRO key always receives the full dossier. A FREE key receives it for the first
    * ten calls each calendar month and a headline-only preview after that, with `isPreview`
-   * true; calls that return a null `data` never spend that allowance.
+   * true; calls that return a null `data` never spend that allowance. The headline preview has
+   * no nested objects: its readings arrive flat as `data.ivRank1y`, `data.atmIv`,
+   * `data.expectedMove1d`, `data.pcVol`, `data.pcVolPctl1y` and `data.maxPain`.
    */
   async getOptionsSummary(ticker: string): Promise<PreviewResponse<OptionsSummary | null>> {
     return this.client.get(
@@ -365,6 +369,37 @@ export class Stocks {
   ): Promise<PreviewResponse<OptionsHistory>> {
     return this.client.get(
       `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/options/history`,
+      options,
+    );
+  }
+
+  /**
+   * Get one stock's or ETF's intraday options series for one session: its numbers at every
+   * 15-minute cycle of the intraday board, oldest cycle first.
+   *
+   * Use it to test an intraday signal against what the board actually showed at each point in
+   * the day, then compare it with the session's end-of-day row from
+   * {@link Stocks.getOptionsHistory}. Each point carries call and put volume so far, the
+   * put/call ratio, the unusual-contract count, the percentile of the largest qualifying
+   * contract against the ticker's own year, and the ATM implied volatility. It never carries a
+   * contract symbol, strike, price, premium, open interest or print size.
+   *
+   * **PRO only.** A FREE key receives the standard preview: `isPreview` true, `previewReason`
+   * `"PRO_REQUIRED"`, an `upgrade` hint, and `data: null`.
+   *
+   * **No data is an empty `series`, not a null payload.** A weekend, a holiday, a session from
+   * before the history was kept, a ticker outside the board and an unknown symbol all answer
+   * with `data.series` empty. `data.missingCycles` lists cycles whose stored point could not be
+   * read, which are unknown rather than absent. A malformed or future `session` rejects with
+   * an `APIError` (status 400, code `invalid_session`). A 503 means the stored series could
+   * not be read; it is retried like any other 503 and never answered with a partial series.
+   */
+  async getOptionsIntradayHistory(
+    ticker: string,
+    options?: GetOptionsIntradayHistoryOptions,
+  ): Promise<PreviewResponse<OptionsIntradayHistory | null>> {
+    return this.client.get(
+      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/options/intraday-history`,
       options,
     );
   }

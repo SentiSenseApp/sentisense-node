@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   ANALYST_CALLS,
   ANALYST_PROFILE,
@@ -615,6 +616,104 @@ describe("command wiring", () => {
     });
     expect(JSON.parse(asJson.stdout)).toEqual(envelope);
     expect(asJson.code).toBe(0);
+  });
+
+  it("options shows the headline readings on a metered-out preview", async () => {
+    // The preview carries its readings flat, with no latest, context or oiWalls. Reading only
+    // the nested objects printed n/a for every one of them.
+    const result = await run(["options", "NVDA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [
+          /stocks\/NVDA\/options\/summary/,
+          {
+            isPreview: true,
+            previewReason: "PRO_REQUIRED",
+            data: {
+              asOf: "2026-09-28",
+              sentiment: 0.2,
+              ivRank1y: 45,
+              atmIv: 0.4,
+              expectedMove1d: 0.0373,
+              pcVol: 0.7,
+              pcVolPctl1y: 60,
+              maxPain: 150,
+            },
+          },
+        ],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("iv rank 1y:   45.0");
+    expect(result.stdout).toContain("put/call vol: 0.70");
+    expect(result.stdout).toContain("0.4000");
+    expect(result.stdout).toContain("0.0373");
+    expect(result.stdout).toContain("150");
+    expect(result.stdout).toContain("only the headline readings are shown");
+  });
+
+  it("options --intraday prints the session's series", async () => {
+    const fixture = JSON.parse(
+      readFileSync(fileURLToPath(new URL("../fixtures/options_intraday_history.json", import.meta.url)), "utf8"),
+    );
+    const result = await run(["options", "NVDA", "--intraday", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/stocks\/NVDA\/options\/intraday-history/, fixture]]),
+    });
+    expect(result.code).toBe(0);
+    const requested = url(result, "/api/v1/stocks/NVDA/options/intraday-history");
+    expect(new URL(requested).searchParams.has("session")).toBe(false);
+    expect(result.urls.some((candidate) => candidate.includes("/options/summary"))).toBe(false);
+    expect(result.stdout).toContain("09:45 ET");
+    expect(result.stdout).toContain("10:45 ET");
+    expect(result.stdout).toContain("0.4415");
+    expect(result.stdout).toContain("Cycle 3 was published but could not be read");
+  });
+
+  it("options --session implies --intraday and sends the date", async () => {
+    const result = await run(["options", "SPY", "--session", "2026-10-11", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [
+          /stocks\/SPY\/options\/intraday-history/,
+          preview({ ticker: "SPY", session: "2026-10-11", live: false, delayMinutes: 15, cycles: 0, series: [] }),
+        ],
+        [/\/stocks\/SPY\/quote/, ETF_REFUSAL],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(url(result, "/options/intraday-history")).toContain("session=2026-10-11");
+    expect(result.stdout).toBe("No intraday options history for SPY on 2026-10-11.\n");
+  });
+
+  it("options --intraday on a free key says it needs PRO and exits 0", async () => {
+    const envelope = {
+      isPreview: true,
+      previewReason: "PRO_REQUIRED",
+      upgrade: { plan: "PRO", url: "https://app.sentisense.ai/pricing" },
+      data: null,
+    };
+    const result = await run(["options", "NVDA", "--intraday", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/options\/intraday-history/, envelope]]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("Intraday options history for NVDA needs a PRO key.");
+    expect(result.stdout).toContain("https://app.sentisense.ai/pricing");
+
+    const asJson = await run(["options", "NVDA", "--intraday", "--json"], {
+      env: KEYED,
+      fetch: routeFetch([[/options\/intraday-history/, envelope]]),
+    });
+    expect(JSON.parse(asJson.stdout)).toEqual(envelope);
+  });
+
+  it("options rejects a malformed --session before any request", async () => {
+    const fetchMock = routeFetch([]);
+    const result = await run(["options", "NVDA", "--session", "10/14/2026"], { env: KEYED, fetch: fetchMock });
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("--session must be a date, YYYY-MM-DD.");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("screen posts the filter plan it was given", async () => {

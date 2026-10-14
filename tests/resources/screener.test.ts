@@ -239,6 +239,39 @@ describe("screener.run", () => {
   });
 });
 
+describe("screener.run row freshness and rating", () => {
+  it("keeps priceAsOf in milliseconds and the rating fields", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      matched: 2,
+      limit: 2,
+      results: [
+        {
+          ticker: "AAPL",
+          currentPrice: 211.34,
+          changePercent: -0.62,
+          priceAsOf: 1760449500000,
+          lastUpdated: 1760449200,
+          ratingLetter: "B",
+          ratingScore: 71.4,
+          ratingPercentile: 83.4,
+        },
+        { ticker: "KO", currentPrice: 70.1, priceAsOf: null, ratingLetter: null, ratingScore: null, ratingPercentile: null },
+      ],
+    }));
+    const res = await client.screener.run({ plan: { filters: [] } });
+    const [fresh, unknown] = res.results;
+    // Milliseconds, like the quote endpoints, not lastUpdated's seconds.
+    expect(fresh.priceAsOf).toBe(1760449500000);
+    expect(fresh.lastUpdated).toBe(1760449200);
+    expect(fresh.ratingLetter).toBe("B");
+    expect(fresh.ratingScore).toBe(71.4);
+    expect(fresh.ratingPercentile).toBe(83.4);
+    // Off-hours or no quote is unknown, not fresh; an unrated stock carries three nulls.
+    expect(unknown.priceAsOf).toBeNull();
+    expect(unknown.ratingLetter).toBeNull();
+  });
+});
+
 describe("screener.runEtfs", () => {
   it("posts to the ETF path and keeps the two Score readings distinct", async () => {
     mockFetch.mockResolvedValueOnce(

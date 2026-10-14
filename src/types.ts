@@ -940,6 +940,12 @@ export interface OptionsCapabilities {
  * `largePrintCount`, `largestPrintPctl`, `capabilities`), which are the same on every tier,
  * previews included, and are omitted when their source is absent: `intradayFlow` before the
  * day's first board or when the ticker has no row on it.
+ *
+ * A FREE key that has spent its monthly dossier allowance receives the headline preview
+ * instead (`isPreview` true): `asOf`, `sentiment` and six flat readings, `ivRank1y`, `atmIv`,
+ * `expectedMove1d`, `pcVol`, `pcVolPctl1y` and `maxPain`, with no `latest`, `context`,
+ * `oiWalls` or `unusual`. On a full dossier the six flat fields are absent and the same
+ * readings live in the nested objects.
  */
 export interface OptionsSummary {
   /** Session the dossier describes, ISO calendar day. */
@@ -976,6 +982,18 @@ export interface OptionsSummary {
   listingStatus?: "DELISTED";
   /** ISO day (YYYY-MM-DD) trading stopped; absent when the date is unknown. */
   delistedDate?: string;
+  /** Headline preview only: `context.ivRank1y` on a full dossier. */
+  ivRank1y?: number;
+  /** Headline preview only: `latest.atmIv` on a full dossier. */
+  atmIv?: number;
+  /** Headline preview only: `latest.expectedMove1d` on a full dossier. */
+  expectedMove1d?: number;
+  /** Headline preview only: `latest.pcVol` on a full dossier. */
+  pcVol?: number;
+  /** Headline preview only: `context.pcVolPctl1y` on a full dossier. */
+  pcVolPctl1y?: number;
+  /** Headline preview only: `oiWalls.maxPain` on a full dossier. */
+  maxPain?: number;
 }
 
 /** Trailing window for `client.stocks.getOptionsHistory()`. */
@@ -1012,6 +1030,90 @@ export interface OptionsHistory {
   window?: string;
   /** Ascending by date, oldest first. Same shape as the dossier's `latest` aggregate. */
   series?: OptionsAggregate[];
+}
+
+export interface GetOptionsIntradayHistoryOptions {
+  /**
+   * Trading session date, `"YYYY-MM-DD"` (Eastern). Omitted, the server serves the session
+   * the intraday board ran most recently: today's once the first cycle lands at 09:45 ET, the
+   * previous session before that. Read `OptionsIntradayHistory.session` for the date served.
+   * A malformed or future date is rejected with HTTP 400, code `invalid_session`.
+   */
+  session?: string;
+}
+
+/**
+ * One ticker's numbers at one cycle of the intraday options board: counts, a ratio, a
+ * percentile and a ticker-level implied volatility, as the board showed them at `asOf`. It
+ * carries no contract symbol, strike, price, premium, open interest or print size. Readings
+ * the server cannot compute are omitted, never zero-filled.
+ */
+export interface OptionsIntradayPoint {
+  /** The board's cycle number within the session, starting at 1. */
+  cycle: number;
+  /** The cycle's snapshot time, Unix epoch seconds. */
+  asOf: number;
+  /** The same moment as `"HH:mm ET"`. */
+  asOfEt: string;
+  /** Calls traded so far this session, across the chain. */
+  callVol: number;
+  /** Puts traded so far this session. */
+  putVol: number;
+  /** `putVol / callVol`. Absent when `callVol` is 0. */
+  pcVol?: number;
+  /**
+   * Contracts passing the unusual rule so far this session, up to 5: the same count as
+   * `intradayFlow.unusualCount` on the dossier.
+   */
+  unusualCount: number;
+  /**
+   * Percentile (0-100) of the ticker's largest qualifying unusual contract so far this
+   * session (same-day expiries excluded) against its own trailing year. Absent when nothing
+   * qualifies, and while that history holds fewer than 60 sessions.
+   */
+  maxPremiumPctl1y?: number;
+  /**
+   * At-the-money implied volatility as a fraction (`0.42` is 42%), by the same rule as the
+   * end-of-day `atmIv`. Absent when that expiry has no usable contract.
+   */
+  atmIv?: number;
+}
+
+/**
+ * One ticker's intraday options series for one session, from
+ * `client.stocks.getOptionsIntradayHistory()`, oldest cycle first.
+ *
+ * The board is rebuilt every 15 minutes from 15-minute delayed chains, from 09:45 to 16:15 ET,
+ * so a full session holds 27 cycles. A ticker appears only on the cycles where it was on the
+ * board, so `cycles` can be below that and the gaps show in each point's `cycle` and `asOf`.
+ *
+ * **No data is an empty `series`, not a null payload.** A weekend, a holiday, a session from
+ * before the history was kept, a ticker outside the board and an unknown symbol all answer
+ * with this object and nothing in `series`. The payload is `null` only on a FREE key's
+ * `PRO_REQUIRED` preview.
+ */
+export interface OptionsIntradayHistory {
+  /** Canonical ticker. */
+  ticker: string;
+  /** The trading session served, ISO date (Eastern). */
+  session: string;
+  /**
+   * `true` while that session's board is still updating (today, before the close); `false`
+   * for a completed or past session.
+   */
+  live: boolean;
+  /** How far the chain data behind each point trails the market, in minutes. */
+  delayMinutes: number;
+  /** Number of points in `series`. */
+  cycles: number;
+  /**
+   * Cycles of the session whose board was published but whose stored point could not be
+   * found, ascending: this ticker's numbers at those cycles are unknown, not absent. Omitted
+   * when there are none.
+   */
+  missingCycles?: number[];
+  /** One point per cycle that carried this ticker, oldest first. */
+  series: OptionsIntradayPoint[];
 }
 
 /**
@@ -1130,8 +1232,8 @@ export interface OptionsHighlight {
  *
  * End of day, not live: `asOf` is the latest completed session. The exception is
  * `intradayActiveCount`, `intradayRanking` and `capabilities`, which summarize today's
- * intraday board across stocks, are the same on every tier, and are omitted before the day's
- * first board.
+ * intraday board across stocks, are dated by `intradayAsOf` (epoch seconds) and
+ * `intradayAsOfEt`, are the same on every tier, and are omitted before the day's first board.
  */
 export interface OptionsOverview {
   /** Session the build describes, ISO calendar day. */
@@ -1175,6 +1277,13 @@ export interface OptionsOverview {
   intradayActiveCount?: number;
   /** Up to 25 of those tickers, most unusual for their own history first. */
   intradayRanking?: string[];
+  /**
+   * Snapshot time of the intraday board `intradayActiveCount` and `intradayRanking` were read
+   * from, Unix epoch seconds. Omitted with them.
+   */
+  intradayAsOf?: number;
+  /** The same moment as `"HH:mm ET"`. Omitted with them. */
+  intradayAsOfEt?: string;
   /** Where the intraday board lives and who can open it. */
   capabilities?: OptionsCapabilities;
 }
@@ -3230,8 +3339,22 @@ export interface ScreenerRow {
   sentisenseScoreBars30D: number[] | null;
   /** Daily closes for the last 30 days, oldest first. */
   priceSparkline30D: number[] | null;
-  /** Epoch seconds. */
+  /** Epoch seconds: when the row's snapshot was built. For the price's age read `priceAsOf`. */
   lastUpdated: number | null;
+  /**
+   * When the market data behind `currentPrice`, `change` and `changePercent` is from, epoch
+   * **milliseconds**: the same field and unit as `priceAsOf` on the quote endpoints. `null`
+   * outside regular hours, on a previous-close fallback, and when no quote was available, so
+   * read `null` as unknown rather than fresh. Absent on responses from before the field
+   * shipped.
+   */
+  priceAsOf?: number | null;
+  /** SentiSense Rating letter, `"A"` to `"F"`. `null` for an unrated stock. */
+  ratingLetter?: string | null;
+  /** The graded 0-100 Rating score a Rating sort orders by. `null` when unrated. */
+  ratingScore?: number | null;
+  /** The 0-100 rank among the stocks rated that day, before risk adjustments. `null` when unrated. */
+  ratingPercentile?: number | null;
 }
 
 /**
