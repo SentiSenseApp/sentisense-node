@@ -315,3 +315,62 @@ describe("screener.runEtfs", () => {
     expect(filter).not.toHaveProperty("value");
   });
 });
+
+describe("end-of-day options fields on screener rows", () => {
+  const options = {
+    ivRank1y: 74,
+    pcVol: 0.82,
+    pcVolPctl1y: 91,
+    skew25dPctl1y: 12,
+    optionsInterestScore: 66,
+    maxUnusualPremium: 1250000,
+    expectedMove20d: 0.2329,
+    optionsAsOf: "2026-10-13",
+  };
+  const nulls = Object.fromEntries(Object.keys(options).map((k) => [k, null]));
+
+  it("keeps every stock options value, missing and null alike", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      matched: 3,
+      limit: 3,
+      results: [{ ticker: "HIGH", ...options }, { ticker: "MISSING" }, { ticker: "NULLS", ...nulls }],
+    }));
+    const [high, missing, empty] = (await client.screener.run({ plan: { filters: [] } })).results;
+    expect(high.ivRank1y).toBe(74);
+    expect(high.pcVol).toBe(0.82);
+    expect(high.pcVolPctl1y).toBe(91);
+    expect(high.skew25dPctl1y).toBe(12);
+    expect(high.optionsInterestScore).toBe(66);
+    expect(high.maxUnusualPremium).toBe(1250000);
+    // A fraction of price, as on the options endpoints: 0.2329 is 23.29%.
+    expect(high.expectedMove20d).toBe(0.2329);
+    expect(high.optionsAsOf).toBe("2026-10-13");
+    expect(missing.ivRank1y).toBeUndefined();
+    expect(empty.expectedMove20d).toBeNull();
+    expect(empty.optionsAsOf).toBeNull();
+  });
+
+  it("keeps every ETF options value, missing and null alike", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      matched: 3,
+      limit: 3,
+      results: [
+        { ticker: "QQQ", name: "Invesco QQQ", ...options },
+        { ticker: "MISSING", name: "Fund" },
+        { ticker: "NULLS", name: "Fund", ...nulls },
+      ],
+    }));
+    const [high, missing, empty] = (await client.screener.runEtfs({ plan: { filters: [] } })).results;
+    expect(high.ivRank1y).toBe(74);
+    expect(high.pcVol).toBe(0.82);
+    expect(high.pcVolPctl1y).toBe(91);
+    expect(high.skew25dPctl1y).toBe(12);
+    expect(high.optionsInterestScore).toBe(66);
+    expect(high.maxUnusualPremium).toBe(1250000);
+    expect(high.expectedMove20d).toBe(0.2329);
+    expect(high.optionsAsOf).toBe("2026-10-13");
+    expect(missing.maxUnusualPremium).toBeUndefined();
+    expect(empty.ivRank1y).toBeNull();
+    expect(empty.optionsAsOf).toBeNull();
+  });
+});

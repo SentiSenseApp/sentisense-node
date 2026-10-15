@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.65.0
+
+### Added
+
+- Optional end-of-day options readings on `ScreenerRow` and `EtfScreenerRow`, returned on
+  every row by `screener.run` and `screener.runEtfs`: `ivRank1y`, `pcVol`, `pcVolPctl1y`,
+  `skew25dPctl1y`, `optionsInterestScore`, `maxUnusualPremium` and `expectedMove20d`, plus
+  `optionsAsOf`, the ISO date of the session they come from. `expectedMove20d` is a fraction
+  of price (`0.2` is 20%), the same number as on the options endpoints. Each is `null` when the
+  ticker has no reading. The matching field names (`IV_RANK_1Y`, `PC_VOL`, `PC_VOL_PCTL_1Y`,
+  `SKEW_25D_PCTL_1Y`, `OPTIONS_INTEREST_SCORE`, `MAX_UNUSUAL_PREMIUM`, `EXPECTED_MOVE_20D`) come
+  from `screener.fields()` like every other field.
+
 ## 0.64.0
 
 ### Added

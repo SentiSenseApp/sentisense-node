@@ -3355,6 +3355,29 @@ export interface ScreenerRow {
   ratingScore?: number | null;
   /** The 0-100 rank among the stocks rated that day, before risk adjustments. `null` when unrated. */
   ratingPercentile?: number | null;
+  /**
+   * IV rank, 0-100: where implied volatility sits in its own trailing one-year range. End of
+   * day, from the nightly options board; `optionsAsOf` says which session. `null` when the
+   * stock has no reading; absent on responses from before the field shipped.
+   */
+  ivRank1y?: number | null;
+  /** Put volume divided by call volume in that session. End of day. */
+  pcVol?: number | null;
+  /** Percentile, 0-100, of `pcVol` against the stock's own trailing year. End of day. */
+  pcVolPctl1y?: number | null;
+  /** Percentile, 0-100, of the 25-delta skew against the stock's own trailing year. End of day. */
+  skew25dPctl1y?: number | null;
+  /** Composite 0-100 options interest score; `null` when unscored. End of day. */
+  optionsInterestScore?: number | null;
+  /** Dollar premium of the session's largest unusual contract; `null` when there was none. End of day. */
+  maxUnusualPremium?: number | null;
+  /**
+   * Options-implied 90% expected move over 20 trading sessions as a **fraction** of price
+   * (`0.2` is 20%), the same number as `expectedMove20d` on the options endpoints. End of day.
+   */
+  expectedMove20d?: number | null;
+  /** ISO date (`YYYY-MM-DD`) of the session the options values are from. `null` exactly when they are. */
+  optionsAsOf?: string | null;
 }
 
 /**
@@ -3400,6 +3423,29 @@ export interface EtfScreenerRow {
   partial: boolean | null;
   /** Epoch seconds. */
   lastUpdated: number | null;
+  /**
+   * IV rank, 0-100: where implied volatility sits in its own trailing one-year range. End of
+   * day, from the nightly options board; `optionsAsOf` says which session. `null` when the
+   * fund has no reading; absent on responses from before the field shipped.
+   */
+  ivRank1y?: number | null;
+  /** Put volume divided by call volume in that session. End of day. */
+  pcVol?: number | null;
+  /** Percentile, 0-100, of `pcVol` against the fund's own trailing year. End of day. */
+  pcVolPctl1y?: number | null;
+  /** Percentile, 0-100, of the 25-delta skew against the fund's own trailing year. End of day. */
+  skew25dPctl1y?: number | null;
+  /** Composite 0-100 options interest score; `null` when unscored. End of day. */
+  optionsInterestScore?: number | null;
+  /** Dollar premium of the session's largest unusual contract; `null` when there was none. End of day. */
+  maxUnusualPremium?: number | null;
+  /**
+   * Options-implied 90% expected move over 20 trading sessions as a **fraction** of price
+   * (`0.2` is 20%), the same number as `expectedMove20d` on the options endpoints. End of day.
+   */
+  expectedMove20d?: number | null;
+  /** ISO date (`YYYY-MM-DD`) of the session the options values are from. `null` exactly when they are. */
+  optionsAsOf?: string | null;
 }
 
 /** Request body for both execute endpoints. */
