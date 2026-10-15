@@ -17,7 +17,8 @@ import type {
 
 /**
  * Screener: filter the tracked universe on the SentiSense Score, attention,
- * analyst consensus, technicals and price in a single query. It is the one
+ * analyst consensus, technicals, price and end-of-day options readings in a
+ * single query. It is the one
  * surface where our own signals sit in the same `WHERE` clause as the market
  * data, which is the point: screening on analyst ratings alone is something a
  * dozen free tools do, screening on analyst ratings *where the Score disagrees*

@@ -53,7 +53,7 @@ function parseSort(raw: string): ScreenerSort {
 
 export const screenCommand: CommandDef = {
   name: "screen",
-  summary: "Filter the tracked universe on Score, analyst, technical, and price fields",
+  summary: "Filter the tracked universe on Score, analyst, technical, price, and end-of-day options fields",
   usage: "sentisense screen [--filter FIELD:OP:VALUE]... [--sort FIELD:DIR] [--limit N]",
   examples: [
     "sentisense screen --list",

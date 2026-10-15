@@ -80,7 +80,7 @@ npx -y sentisense@latest health
 | `news [ticker]` | Clustered news stories with impact and tone |
 | `flows [ticker]` | Institutional 13F flows, or one ticker's holders and notable changes |
 | `options <ticker>` | End-of-day options positioning, IV rank, walls, unusual contracts; `--intraday` for the session's 15-minute series (PRO) |
-| `screen --filter ...` | Screen the universe on Score, analyst, technical, and price fields |
+| `screen --filter ...` | Screen the universe on Score, analyst, technical, price, and end-of-day options fields |
 | `search <name>` | Resolve a name, alias, ticker or slug to a symbol and the entity handle |
 
 Run `sentisense help <command>` for its flags and examples.
@@ -597,7 +597,7 @@ An empty array is the normal answer for a query that matches nothing, so branch 
 
 ### Screener
 
-Filter the tracked universe on the SentiSense Score, attention, analyst consensus, technicals and price in one query. Screening on analyst ratings alone is something a dozen free tools do; screening on analyst ratings *where the Score disagrees* is not.
+Filter the tracked universe on the SentiSense Score, attention, analyst consensus, technicals, price and end-of-day options readings in one query. Screening on analyst ratings alone is something a dozen free tools do; screening on analyst ratings *where the Score disagrees* is not.
 
 ```typescript
 client.screener.fields()                      // Every filterable field, both universes, with units + operators
@@ -628,6 +628,18 @@ const res = await client.screener.run({
 for (const row of res.results) {
   console.log(row.ticker, row.sentiSenseScore7D, row.analystBuyRatioPct);
 }
+
+// Options positioning: implied volatility in the top quarter of its own year
+const highIv = await client.screener.run({
+  plan: {
+    filters: [{ fieldName: "IV_RANK_1Y", op: "GTE", value: 75 }],
+    sort: { fieldName: "IV_RANK_1Y", dir: "DESC" },
+  },
+  limit: 25,
+});
+for (const row of highIv.results) {
+  console.log(row.ticker, row.ivRank1y, row.expectedMove20d, row.optionsAsOf);
+}
 ```
 
 `limit` rides next to the plan rather than inside it, because a plan is a stored object and paging is a transport concern. It defaults to 100 and caps at 500. `matched` is the count before `limit` was applied, so truncation is visible. `tickers` is optional: omit it to screen the whole tracked universe, pass a list to screen a watchlist.
@@ -641,6 +653,8 @@ Three field semantics are worth stating outright, because guessing them wrong pr
 The Score fields (`SENTI_SCORE_7D`, `SENTI_SCORE_1M`, `SCORE_CHANGE_7D`) are the SentiSense Score, not polarity: unbounded, banded at 5 / 13 / 23 either side of zero. Filter on those band edges, not on values like `0.5`, which behave as "any positive score". Nulls never match in either direction, so `RETURN_1Y >= 0` and `RETURN_1Y < 0` do not partition the universe: a stock listed four months ago is in neither result. If a screen returns fewer rows than you expect, check coverage before you check your thresholds.
 
 On the ETF side, `CONSTITUENTS_WEIGHTED_SENTISENSE` is the holdings-weighted Score across what the fund owns and is usually the one you want; `DIRECT_SENTISENSE` is the Score from chatter about the fund ticker itself. `WEIGHT_COVERED_PCT` tells you how much of the fund's weight had constituent data behind the weighted number.
+
+Stock rows also carry seven end-of-day options readings, `ivRank1y`, `pcVol`, `pcVolPctl1y`, `skew25dPctl1y`, `optionsInterestScore`, `maxUnusualPremium` and `expectedMove20d`, plus `optionsAsOf`, the session date they are from. `expectedMove20d` is a fraction of price (`0.2` is 20%) and `optionsAsOf` is a `YYYY-MM-DD` date; filter on the options fields with names like `IV_RANK_1Y`.
 
 Every stock row carries `priceAsOf`, when the market data behind `currentPrice`, `change` and `changePercent` is from, in epoch milliseconds (the same unit as the quote endpoints). It is `null` outside regular hours, on a previous-close fallback and when no quote was available, so read `null` as unknown rather than fresh, and judge a price's age from `priceAsOf`, not `lastUpdated`. Rated stocks also carry `ratingLetter`, `ratingScore` and `ratingPercentile`; all three are `null` for an unrated one.
 
