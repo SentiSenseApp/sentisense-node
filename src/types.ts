@@ -3376,7 +3376,11 @@ export interface ScreenerRow {
    * (`0.2` is 20%), the same number as `expectedMove20d` on the options endpoints. End of day.
    */
   expectedMove20d?: number | null;
-  /** ISO date (`YYYY-MM-DD`) of the session the options values are from. `null` exactly when they are. */
+  /**
+   * ISO date (`YYYY-MM-DD`) of the session the options values are from. `null` when no valid
+   * options overview row was joined for the ticker; individual readings may still be `null` when
+   * the date is present.
+   */
   optionsAsOf?: string | null;
 }
 
@@ -3444,7 +3448,11 @@ export interface EtfScreenerRow {
    * (`0.2` is 20%), the same number as `expectedMove20d` on the options endpoints. End of day.
    */
   expectedMove20d?: number | null;
-  /** ISO date (`YYYY-MM-DD`) of the session the options values are from. `null` exactly when they are. */
+  /**
+   * ISO date (`YYYY-MM-DD`) of the session the options values are from. `null` when no valid
+   * options overview row was joined for the ticker; individual readings may still be `null` when
+   * the date is present.
+   */
   optionsAsOf?: string | null;
 }
 
