@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Changed (server side, no SDK code change)
+
+- `institutional.getHolders` now returns the roster of the share class you ask for:
+  `getHolders("GOOG")` returns Alphabet's Class C holders (it used to return the Class A roster),
+  and `BRK.A` and `Z` return their own classes. A renamed company's former ticker resolves to its
+  current one, including quarters filed under the old symbol. The raw holders response now also
+  carries `requestedTicker`, `resolvedTicker`, `resolution` (`exact`, `spelling`, `share_class`,
+  `rename`) and `storedTicker`.
+- The options summary for a class we do not cover separately (currently `GOOG`) serves the other
+  class's chain and now says so in the raw response with `isProxy: true`, `underlyingTicker` and
+  `requestedTicker`.
+
 ## 0.65.0
 
 ### Added
