@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Added
+
+- CLI: `sentisense init` gets a temporary free key with no signup and no prompts, and prints it
+  as `SENTISENSE_API_KEY=<key>` with a link to keep that same key on an account; the link keeps
+  working for about two weeks, after the key itself has stopped. It writes nothing into the
+  project. When a key is already configured it says so and makes no new one; `--new` asks for a
+  fresh one anyway. The request carries a random per-install id (stored as `install-id` in the
+  CLI's config directory) so per-machine limits apply to this machine rather than its whole
+  network. `--json` returns the key, link, expiry and limits.
+
+### Changed
+
+- A 429 with `code: "key_limit_reached"` (a temporary key's daily or total allowance) is thrown on
+  the first response without retrying, like `quota_exceeded`. The CLI's message for it, and for
+  `key_expired` and `key_not_kept`, says how to keep the key instead of suggesting a wait.
+- `post()` takes optional extra request headers. They never replace the key, content type or
+  User-Agent.
+
 ### Changed (server side, no SDK code change)
 
 - `institutional.getHolders` now returns the roster of the share class you ask for:

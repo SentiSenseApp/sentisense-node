@@ -14,6 +14,7 @@ import { GLOBAL_FLAGS, type FlagSpecs } from "./parse.js";
 /** One representative invocation per command, shown in the command map. */
 const EXAMPLE: Record<string, string> = {
   auth: "sentisense auth $SENTISENSE_API_KEY",
+  init: "npx sentisense init",
   health: "sentisense health",
   quote: "sentisense quote NVDA AAPL",
   sentiment: "sentisense sentiment NVDA --days 30",
@@ -64,6 +65,7 @@ export function mainHelp(): string {
     "  --full widens a command, --plain and --no-color force text, --debug shows stack traces.",
     "",
     "Setup:",
+    "  sentisense init           print a temporary key with no signup, and a link to keep it",
     `  sentisense auth <key>     store a key at ~/.config/sentisense/config.json (0600)`,
     "  SENTISENSE_API_KEY=<key>  or pass it in the environment",
     `  Get a key at ${KEY_URL}`,

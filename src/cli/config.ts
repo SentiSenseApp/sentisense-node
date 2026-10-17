@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -17,6 +18,14 @@ export interface CliConfig {
 }
 
 export const CONFIG_FILE = "config.json";
+
+/**
+ * A random id for this install, kept next to the settings in its own file so signing out
+ * (which removes `config.json`) leaves it alone.
+ */
+export const INSTALL_ID_FILE = "install-id";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /**
  * Where settings live: an explicit override wins, then the XDG location, then the usual
@@ -75,6 +84,31 @@ export function writeConfig(dir: string, config: CliConfig): string {
   writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
   chmodSync(path, 0o600);
   return path;
+}
+
+/**
+ * The install id, created on first use. Sent only when asking for a temporary key, so the
+ * server can apply its per-machine limits to this machine rather than to everyone who shares
+ * its network address. It is a random UUID that identifies nothing about the person or the
+ * machine, and it is not a credential.
+ *
+ * Returns null when the id cannot be stored (a read-only home directory, a sandbox): an id that
+ * changed on every run would be worse than none, so nothing is sent.
+ */
+export function readOrCreateInstallId(dir: string): string | null {
+  const path = join(dir, INSTALL_ID_FILE);
+  try {
+    if (existsSync(path)) {
+      const stored = readFileSync(path, "utf8").trim().toLowerCase();
+      if (UUID_PATTERN.test(stored)) return stored;
+    }
+    const id = randomUUID();
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    writeFileSync(path, `${id}\n`, { mode: 0o600 });
+    return readFileSync(path, "utf8").trim() === id ? id : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Removes the stored settings. Returns false when there was nothing to remove. */

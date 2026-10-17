@@ -6,6 +6,7 @@ import { congressCommand } from "./congress.js";
 import { earningsCommand } from "./earnings.js";
 import { flowsCommand } from "./flows.js";
 import { healthCommand } from "./health.js";
+import { initCommand } from "./init.js";
 import { insidersCommand } from "./insiders.js";
 import { insightsCommand } from "./insights.js";
 import { moodCommand } from "./mood.js";
@@ -19,6 +20,7 @@ import { sentimentCommand } from "./sentiment.js";
 /** Order is the order help prints: setup first, then the data commands by how often they run. */
 export const COMMANDS: CommandDef[] = [
   authCommand,
+  initCommand,
   healthCommand,
   quoteCommand,
   sentimentCommand,

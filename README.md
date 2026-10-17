@@ -67,6 +67,7 @@ npx -y sentisense@latest health
 | Command | What you get |
 |---------|--------------|
 | `auth [key]` | Store a key, show what is configured, or `--remove` it |
+| `init` | A temporary key with no signup, printed as `SENTISENSE_API_KEY=...`, plus a link to keep it |
 | `health` | Reachability, key validity, latency, and the resolved base URL |
 | `quote <ticker>...` | Price, day range, 52-week range, market cap, P/E. One request per ticker; ETFs show AUM, expense ratio and NAV |
 | `sentiment <ticker>` | SentiSense Score, tone, attention, per-source breakdown, `--days N` history |
@@ -84,6 +85,17 @@ npx -y sentisense@latest health
 | `search <name>` | Resolve a name, alias, ticker or slug to a symbol and the entity handle |
 
 Run `sentisense help <command>` for its flags and examples.
+
+### Getting a key with no signup
+
+`init` is built for coding agents: it asks nothing and writes nothing into your project.
+
+```bash
+npx -y sentisense@latest init          # prints SENTISENSE_API_KEY=<key> and a keep link
+npx -y sentisense@latest init --json   # the same, as JSON
+```
+
+It prints a temporary free key as `SENTISENSE_API_KEY=<key>`. Store it the way your project already stores secrets; the SDK and every command read `SENTISENSE_API_KEY` from the environment. To keep the key, open the link it prints, sign in or create a free account, and the same key stays on your account with nothing else to change. Until it is kept, the key stops working after a few days and has request limits; the link still keeps it for about two weeks. When a key is already configured, `init` says so and makes no new one; `--new` asks for a fresh temporary key anyway. To tell machines that share a network apart, the request carries a random per-install id, stored as `install-id` in the CLI's config directory; it identifies nothing about you.
 
 Three of these chain into each other. Start from a name, land on a person:
 

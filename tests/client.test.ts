@@ -404,6 +404,20 @@ describe("two kinds of 429", () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
+  it("does not retry a temporary key's daily limit either", async () => {
+    // Its Retry-After runs to midnight UTC; waiting inside the process cannot clear it.
+    const c = new SentiSense({ apiKey: "ssk_test", maxRetries: 3 });
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ error: "key_limit_reached", message: "This temporary key has used its requests for today." }),
+        { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "9000" } },
+      ),
+    );
+
+    await expect(c.stocks.list()).rejects.toMatchObject({ name: "RateLimitError", code: "key_limit_reached" });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   it("still waits out and retries a per-minute 429", async () => {
     vi.useFakeTimers();
     try {

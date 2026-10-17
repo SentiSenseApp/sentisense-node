@@ -48,6 +48,8 @@ export class DeepHistoryUnavailableError extends SentiSenseError {
  *   before throwing, so you see this only once retries are used up.
  * - `"quota_exceeded"`: the monthly request allowance is used up. It is thrown on the first
  *   response without retrying, and `message` says when the allowance resets.
+ * - `"key_limit_reached"`: a temporary key from `sentisense init` used its daily or total
+ *   allowance. Thrown on the first response without retrying; keeping the key lifts it.
  */
 export class RateLimitError extends SentiSenseError {
   /**

@@ -37,6 +37,17 @@ export const PRICING_URL = "https://app.sentisense.ai/pricing";
 /** Error code of the monthly-allowance 429. It carries no Retry-After: waiting a minute cannot clear it. */
 export const QUOTA_EXCEEDED = "quota_exceeded";
 
+/**
+ * Codes a temporary key from `sentisense init` can get back. The way past each one is keeping the
+ * key (the link init printed with it) or running `init --new`, never waiting a minute.
+ */
+export const KEY_LIMIT_REACHED = "key_limit_reached";
+export const KEY_EXPIRED = "key_expired";
+export const KEY_NOT_KEPT = "key_not_kept";
+
+const KEEP_HINT =
+  "keep the key with the keep link (in the message above, or the one sentisense init printed with the key), then run it again.";
+
 /** A mistake in how the command was invoked. Never reaches the network. */
 export class CliUsageError extends Error {
   hint?: string;
@@ -81,6 +92,22 @@ export class NoMatchError extends Error {
     this.name = "NoMatchError";
     this.query = query;
     this.hint = hint;
+  }
+}
+
+/**
+ * A command-level failure that already knows its exit code and its next step. Used where the
+ * generic classification below would give the wrong advice.
+ */
+export class CliCommandError extends Error {
+  exitCode: number;
+  hint: string;
+
+  constructor(message: string, hint: string, exitCode: number = EXIT.ERROR) {
+    super(message);
+    this.name = "CliCommandError";
+    this.hint = hint;
+    this.exitCode = exitCode;
   }
 }
 
@@ -142,6 +169,13 @@ function classify(error: unknown, command?: string): ErrorReport {
     };
   }
 
+  if (error instanceof CliCommandError) {
+    return {
+      exitCode: error.exitCode,
+      lines: [`error: ${error.message}`, `next: ${error.hint}`],
+    };
+  }
+
   if (error instanceof CliUsageError) {
     return {
       exitCode: EXIT.USAGE,
@@ -150,6 +184,24 @@ function classify(error: unknown, command?: string): ErrorReport {
         `next: ${error.hint ?? 'run "sentisense --help" for the command list.'}`,
       ],
     };
+  }
+
+  if (error instanceof AuthenticationError && error.code === KEY_EXPIRED) {
+    // While the key can still be kept, the server names the link: keeping brings the same key back.
+    const keepable = /\/keep-key\b/.test(error.message);
+    return {
+      exitCode: EXIT.AUTH,
+      lines: [
+        `error: ${error.message}`,
+        keepable
+          ? "next: open the keep link above and sign in; the same key works again with nothing in the project to change."
+          : `next: run "sentisense init --new" for a new key, or get one at ${KEY_URL}`,
+      ],
+    };
+  }
+
+  if (error instanceof AuthenticationError && error.code === KEY_NOT_KEPT) {
+    return { exitCode: EXIT.AUTH, lines: [`error: ${error.message}`, `next: ${KEEP_HINT}`] };
   }
 
   if (error instanceof AuthenticationError) {
@@ -170,6 +222,10 @@ function classify(error: unknown, command?: string): ErrorReport {
         'next: check the symbol. Use canonical tickers, for example GOOGL rather than GOOG.',
       ],
     };
+  }
+
+  if (error instanceof RateLimitError && error.code === KEY_LIMIT_REACHED) {
+    return { exitCode: EXIT.RATE_LIMIT, lines: [`error: ${error.message}`, `next: ${KEEP_HINT}`] };
   }
 
   if (error instanceof RateLimitError) {

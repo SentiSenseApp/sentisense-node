@@ -43,19 +43,20 @@ const MAX_DEEP_HISTORY_WAIT_S = 30;
 const MAX_RATE_LIMIT_WAIT_S = 120;
 const RATE_LIMIT_FALLBACK_WAIT_S = 60;
 
-// Error code of the monthly-allowance 429. Unlike the per-minute limit it carries no
-// Retry-After and does not clear until the next month, so retrying it only stalls the caller.
-const QUOTA_EXCEEDED_CODE = "quota_exceeded";
+// Error codes of the 429s that no wait inside this process can clear: the monthly allowance
+// (resets next month) and the daily cap of a temporary key from `sentisense init` (lifts at
+// 00:00 UTC, or when the key is kept). Retrying either only stalls the caller.
+const NON_RETRYABLE_429_CODES = new Set(["quota_exceeded", "key_limit_reached"]);
 
 /**
- * Whether a 429 is the monthly allowance rather than the per-minute limit. Reads a clone so
- * the original body is still there for the error. A body that is not JSON, or has no error
+ * Whether a 429 is an allowance rather than the per-minute limit. Reads a clone so the
+ * original body is still there for the error. A body that is not JSON, or has no error
  * code, answers false and keeps the normal retry behaviour.
  */
-async function isQuotaExceeded(response: Response): Promise<boolean> {
+async function isAllowanceExhausted(response: Response): Promise<boolean> {
   try {
     const body = (await response.clone().json()) as { error?: unknown } | null;
-    return body?.error === QUOTA_EXCEEDED_CODE;
+    return typeof body?.error === "string" && NON_RETRYABLE_429_CODES.has(body.error);
   } catch {
     return false;
   }
@@ -97,7 +98,7 @@ function sleep(ms: number): Promise<void> {
 /** @internal HTTP interface exposed to resource classes. */
 export interface APIClient {
   get<T = unknown>(path: string, params?: object): Promise<T>;
-  post<T = unknown>(path: string, body: unknown): Promise<T>;
+  post<T = unknown>(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<T>;
 }
 
 export class SentiSense implements APIClient {
@@ -216,7 +217,7 @@ export class SentiSense implements APIClient {
         if (!response.ok) {
           // The monthly allowance is spent: no wait inside this process will clear it.
           // Surface it at once with the server's message, which says when it resets.
-          if (response.status === 429 && (await isQuotaExceeded(response))) {
+          if (response.status === 429 && (await isAllowanceExhausted(response))) {
             await this.handleErrorResponse(response);
           }
           const isRetryable = response.status === 429 || response.status >= 500;
@@ -268,9 +269,11 @@ export class SentiSense implements APIClient {
   }
 
   /** @internal */
-  async post<T = unknown>(path: string, body: unknown): Promise<T> {
+  async post<T = unknown>(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<T> {
     const url = this.buildUrl(path);
+    // Caller headers first, so they can never replace the key, content type or User-Agent below.
     const headers: Record<string, string> = {
+      ...extraHeaders,
       "Accept": "application/json",
       "Content-Type": "application/json",
     };
