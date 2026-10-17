@@ -10,9 +10,6 @@
   current one, including quarters filed under the old symbol. The raw holders response now also
   carries `requestedTicker`, `resolvedTicker`, `resolution` (`exact`, `spelling`, `share_class`,
   `rename`) and `storedTicker`.
-- The options summary for a class we do not cover separately (currently `GOOG`) serves the other
-  class's chain and now says so in the raw response with `isProxy: true`, `underlyingTicker` and
-  `requestedTicker`.
 
 ## 0.65.0
 
