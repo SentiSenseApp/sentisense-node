@@ -39,7 +39,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "sentisense": "./dist/cli.cjs"
+    "sentisense": "dist/cli.cjs"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
