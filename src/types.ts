@@ -847,6 +847,28 @@ export interface OptionsOiWalls {
   maxPain?: number;
   callWalls?: OptionsWall[];
   putWalls?: OptionsWall[];
+  /**
+   * Call open interest summed across every strike of the expiry, when present. Omitted on
+   * snapshots built before the field existed.
+   */
+  totalCallOi?: number;
+  /**
+   * Put open interest summed across every strike of the expiry, when present. Omitted on
+   * snapshots built before the field existed.
+   */
+  totalPutOi?: number;
+  /**
+   * Call open interest at the `maxPain` strike, when present, even when that strike is not
+   * one of the walls. `0` when no calls are open there; omitted on snapshots built before
+   * the field existed.
+   */
+  maxPainCallOi?: number;
+  /**
+   * Put open interest at the `maxPain` strike, when present, even when that strike is not
+   * one of the walls. `0` when no puts are open there; omitted on snapshots built before
+   * the field existed.
+   */
+  maxPainPutOi?: number;
 }
 
 /** A contract whose session volume far exceeds its open interest: fresh positioning. */
@@ -1692,8 +1714,9 @@ export interface Quarter {
   label: string;
   reportDate: string;
   /**
-   * True while this quarter's 13F filing window is still open, which is the 45 days after
-   * quarter end.
+   * True while this quarter's 13F filing window is still open: through the effective SEC
+   * filing deadline day in New York, which is 45 days after quarter end rolled past
+   * weekends and federal holidays.
    *
    * Read it before you pick a quarter to query. The list leads with the current quarter, so
    * the newest entry is pending for six weeks of every quarter, and a holders request against
@@ -1705,6 +1728,19 @@ export interface Quarter {
    * every row.
    */
   pending?: boolean;
+  /**
+   * True from the New York calendar day after the effective SEC filing deadline. It does
+   * not certify that every institution filed.
+   *
+   * Typed optional so existing object literals keep compiling; the API sends the key on
+   * every row.
+   */
+  ownershipEligible?: boolean;
+  /**
+   * ISO date (New York calendar day) on which the quarter becomes eligible: the day after
+   * the effective filing deadline.
+   */
+  ownershipEligibleAt?: string;
 }
 
 export interface InstitutionalFlow {
@@ -1766,6 +1802,92 @@ export interface Holder {
    * read it as "1 or unknown" rather than zero.
    */
   cikCount?: number | null;
+  /**
+   * Whether this row's quarter-over-quarter change is backed by a complete comparison.
+   * Only `AVAILABLE` supports a change claim for this holder; the legacy change fields
+   * (`changeType`, `sharesChange`, `sharesChangePct`) can still be present under the other
+   * statuses. Check it per row: a holder can be `AVAILABLE` while the response-level
+   * {@link TickerHolders.comparisonStatus} summary reads incomplete.
+   */
+  comparisonStatus?: HolderComparisonStatus;
+}
+
+/**
+ * Comparison status for quarter-over-quarter share changes, on the holders response and on
+ * each holder row. Only `AVAILABLE` supports a change claim.
+ */
+export type HolderComparisonStatus =
+  | "AVAILABLE"
+  | "PRIOR_QUARTER_UNAVAILABLE"
+  | "INCOMPLETE_INPUT"
+  | "INCOMPLETE_FAMILY_COVERAGE"
+  | "UNAVAILABLE"
+  | (string & {});
+
+/**
+ * How `institutional.getHolders()` chose the quarter it answered.
+ */
+export interface OwnershipSelection {
+  /** `EXPLICIT` when the request named a `reportDate`, `DEFAULT` when the server chose. */
+  mode: "DEFAULT" | "EXPLICIT" | (string & {});
+  /** `settled` once the quarter's filing deadline has passed, `filing` before that. */
+  status: "settled" | "filing" | (string & {});
+  /** Identifier of the quarter-selection rule, e.g. `"v2-sec-deadline-next-day"`. */
+  policyVersion: string;
+  /** The newest eligible quarter across the market (ISO date). */
+  marketDefaultReportDate?: string;
+  /**
+   * True when this response is for an older quarter than `marketDefaultReportDate`. An
+   * explicit `reportDate` is still the quarter you asked for.
+   */
+  isStaleForMarket: boolean;
+}
+
+/**
+ * A newer quarter that is still filing for this ticker, reported beside the selected
+ * quarter rather than mixed into its holder rows.
+ */
+export interface EarlyFilers {
+  /** Quarter end of the filing quarter (ISO date). */
+  reportDate: string;
+  /** Always `filing`. */
+  status: "filing" | (string & {});
+  /** Holder families with a positive position in this ticker so far. */
+  holderCount: number;
+  /** Distinct filers that have reported for the newer quarter, market-wide. */
+  distinctFilerCount: number;
+  /** Distinct filers in the selected settled quarter, market-wide, as a baseline. */
+  baselineFilerCount: number;
+  /**
+   * Share of this ticker's selected-quarter institutional value held by filers confirmed
+   * to have filed for the newer quarter, including filers that have since exited the
+   * ticker, as a percentage. Omitted when filing presence or the baseline value is
+   * unavailable or does not reconcile.
+   */
+  coveragePct?: number;
+}
+
+/**
+ * A well-known institution matched against the selected quarter's full roster. Free keys
+ * receive identifiers only; PRO also receives the position and change fields.
+ */
+export interface NotableHolder {
+  filerCik: string;
+  filerName: string;
+  /** URL slug for `institutional.getInstitutionDetail()`, or null when unmapped. */
+  entitySlug?: string | null;
+  /** PRO only. */
+  shares?: number;
+  /** PRO only. */
+  valueUsd?: number;
+  /** PRO only. */
+  changeType?: "NEW" | "INCREASED" | "DECREASED" | "SOLD_OUT" | "UNCHANGED";
+  /** PRO only. */
+  sharesChange?: number;
+  /** PRO only. Omitted on a `NEW` position, which has no prior-position baseline. */
+  sharesChangePct?: number;
+  /** PRO only. Only `AVAILABLE` supports a quarter-change claim for this holder. */
+  comparisonStatus?: HolderComparisonStatus;
 }
 
 /**
@@ -1793,7 +1915,18 @@ export interface HolderNotableChanges {
 export interface TickerHolders {
   ticker: string;
   companyName: string;
+  /** The quarter actually served (ISO date). */
   reportDate: string;
+  /** How the quarter was chosen, and whether it trails the market's newest eligible one. */
+  selection?: OwnershipSelection;
+  /**
+   * `AVAILABLE` when `earlyFilers` is present, `NONE` when no newer filing quarter is
+   * observed, `UNAVAILABLE` when that supplementary read failed. The selected quarter's
+   * holders are served either way.
+   */
+  earlyFilersStatus?: "AVAILABLE" | "NONE" | "UNAVAILABLE" | (string & {});
+  /** A newer quarter still filing for this ticker. Sent only when `earlyFilersStatus` is `AVAILABLE`. */
+  earlyFilers?: EarlyFilers;
   totalInstitutionalShares: number;
   totalInstitutionalValue: number;
   /** Every institutional holder of this ticker for the quarter, ignoring any paging. */
@@ -1815,6 +1948,26 @@ export interface TickerHolders {
    * passed `limit`, since it exists to spare a paging caller a full scan.
    */
   notableChanges?: HolderNotableChanges;
+  /**
+   * Well-known institutions holding a positive position, matched against the selected
+   * quarter's full roster rather than the returned page. Free keys get up to five names
+   * and identifiers; it does not expand the `holders` preview. Omitted when the
+   * full-roster lookup is unavailable; an empty array means a verified search found none.
+   */
+  notableHolders?: NotableHolder[];
+  /** `full_roster` when `notableHolders` was checked against the quarter's full roster. */
+  notableHoldersScope?: "full_roster" | (string & {});
+  /**
+   * The immediately preceding calendar quarter targeted for share-change comparisons (ISO
+   * date). Can be present while `comparisonStatus` reads unavailable or incomplete.
+   */
+  comparisonReportDate?: string;
+  /**
+   * Conservative summary across the whole response. A holder can still carry valid
+   * changes while this reads incomplete, so check each row's
+   * {@link Holder.comparisonStatus}.
+   */
+  comparisonStatus?: HolderComparisonStatus;
 }
 
 /**

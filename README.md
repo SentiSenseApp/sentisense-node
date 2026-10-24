@@ -304,8 +304,22 @@ for (const update of detail.timeline) {
 client.institutional.getQuarters()
 client.institutional.getFlows("2025-02-14", { limit: 20 })
 client.institutional.getHolders("AAPL", "2025-02-14")
+client.institutional.getHolders("AAPL")  // no date: the ticker's latest settled quarter
 client.institutional.getActivists("2025-02-14")
 ```
+
+**Pick a filed quarter by its flag.** `getQuarters()` is newest first, and its first entry is usually still filing. Each `Quarter` carries `pending`, `ownershipEligible` and `ownershipEligibleAt`, so select on the flag rather than by position:
+
+```typescript
+const quarters = await client.institutional.getQuarters();
+const latest = quarters.find((q) => !q.pending)?.reportDate;
+if (latest) {
+  const holders = await client.institutional.getHolders("AAPL", latest, { limit: 25 });
+  console.log(holders.data.selection?.status, holders.data.earlyFilers?.reportDate);
+}
+```
+
+The holders payload also says how its quarter was chosen (`selection`), reports a newer still-filing quarter separately (`earlyFilersStatus`, `earlyFilers`), lists well-known institutions matched against the full roster (`notableHolders`), and summarizes the quarter-over-quarter comparison (`comparisonReportDate`, `comparisonStatus`). Each holder row carries its own `comparisonStatus`; only `AVAILABLE` on that row supports its change figures.
 
 `positionsHeld` on an institution detail counts the full portfolio's held positions:
 `max(0, holdingsCount - soldOutPositions)`, even when the holdings list is truncated.

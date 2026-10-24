@@ -15,7 +15,13 @@ import type {
 export class Institutional {
   constructor(private client: APIClient) {}
 
-  /** Get available 13F reporting quarters. */
+  /**
+   * Get available 13F reporting quarters, newest first.
+   *
+   * The first entry is usually the quarter that is still filing, so pick by the flag rather
+   * than by position: `quarters.find((q) => !q.pending)?.reportDate`. Each row also carries
+   * `ownershipEligible` and `ownershipEligibleAt`.
+   */
   async getQuarters(): Promise<Quarter[]> {
     return this.client.get("/api/v1/institutional/quarters");
   }
@@ -43,6 +49,11 @@ export class Institutional {
   /**
    * Get institutional holders for a specific stock.
    *
+   * `reportDate` is optional: omit it (or pass `undefined` ahead of `options`) and the
+   * request carries no date, so the server serves this ticker's latest settled quarter,
+   * echoes it in `data.reportDate` with `data.selection.mode` set to `DEFAULT`, and reports
+   * any newer still-filing quarter separately in `data.earlyFilers`.
+   *
    * Returns the preview envelope wrapping a {@link TickerHolders} object, so the rows
    * are two levels down: `(await getHolders(t, d)).data.holders`, alongside ticker-level
    * totals like `holderCount`. Free callers get a truncated `holders` array with
@@ -56,10 +67,17 @@ export class Institutional {
    * `returnedCount`, `offset`, and a `notableChanges` summary, so you can walk the list
    * without re-counting it. Without it, `offset` / `sortBy` / `sortDir` are ignored by the
    * server and you get the full unsorted list back with a 200.
+   *
+   * The payload also says how its quarter was chosen (`selection`), reports a newer
+   * still-filing quarter separately (`earlyFilersStatus`, `earlyFilers`), lists well-known
+   * institutions matched against the full roster (`notableHolders`), and summarizes the
+   * quarter-over-quarter comparison (`comparisonReportDate`, `comparisonStatus`). Each
+   * holder row has its own `comparisonStatus`; only `AVAILABLE` on that row supports its
+   * change figures.
    */
   async getHolders(
     ticker: string,
-    reportDate: string,
+    reportDate?: string,
     options?: GetHoldersOptions,
   ): Promise<PreviewResponse<TickerHolders>> {
     return this.client.get(

@@ -422,6 +422,38 @@ describe("stocks.getOptionsSummary", () => {
     expect(result.data?.context?.ivRank1y).toBe(62.1);
     expect(result.data?.oiWalls?.callWalls?.[0].strike).toBe(200);
     expect(result.data?.unusual?.[0].type).toBe("call");
+    // Snapshots built before the open-interest totals existed omit them.
+    expect(result.data?.oiWalls?.totalCallOi).toBeUndefined();
+    expect(result.data?.oiWalls?.maxPainCallOi).toBeUndefined();
+  });
+
+  it("types the open-interest totals and the max pain strike's open interest", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: {
+          asOf: "2026-10-22",
+          oiWalls: {
+            expiry: "2026-10-23",
+            maxPain: 660,
+            callWalls: [{ strike: 900, oi: 15200 }],
+            putWalls: [{ strike: 550, oi: 12100 }],
+            totalCallOi: 412000,
+            totalPutOi: 298000,
+            maxPainCallOi: 0,
+            maxPainPutOi: 17500,
+          },
+        },
+      }),
+    );
+    const result = await client.stocks.getOptionsSummary("META");
+    const walls = result.data?.oiWalls;
+    expect(walls?.totalCallOi).toBe(412000);
+    expect(walls?.totalPutOi).toBe(298000);
+    // 0 means no calls are open at the max pain strike, not a missing reading.
+    expect(walls?.maxPainCallOi).toBe(0);
+    expect(walls?.maxPainPutOi).toBe(17500);
   });
 
   it("leaves omitted readings undefined rather than zero", async () => {

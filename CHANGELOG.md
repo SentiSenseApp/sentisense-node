@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.67.0
+
+### Added
+
+- `Quarter` types `ownershipEligible` and `ownershipEligibleAt` (the New York calendar day
+  after the effective SEC filing deadline), next to `pending`. The `pending` description now
+  says it stays true through the effective deadline day, rolled past weekends and federal
+  holidays.
+- `TickerHolders`, the payload of `institutional.getHolders`, types the fields the API already
+  returns: `selection` (how the quarter was chosen), `earlyFilersStatus` and `earlyFilers` (a
+  newer still-filing quarter, reported beside the roster rather than inside it),
+  `notableHolders` and `notableHoldersScope`, `comparisonReportDate` and a summary
+  `comparisonStatus`. `Holder` types its own per-row `comparisonStatus`. New exported types:
+  `OwnershipSelection`, `EarlyFilers`, `NotableHolder` and `HolderComparisonStatus`.
+- `institutional.getHolders(ticker, reportDate?, options?)` takes `reportDate` as optional.
+  Omit it, or pass `undefined` ahead of `options`, and the request carries no date, so the
+  server serves the ticker's latest settled quarter (echoed in `data.reportDate`, with
+  `data.selection.mode` set to `DEFAULT`) and reports any newer still-filing quarter in
+  `data.earlyFilers`. Existing calls with a date behave as before.
+- `OptionsOiWalls` types `totalCallOi` and `totalPutOi` (each side's open interest summed
+  across every strike of the expiry) and, when present, `maxPainCallOi` and `maxPainPutOi`
+  (the open interest at the `maxPain` strike, even when that strike is not a wall, `0` when
+  a side has none there). All four are omitted on snapshots built before they existed.
+
 ## 0.66.0
 
 ### Added

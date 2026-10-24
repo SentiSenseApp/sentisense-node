@@ -27,6 +27,39 @@ describe("institutional.getQuarters", () => {
     const result = await client.institutional.getQuarters();
     expect(result).toEqual(quarters);
   });
+
+  /**
+   * Rows shaped like a live response: newest first, with the still-filing quarter on top.
+   * Selecting on the flag must land on the first settled quarter, and every field below is
+   * native typed access, so dropping one from `Quarter` stops `npm run typecheck`.
+   */
+  it("types the filing flags so a caller can skip the still-filing quarter", async () => {
+    const quarters = [
+      {
+        value: "2026Q3",
+        label: "Q3 2026",
+        reportDate: "2026-09-30",
+        ownershipEligible: false,
+        ownershipEligibleAt: "2026-11-17",
+        pending: true,
+      },
+      {
+        value: "2026Q2",
+        label: "Q2 2026",
+        reportDate: "2026-06-30",
+        ownershipEligible: true,
+        ownershipEligibleAt: "2026-08-15",
+        pending: false,
+      },
+    ];
+    mockFetch.mockResolvedValueOnce(jsonResponse(quarters));
+    const result = await client.institutional.getQuarters();
+
+    expect(result.find((q) => !q.pending)?.reportDate).toBe("2026-06-30");
+    expect(result[0].ownershipEligible).toBe(false);
+    expect(result[0].ownershipEligibleAt).toBe("2026-11-17");
+    expect(result[1].ownershipEligible).toBe(true);
+  });
 });
 
 /**
@@ -217,6 +250,115 @@ describe("institutional.getHolders", () => {
     expect(result.data.holders[1].entitySlug).toBeNull();
     // cikCount is null for a single-CIK filer, which is the common case.
     expect(result.data.holders[0].cikCount).toBeNull();
+  });
+
+  /**
+   * Trimmed from a live PRO response. The assertions are typed access to the quarter
+   * selection, early-filer, notable-holder and comparison fields, so if `TickerHolders`,
+   * `Holder` or the new interfaces lose one of them, this file stops compiling.
+   */
+  it("types the quarter selection, early filers, notable holders and comparison status", async () => {
+    const payload = {
+      ticker: "AAPL",
+      companyName: "APPLE INC",
+      reportDate: "2026-06-30",
+      totalInstitutionalShares: 9_589_945_388,
+      totalInstitutionalValue: 2_770_162_520_601,
+      holderCount: 6089,
+      selection: {
+        mode: "DEFAULT",
+        status: "settled",
+        policyVersion: "v2-sec-deadline-next-day",
+        marketDefaultReportDate: "2026-06-30",
+        isStaleForMarket: false,
+      },
+      earlyFilers: {
+        reportDate: "2026-09-30",
+        status: "filing",
+        holderCount: 1959,
+        distinctFilerCount: 2268,
+        baselineFilerCount: 8848,
+        coveragePct: 2.81,
+      },
+      earlyFilersStatus: "AVAILABLE",
+      notableHolders: [
+        {
+          filerCik: "0001067983",
+          filerName: "Berkshire Hathaway",
+          entitySlug: "Berkshire-Hathaway",
+          shares: 227_917_808,
+          valueUsd: 65_950_296_923,
+          changeType: "UNCHANGED",
+          sharesChange: 0,
+          sharesChangePct: 0.0,
+          comparisonStatus: "AVAILABLE",
+        },
+      ],
+      notableHoldersScope: "full_roster",
+      comparisonStatus: "INCOMPLETE_FAMILY_COVERAGE",
+      comparisonReportDate: "2026-03-31",
+      holders: [
+        {
+          filerCik: "0000102909",
+          filerName: "Vanguard",
+          filerCategory: "INDEX_FUND",
+          shares: 1_446_662_392,
+          valueUsd: 418_606_229_916,
+          changeType: "INCREASED",
+          sharesChange: 10_212_651,
+          sharesChangePct: 0.71,
+          comparisonStatus: "AVAILABLE",
+          entitySlug: "Vanguard",
+          cikCount: 10,
+        },
+      ],
+      returnedCount: 1,
+      offset: 0,
+    };
+    mockFetch.mockResolvedValueOnce(envelope(payload));
+    const result = await client.institutional.getHolders("AAPL", "2026-06-30", { limit: 1 });
+
+    expect(result.data.selection?.status).toBe("settled");
+    expect(result.data.selection?.isStaleForMarket).toBe(false);
+    expect(result.data.selection?.marketDefaultReportDate).toBe("2026-06-30");
+    expect(result.data.earlyFilersStatus).toBe("AVAILABLE");
+    // The newer filing quarter is reported beside the settled roster, not inside it.
+    expect(result.data.earlyFilers?.reportDate).toBe("2026-09-30");
+    expect(result.data.earlyFilers?.coveragePct).toBe(2.81);
+    expect(result.data.notableHoldersScope).toBe("full_roster");
+    expect(result.data.notableHolders?.[0].filerName).toBe("Berkshire Hathaway");
+    expect(result.data.notableHolders?.[0].comparisonStatus).toBe("AVAILABLE");
+    expect(result.data.comparisonReportDate).toBe("2026-03-31");
+    // The summary can read incomplete while a row's own comparison is complete.
+    expect(result.data.comparisonStatus).toBe("INCOMPLETE_FAMILY_COVERAGE");
+    expect(result.data.holders[0].comparisonStatus).toBe("AVAILABLE");
+  });
+
+  it("leaves the selection and early-filer fields undefined on an older response", async () => {
+    const payload = { ticker: "GME", holderCount: 352, holders: [] };
+    mockFetch.mockResolvedValueOnce(envelope(payload));
+    const result = await client.institutional.getHolders("GME", "2025-12-31");
+
+    expect(result.data.selection).toBeUndefined();
+    expect(result.data.earlyFilers).toBeUndefined();
+    expect(result.data.notableHolders).toBeUndefined();
+    expect(result.data.comparisonStatus).toBeUndefined();
+  });
+
+  it("omits reportDate when it is not passed, so the server picks the settled quarter", async () => {
+    mockFetch.mockResolvedValueOnce(envelope({ ticker: "AAPL", holderCount: 0, holders: [] }));
+    await client.institutional.getHolders("AAPL");
+    const url = new URL(mockFetch.mock.calls[0][0] as string);
+    expect(url.pathname).toBe("/api/v1/institutional/holders/AAPL");
+    expect(url.searchParams.has("reportDate")).toBe(false);
+  });
+
+  it("omits reportDate but keeps the paging options when the date is undefined", async () => {
+    mockFetch.mockResolvedValueOnce(envelope({ ticker: "AAPL", holderCount: 0, holders: [] }));
+    await client.institutional.getHolders("AAPL", undefined, { limit: 25 });
+    const url = new URL(mockFetch.mock.calls[0][0] as string);
+    expect(url.searchParams.has("reportDate")).toBe(false);
+    expect(url.searchParams.get("limit")).toBe("25");
   });
 
   it("leaves the paging fields undefined on an unpaged response", async () => {
