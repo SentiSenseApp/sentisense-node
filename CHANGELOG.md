@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- The client reads the `SENTISENSE_API_KEY` environment variable when `apiKey` is omitted or
+  empty. An explicit key always wins, runtimes without `process` are unaffected, and `apiKey: null`
+  sends no key. A 401 or 403 on a request sent without a key now names the variable and
+  the get-api-key URL.
+
 ## 0.67.0
 
 ### Added

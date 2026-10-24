@@ -11,9 +11,12 @@ const mockFetch = vi.fn();
 
 beforeEach(() => {
   vi.stubGlobal("fetch", mockFetch);
+  vi.stubEnv("SENTISENSE_API_KEY", "");
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -474,5 +477,66 @@ describe("two kinds of 429", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("API key from the environment", () => {
+  async function sentKey(client: SentiSense): Promise<string | undefined> {
+    mockFetch.mockResolvedValueOnce(jsonResponse(["AAPL"]));
+    await client.stocks.list();
+    const [, init] = mockFetch.mock.calls[mockFetch.mock.calls.length - 1];
+    return init.headers["X-SentiSense-API-Key"];
+  }
+
+  it("uses SENTISENSE_API_KEY when apiKey is omitted", async () => {
+    vi.stubEnv("SENTISENSE_API_KEY", "ssk_from_env");
+    expect(await sentKey(new SentiSense())).toBe("ssk_from_env");
+  });
+
+  it("prefers an explicit apiKey over the environment", async () => {
+    vi.stubEnv("SENTISENSE_API_KEY", "ssk_from_env");
+    expect(await sentKey(new SentiSense({ apiKey: "ssk_explicit" }))).toBe("ssk_explicit");
+  });
+
+  it("treats an empty apiKey as omitted", async () => {
+    vi.stubEnv("SENTISENSE_API_KEY", "ssk_from_env");
+    expect(await sentKey(new SentiSense({ apiKey: "" }))).toBe("ssk_from_env");
+  });
+
+  it("sends no key for apiKey: null even when the environment has one", async () => {
+    vi.stubEnv("SENTISENSE_API_KEY", "ssk_from_env");
+    expect(await sentKey(new SentiSense({ apiKey: null }))).toBeUndefined();
+  });
+
+  it("constructs without a key and names the variable and URL on a 401", async () => {
+    const client = new SentiSense({ maxRetries: 0 });
+    mockFetch.mockResolvedValueOnce(errorResponse(401, { message: "Unauthorized" }));
+    const err = await client.stocks.list().catch((e) => e);
+    expect(err).toBeInstanceOf(AuthenticationError);
+    expect(err.message).toContain("SENTISENSE_API_KEY");
+    expect(err.message).toContain("https://app.sentisense.ai/get-api-key");
+  });
+
+  it("leaves the 401 message alone when a key was sent", async () => {
+    const client = new SentiSense({ apiKey: "bad", maxRetries: 0 });
+    mockFetch.mockResolvedValueOnce(errorResponse(401, { message: "Unauthorized" }));
+    const err = await client.stocks.list().catch((e) => e);
+    expect(err.message).toBe("Unauthorized");
+  });
+
+  it("does not crash when process is undefined", async () => {
+    vi.stubEnv("SENTISENSE_API_KEY", "ssk_from_env");
+    const realProcess = globalThis.process;
+    vi.stubGlobal("process", undefined);
+    let client: SentiSense;
+    try {
+      client = new SentiSense();
+    } finally {
+      vi.stubGlobal("process", realProcess);
+    }
+    mockFetch.mockResolvedValueOnce(jsonResponse(["AAPL"]));
+    await client.stocks.list();
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.headers["X-SentiSense-API-Key"]).toBeUndefined();
   });
 });

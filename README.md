@@ -34,7 +34,7 @@ npm install sentisense
 ```typescript
 import SentiSense from "sentisense";
 
-const client = new SentiSense({ apiKey: process.env.SENTISENSE_API_KEY });
+const client = new SentiSense(); // reads SENTISENSE_API_KEY, or pass { apiKey }
 
 const price = await client.stocks.getPrice("AAPL");
 console.log(price.currentPrice);
@@ -166,7 +166,7 @@ const client = new SentiSense({
 
 | Option | Default | What it does |
 |--------|---------|--------------|
-| `apiKey` | none | Sent as `X-SentiSense-API-Key`. Required by every endpoint. |
+| `apiKey` | `SENTISENSE_API_KEY` env var | Sent as `X-SentiSense-API-Key`. Required by every endpoint. An explicit value wins over the environment. |
 | `baseUrl` | `https://app.sentisense.ai` | Override for a non-production host. |
 | `timeout` | `30000` | Per-request timeout in milliseconds. |
 | `maxRetries` | `3` | Retries the per-minute 429 and 5xx, honouring `Retry-After`. The monthly-allowance 429 is never retried. Set `0` to fail fast. |

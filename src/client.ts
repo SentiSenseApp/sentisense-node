@@ -101,6 +101,29 @@ export interface APIClient {
   post<T = unknown>(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<T>;
 }
 
+const MISSING_KEY_HINT =
+  "(No API key was sent. Set the SENTISENSE_API_KEY environment variable or pass apiKey; " +
+  "get a free key at https://app.sentisense.ai/get-api-key)";
+
+/**
+ * An explicit non-empty key wins. `null` means "send no key" and skips the environment.
+ * Otherwise fall back to SENTISENSE_API_KEY where a process environment exists; browser and
+ * edge runtimes without `process` simply get no key.
+ */
+function resolveApiKey(explicit: string | null | undefined): string | undefined {
+  if (explicit === null) return undefined;
+  if (explicit) return explicit;
+  try {
+    if (typeof process !== "undefined" && process.env) {
+      const fromEnv = process.env.SENTISENSE_API_KEY?.trim();
+      if (fromEnv) return fromEnv;
+    }
+  } catch {
+    // Some sandboxed runtimes throw on env access; treat as no key.
+  }
+  return undefined;
+}
+
 export class SentiSense implements APIClient {
   private baseUrl: string;
   private apiKey: string | undefined;
@@ -128,7 +151,7 @@ export class SentiSense implements APIClient {
   readonly options: Options;
 
   constructor(options: SentiSenseOptions = {}) {
-    this.apiKey = options.apiKey;
+    this.apiKey = resolveApiKey(options.apiKey);
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
@@ -341,7 +364,11 @@ export class SentiSense implements APIClient {
     switch (response.status) {
       case 401:
       case 403:
-        throw new AuthenticationError(message, response.status, code);
+        throw new AuthenticationError(
+          this.apiKey ? message : `${message} ${MISSING_KEY_HINT}`,
+          response.status,
+          code,
+        );
       case 404:
         throw new NotFoundError(message, code);
       case 429: {

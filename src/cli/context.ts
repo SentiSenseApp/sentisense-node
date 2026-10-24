@@ -143,7 +143,8 @@ export interface ClientOptions {
 export function createClient(context: ResolvedContext, options: ClientOptions = {}): SentiSense {
   if (!options.anonymous && !context.apiKey) throw new MissingKeyError();
   return new SentiSense({
-    apiKey: options.anonymous ? undefined : context.apiKey,
+    // null, not undefined: an anonymous probe must not pick up SENTISENSE_API_KEY from the library fallback.
+    apiKey: options.anonymous ? null : context.apiKey,
     baseUrl: context.baseUrl,
     maxRetries: 0,
     userAgentSuffix: userAgentSuffix(context),

@@ -1,7 +1,11 @@
 // ── Client options ──────────────────────────────────────────
 
 export interface SentiSenseOptions {
-  apiKey?: string;
+  /**
+   * Sent as `X-SentiSense-API-Key`. When omitted or empty, the `SENTISENSE_API_KEY`
+   * environment variable is used where a process environment exists. Pass `null` to send no key.
+   */
+  apiKey?: string | null;
   baseUrl?: string;
   timeout?: number;
   maxRetries?: number;
