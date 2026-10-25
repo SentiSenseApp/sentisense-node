@@ -1,8 +1,10 @@
 import type { APIClient } from "../client.js";
 import type {
   GetFlowsOptions,
+  GetHoldersHistoryOptions,
   GetHoldersOptions,
   Holder,
+  HoldersHistory,
   InstitutionList,
   InstitutionListResponse,
   InstitutionalFlows,
@@ -83,6 +85,38 @@ export class Institutional {
     return this.client.get(
       `/api/v1/institutional/holders/${encodeURIComponent(ticker)}`,
       { reportDate, ...options },
+    );
+  }
+
+  /**
+   * Get a stock's institutional ownership quarter by quarter, newest first.
+   *
+   * Returns the preview envelope wrapping a {@link HoldersHistory} object, so the rows are
+   * two levels down: `(await getHoldersHistory(t)).data.quarters`. Each row carries the
+   * holder count, the share of the class institutions held (`institutionalOwnershipPct`),
+   * and the quarter's net shares bought or sold, dollar flow and position counts.
+   *
+   * The newest quarter can still be filing (`status: "filing"`), in which case its figures
+   * cover only the institutions that have filed so far. Quarters in which the security had
+   * no holdings are omitted.
+   *
+   * Free keys receive the newest four quarters with `isPreview: true` and `totalCount`
+   * holding the number of quarters in the full window. PRO receives the whole window
+   * without `totalCount`.
+   *
+   * Share classes are answered separately (`GOOG` and `GOOGL`, `BRK.A` and `BRK.B`).
+   *
+   * @example
+   * const { data } = await client.institutional.getHoldersHistory("AAPL", { quarters: 8 });
+   * for (const q of data.quarters) console.log(q.label, q.status, q.institutionalOwnershipPct);
+   */
+  async getHoldersHistory(
+    ticker: string,
+    options?: GetHoldersHistoryOptions,
+  ): Promise<PreviewResponse<HoldersHistory>> {
+    return this.client.get(
+      `/api/v1/institutional/holders/${encodeURIComponent(ticker)}/history`,
+      { ...options },
     );
   }
 

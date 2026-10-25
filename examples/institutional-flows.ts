@@ -32,3 +32,12 @@ console.log(
 // Activist positions come back as a plain array inside the envelope.
 const activists = await client.institutional.getActivists(latestQuarter.reportDate);
 console.log(`\n${activists.data.length} activist positions this quarter`);
+
+// Ownership history: one row per quarter, newest first. The newest row can still be
+// filing, so read `status` before treating it as a full quarter.
+const history = await client.institutional.getHoldersHistory("AAPL", { quarters: 8 });
+console.log("\n--- AAPL institutional ownership by quarter ---");
+for (const q of history.data.quarters) {
+  const pct = q.institutionalOwnershipPct === undefined ? "n/a" : `${q.institutionalOwnershipPct}%`;
+  console.log(`${q.label} (${q.status}): ${q.holderCount} holders, ${pct} of shares, net ${q.netSharesChange.toLocaleString()}`);
+}

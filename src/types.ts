@@ -2034,6 +2034,99 @@ export interface GetHoldersOptions {
   sortDir?: "asc" | "desc";
 }
 
+/** Options for `institutional.getHoldersHistory`. */
+export interface GetHoldersHistoryOptions {
+  /**
+   * How many of the newest quarters to cover. Server default is 12; values above 20 are
+   * capped server-side, and values below 1 are rejected with a 400.
+   */
+  quarters?: number;
+}
+
+/**
+ * One quarter of a stock's 13F ownership history.
+ *
+ * `holderCount` and the share and value totals roll multi-filer managers up into one holder
+ * the same way `institutional.getHolders()` does, so a settled quarter here agrees with that
+ * quarter's holders response. The flow fields repeat the `institutional.getFlows()`
+ * arithmetic for this one ticker.
+ *
+ * A quarter with `status` `"filing"` holds only the institutions that have filed so far, so
+ * its counts and totals are partial.
+ */
+export interface HoldersHistoryQuarter {
+  /** Quarter end, ISO date (`YYYY-MM-DD`). */
+  reportDate: string;
+  /** Quarter id in `YYYYQN` form, e.g. `"2026Q2"`. */
+  value: string;
+  /** Display label, e.g. `"Q2 2026"`. */
+  label: string;
+  /** `settled` once the quarter's filing deadline has passed, `filing` before. */
+  status: "settled" | "filing" | (string & {});
+  /** True while `status` is `filing`; same rule as {@link Quarter.pending}. */
+  pending: boolean;
+  /** Institutional holders, with multi-filer managers counted once. */
+  holderCount: number;
+  /** Shares held by all reporting institutions. */
+  totalInstitutionalShares: number;
+  /** Reported value of those shares, in US dollars. */
+  totalInstitutionalValue: number;
+  /**
+   * The share class's shares outstanding as last filed on the day the quarter settles
+   * (today, while it is still filing). Absent for ADRs and other unsupported security
+   * types, when no dated per-class count exists, or when institutions report more than
+   * 150% of it, which signals a unit mismatch.
+   */
+  sharesOutstanding?: number;
+  /**
+   * `totalInstitutionalShares` as a percent of `sharesOutstanding` (`84.94` means 84.94%).
+   * Can pass 100 because lent shares are reported by both lender and buyer. Absent
+   * whenever `sharesOutstanding` is.
+   */
+  institutionalOwnershipPct?: number;
+  /** Shares bought minus shares sold over the quarter, summed across filers. */
+  netSharesChange: number;
+  /** Sum of share increases across filers that added or opened a position. */
+  totalSharesBought: number;
+  /**
+   * Sum of share decreases across filers that trimmed or reported a zero position, as a
+   * positive number.
+   */
+  totalSharesSold: number;
+  /** Filer positions opened this quarter. */
+  newPositions: number;
+  /** Filer positions added to. */
+  increasedPositions: number;
+  /** Filer positions trimmed. */
+  decreasedPositions: number;
+  /**
+   * Filers that reported this position at zero shares. A filer that leaves the position out
+   * of its filing entirely is not counted here.
+   */
+  soldOutPositions: number;
+  /** The quarter's average closing price, in US dollars. Absent when the quarter is unpriced. */
+  avgClosePrice?: number;
+  /**
+   * `netSharesChange * avgClosePrice`, in US dollars. Absent when `avgClosePrice` is,
+   * never a stand-in zero.
+   */
+  dollarFlowUsd?: number;
+}
+
+/**
+ * A stock's 13F ownership by quarter, newest first: the `data` payload of
+ * `institutional.getHoldersHistory()`, which returns `PreviewResponse<HoldersHistory>`.
+ *
+ * Quarters with no holdings for the security, such as those before it listed, are omitted,
+ * so `quarters` can be shorter than the window you asked for and is empty for a ticker with
+ * no 13F coverage.
+ */
+export interface HoldersHistory {
+  /** The security answered for, in SentiSense's spelling (`BRK.B`, `GOOG`). */
+  ticker: string;
+  quarters: HoldersHistoryQuarter[];
+}
+
 /**
  * Optional wire keys inside an institution detail's preview envelope.
  * Opt in with PreviewResponse<InstitutionDetail>; getInstitutionDetail retains

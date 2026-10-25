@@ -192,7 +192,7 @@ Affected: every method whose declared return type is `PreviewResponse<T>`. A tes
 | `etfs` | `analystAggregate` `insiderAggregate` `sentimentAggregate` |
 | `insider` | `getActivity` `getTrades` `getClusterBuys` |
 | `insights` | `stock` `stockRange` `market` `latest` `user` |
-| `institutional` | `getFlows` `getHolders` `getActivists` |
+| `institutional` | `getFlows` `getHolders` `getHoldersHistory` `getActivists` |
 | `options` | `getOverview` |
 | `politicians` | `getActivity` `getFilings` `getMembers` `getMember` |
 | `stocks` | `getSentiment` `getKpis` `getOptionsSummary` `getOptionsHistory` `getOptionsIntradayHistory` |
@@ -305,6 +305,7 @@ client.institutional.getQuarters()
 client.institutional.getFlows("2025-02-14", { limit: 20 })
 client.institutional.getHolders("AAPL", "2025-02-14")
 client.institutional.getHolders("AAPL")  // no date: the ticker's latest settled quarter
+client.institutional.getHoldersHistory("AAPL", { quarters: 8 })
 client.institutional.getActivists("2025-02-14")
 ```
 
@@ -320,6 +321,19 @@ if (latest) {
 ```
 
 The holders payload also says how its quarter was chosen (`selection`), reports a newer still-filing quarter separately (`earlyFilersStatus`, `earlyFilers`), lists well-known institutions matched against the full roster (`notableHolders`), and summarizes the quarter-over-quarter comparison (`comparisonReportDate`, `comparisonStatus`). Each holder row carries its own `comparisonStatus`; only `AVAILABLE` on that row supports its change figures.
+
+**Ownership history.** `getHoldersHistory()` returns one row per quarter for a stock, newest
+first, covering the 12 newest quarters by default (`quarters` up to 20). Free keys see the
+newest four. The newest row can still be filing (`status: "filing"`), in which case it covers
+only the institutions that have filed so far. `sharesOutstanding`, `institutionalOwnershipPct`,
+`avgClosePrice` and `dollarFlowUsd` are absent when they cannot be computed, never zero:
+
+```typescript
+const { data } = await client.institutional.getHoldersHistory("AAPL", { quarters: 8 });
+for (const q of data.quarters) {
+  console.log(q.label, q.status, q.holderCount, q.institutionalOwnershipPct, q.netSharesChange);
+}
+```
 
 `positionsHeld` on an institution detail counts the full portfolio's held positions:
 `max(0, holdingsCount - soldOutPositions)`, even when the holdings list is truncated.
