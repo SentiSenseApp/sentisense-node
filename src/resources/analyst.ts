@@ -178,6 +178,12 @@ export interface AnalystEarningsSurprise {
 }
 
 export interface AnalystEstimatesResponse {
+  /**
+   * The listing the per-share figures are quoted for. Estimates are stored under a
+   * company's primary share class, so `BRK-A` answers `"BRK.B"` and `GOOG` answers
+   * `"GOOGL"`. Absent on older responses.
+   */
+  ticker?: string;
   estimates: AnalystEstimate[];
   surprises: AnalystEarningsSurprise[];
 }

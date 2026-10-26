@@ -144,6 +144,17 @@ export interface StockSocialDominance {
 }
 
 /**
+ * One separately listed share class of a company, as carried in `shareClasses`
+ * on {@link StockProfile} and on the primary class's {@link StockDetail} row.
+ */
+export interface ShareClass {
+  /** The class's ticker, e.g. `"BRK.A"`. */
+  ticker: string;
+  /** `true` for the company's primary class, which is always listed first. */
+  primary: boolean;
+}
+
+/**
  * Stock with company name and entity metadata.
  *
  * The API names the company in two fields: `simpleName` is the short display name
@@ -165,6 +176,12 @@ export interface StockDetail {
   /** Brand hex colour. Null for roughly two thirds of the universe. */
   brandColor?: string | null;
   socialDominance?: StockSocialDominance | null;
+  /**
+   * Present only on the row of a company whose separately listed classes are tracked
+   * as one company: every class, primary first (the `GOOGL` row lists `GOOGL` then
+   * `GOOG`). Those other classes have no row of their own. Absent on every other row.
+   */
+  shareClasses?: ShareClass[];
 }
 
 export interface SimilarStock {
@@ -205,6 +222,12 @@ export interface StockProfile {
    * assigned, and for ordinary stocks.
    */
   imageUrl?: string | null;
+  /**
+   * Every separately listed class of a multi-class company, primary first: `GOOGL`
+   * then `GOOG`, `BRK.B` then `BRK.A`, `ZG` then `Z`. The same whichever class you
+   * request. Absent for a single-class company and for ETFs.
+   */
+  shareClasses?: ShareClass[];
   [key: string]: unknown;
 }
 
@@ -2769,6 +2792,19 @@ export interface RankedEarnings {
   rankingVersion: string;
   reported: RankedEarningsSection<RankedReportedEarnings>;
   upcoming: RankedEarningsSection<RankedUpcomingEarnings>;
+}
+
+/**
+ * The response of `earnings.getSummaries()`: the usual {@link PreviewResponse}
+ * envelope over a quarter array, plus the envelope `ticker`.
+ */
+export interface EarningsSummariesResponse extends PreviewResponse<EarningsQuarter[]> {
+  /**
+   * The listing the quarters' per-share figures (such as EPS highlights) are quoted
+   * for. Summaries are stored under a company's primary share class, so `BRK-A`
+   * answers `"BRK.B"` and `GOOG` answers `"GOOGL"`. Absent on older responses.
+   */
+  ticker?: string;
 }
 
 export interface GetEarningsSummariesOptions {

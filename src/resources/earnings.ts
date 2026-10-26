@@ -2,7 +2,7 @@ import type { APIClient } from "../client.js";
 import type {
   EarningsReactionsResponse,
   EarningsStatistics,
-  EarningsQuarter,
+  EarningsSummariesResponse,
   GetEarningsStatisticsOptions,
   GetEarningsSummariesOptions,
   GetRankedEarningsOptions,
@@ -49,12 +49,15 @@ export class Earnings {
    * assuming a fixed lag. A ticker with no stored quarter answers with an empty
    * `data` array, not a 404.
    *
+   * The envelope `ticker` names the listing the per-share figures are quoted
+   * for: `"BRK.B"` for `BRK-A`, `"GOOGL"` for `GOOG`.
+   *
    * Use canonical ticker symbols: `GOOGL` (not `GOOG`), `BRK.B` (not `BRK-B`).
    */
   async getSummaries(
     ticker: string,
     options?: GetEarningsSummariesOptions,
-  ): Promise<PreviewResponse<EarningsQuarter[]>> {
+  ): Promise<EarningsSummariesResponse> {
     return this.client.get(
       `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/earnings-summaries`,
       options,

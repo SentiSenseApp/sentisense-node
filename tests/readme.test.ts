@@ -29,13 +29,27 @@ function namespaceByClass(): Map<string, string> {
 }
 
 /**
- * Every public method whose declared return type is `Promise<PreviewResponse<...>>`, as
- * `namespace.method`. Signatures wrap across lines, so each candidate accumulates until the
- * line that opens the body.
+ * Named envelope types: interfaces in `src/types.ts` that extend `PreviewResponse<...>` to
+ * add envelope fields, such as `EarningsSummariesResponse`. A method returning one of these
+ * still returns the preview envelope.
+ */
+function envelopeSubtypeNames(): string[] {
+  const source = readFileSync(fileURLToPath(new URL("src/types.ts", repoRoot)), "utf8");
+  return [...source.matchAll(/^export interface ([A-Za-z_$][\w$]*)(?:<[^>]*>)?\s+extends\s+PreviewResponse</gm)]
+    .map((match) => match[1]);
+}
+
+/**
+ * Every public method whose declared return type is `Promise<PreviewResponse<...>>`, or a
+ * named subtype of it, as `namespace.method`. Signatures wrap across lines, so each
+ * candidate accumulates until the line that opens the body.
  */
 function envelopeMethodsFromSource(): string[] {
   const namespaces = namespaceByClass();
   const found: string[] = [];
+  const envelopeReturn = new RegExp(
+    `Promise<\\s*(?:PreviewResponse<${envelopeSubtypeNames().map((name) => `|${name}\\b`).join("")})`,
+  );
 
   for (const file of readdirSync(resourcesDir).filter((name) => name.endsWith(".ts")).sort()) {
     const lines = readFileSync(`${resourcesDir}${file}`, "utf8").split("\n");
@@ -56,7 +70,7 @@ function envelopeMethodsFromSource(): string[] {
       for (let j = i + 1; j < lines.length && j < i + 20 && !/\{\s*$/.test(signature); j++) {
         signature += `\n${lines[j]}`;
       }
-      if (!/Promise<\s*PreviewResponse</.test(signature)) continue;
+      if (!envelopeReturn.test(signature)) continue;
 
       found.push(`${namespaces.get(className) ?? className}.${methodMatch[1]}`);
     }
@@ -93,6 +107,8 @@ describe("README preview-envelope table", () => {
     expect(fromSource.length).toBeGreaterThan(20);
     expect(fromSource).toContain("institutional.getFlows");
     expect(fromSource).toContain("stocks.getOptionsSummary");
+    // Returns a named subtype of the envelope rather than PreviewResponse<...> itself.
+    expect(fromSource).toContain("earnings.getSummaries");
   });
 
   it("names every method that returns a preview envelope", () => {

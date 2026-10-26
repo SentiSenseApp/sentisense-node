@@ -428,7 +428,7 @@ client.analyst.consensus("AAPL")                        // Price target cone + c
 client.analyst.consensusHistory("AAPL", { limit: 90 })  // Daily history. Free: last 30 days; distribution fields null.
 client.analyst.calledIt("AAPL", { limit: 10 })         // Recorded calls for 20% moves over five sessions. Free: newest move, up to 5 calls, move counts intact.
 client.analyst.actions("AAPL", { lookbackDays: 30 })    // Upgrade/downgrade feed. Free: 3 most recent.
-client.analyst.estimates("AAPL")                        // Forward EPS + surprises. Free: 1 quarter.
+client.analyst.estimates("AAPL")                        // Forward EPS + surprises. Free: 1 quarter. data.ticker: the listing per-share figures are for (BRK-A answers BRK.B).
 client.analyst.marketActivity({ lookbackDays: 7 })      // Market-wide analyst actions (PRO).
 ```
 
@@ -509,6 +509,8 @@ if (quarter) {
 The forward-looking half of the family is `client.calendar.getEarnings()`, which covers scheduled dates and consensus EPS rather than results.
 
 `earnings.getSummaries` exposes optional `totalCount` on the envelope on both PRO and FREE. It counts indexed quarters; returned rows can be fewer because of `limit` or an unavailable body. Older responses without the count still read as `undefined`.
+
+The envelope `ticker` names the listing the quarters' per-share figures are quoted for: `BRK-A` answers `BRK.B` and `GOOG` answers `GOOGL`. It reads `undefined` on older responses.
 
 ### Company KPIs (PRO)
 
