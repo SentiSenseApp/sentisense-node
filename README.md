@@ -544,6 +544,9 @@ client.entityMetrics.getMetrics("AAPL", {
   maxDataPoints: 100,
 })
 
+// Daily App Store ratings for a product entity with an app (an entity slug, not a ticker)
+client.entityMetrics.getMetrics("Instagram", { metricType: "app_all_ratings_count" })
+
 // Share of mentions by source (valueType "SHARE_PERCENT")
 client.entityMetrics.getDistribution("AAPL", "mentions")
 client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })
@@ -554,7 +557,9 @@ client.entityMetrics.getDistribution("AAPL", "sentiment")
 
 In a distribution, `valueType` says what each number is. For a count metric such as `mentions` or `creators` it is `"SHARE_PERCENT"`: each value is that source's percentage share of the total, summing to about 100. For `sentiment` it is `"MEAN"`: each value is that source's mean polarity over the window, in [-1, 1], the same numbers as `GET /api/v2/metrics/entity/{symbol}/metric/sentiment/mean-by/source` in the [API reference](https://sentisense.ai/docs/api/metrics/). `sentisense_score` has no per-source split and answers with an empty distribution.
 
-Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense_rating`, `social_dominance`, `creators`. `sentisense` is an alias for `sentisense_score`; either spelling returns the same series, and keys are case-insensitive. Responses always name the canonical type, so a `sentisense` request answers with `SENTISENSE_SCORE`. `sentisense_rating` is the SentiSense Rating score and is a time series only: it has no source breakdown, so `getDistribution` answers with an empty distribution for it.
+Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense_rating`, `social_dominance`, `creators`, `app_review_count`, `app_rating`, `app_all_ratings_count`, `app_all_ratings_avg`. `sentisense` is an alias for `sentisense_score`; either spelling returns the same series, and keys are case-insensitive. Responses always name the canonical type, so a `sentisense` request answers with `SENTISENSE_SCORE`. `sentisense_rating` is the SentiSense Rating score and is a time series only: it has no source breakdown, so `getDistribution` answers with an empty distribution for it.
+
+The four `app_` metrics are daily Apple App Store series for product entities that have an app, so pass an entity slug such as `"Instagram"` rather than a ticker. `app_review_count` and `app_rating` cover the written reviews published that day, a small share of all ratings whose stars skew lower; `app_all_ratings_count` and `app_all_ratings_avg` cover every new rating, star-only and written together, and have no point on a day with no net new ratings or when the store's totals fell. Over a range, weight each day's `app_all_ratings_avg` by `app_all_ratings_count` for the period average. Each point's flat `value` is the count or the average stars.
 
 ### Options
 

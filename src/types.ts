@@ -2894,7 +2894,30 @@ export type MetricType =
    */
   | "sentisense_rating"
   | "social_dominance"
-  | "creators";
+  | "creators"
+  /**
+   * New written Apple App Store reviews per day, for a product entity with a tracked app (an
+   * entity slug such as `"Instagram"`, not a ticker). Written reviews are a small share of all
+   * ratings; `app_all_ratings_count` counts every rating. Count metric: read the point's `value`.
+   */
+  | "app_review_count"
+  /**
+   * Average stars, 1.0 to 5.0, of that day's new written App Store reviews, which skew lower
+   * than all ratings (`app_all_ratings_avg`). Product entities with a tracked app only.
+   */
+  | "app_rating"
+  /**
+   * All new App Store ratings that day, star-only and written together. Absent on days with no
+   * net new ratings or when the store's totals fell. Product entities with a tracked app only.
+   * Count metric: read the point's `value`.
+   */
+  | "app_all_ratings_count"
+  /**
+   * Average stars, 1.0 to 5.0, of the ratings counted in `app_all_ratings_count`; absent on the
+   * same days. Over a range, weight each day by `app_all_ratings_count` for the period average.
+   * Product entities with a tracked app only.
+   */
+  | "app_all_ratings_avg";
 
 /** Options for `EntityMetrics.getMetrics()`. */
 export interface MetricsOptions {

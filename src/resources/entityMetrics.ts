@@ -15,7 +15,10 @@ export class EntityMetrics {
    *
    * @param symbol   Ticker symbol (e.g. "AAPL") or entity urlSlug (e.g. "Nancy-Pelosi",
    *                 case-insensitive; discover slugs via stocks.getEntities()).
-   * @param options  Metric type and optional time range / resolution.
+   * @param options  Metric type and optional time range / resolution. The App Store metrics
+   *                 (`app_review_count`, `app_rating`, `app_all_ratings_count`,
+   *                 `app_all_ratings_avg`) apply to product entities with a tracked app, so pass
+   *                 an entity slug such as "Instagram", not a ticker.
    */
   async getMetrics(
     symbol: string,

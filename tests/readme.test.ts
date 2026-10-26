@@ -149,3 +149,33 @@ describe("README getDistribution examples", () => {
     expect(readme).toContain('"MEAN"');
   });
 });
+
+/**
+ * `MetricType` is the list a caller gets in autocomplete, and the README's "Available metric
+ * types" line is the list a reader sees first. Both are written by hand, so a metric added to
+ * the union without the README (or the other way round) is invisible to whoever reads the
+ * other one. Derive the union from the source and hold the README to it.
+ */
+describe("README metric types", () => {
+  const readme = readFileSync(fileURLToPath(new URL("README.md", repoRoot)), "utf8");
+  // Doc comments sit between members and can hold quotes and semicolons, so drop them first.
+  const types = readFileSync(fileURLToPath(new URL("src/types.ts", repoRoot)), "utf8").replace(
+    /\/\*[\s\S]*?\*\//g,
+    "",
+  );
+  const union = types.match(/export type MetricType =([\s\S]*?);/)?.[1] ?? "";
+  const members = [...union.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
+  const line = readme.split("\n").find((l) => l.startsWith("Available metric types:")) ?? "";
+
+  it("finds the union and the README line", () => {
+    expect(members.length).toBeGreaterThan(8);
+    expect(line).not.toBe("");
+  });
+
+  it("lists every MetricType member", () => {
+    const missing = members.filter((metric) => !line.includes(`\`${metric}\``));
+    expect(missing, `README "Available metric types" is missing: ${missing.join(", ")}`).toEqual(
+      [],
+    );
+  });
+});
