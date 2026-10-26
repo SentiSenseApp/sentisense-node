@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.69.0
+
+### Added
+
+- `institutional.getHoldersHistory(ticker, { quarters })` returns one stock's institutional
+  ownership quarter by quarter, newest first (12 quarters by default, up to 20; free keys see
+  the newest four), typed as `PreviewResponse<HoldersHistory>`.
+- New `ShareClass` type (`ticker`, `primary`). `StockProfile.shareClasses` lists every
+  separately listed class of a multi-class company, primary first (`BRK.B` then `BRK.A`), the
+  same whichever class you request. `StockDetail.shareClasses` carries the same list on the
+  primary class's row of `stocks.listDetailed()` and `stocks.listPopularDetailed()`. Both are
+  absent otherwise.
+- `AnalystEstimatesResponse.ticker`: the listing the per-share figures are quoted for
+  (`BRK-A` answers `BRK.B`, `GOOG` answers `GOOGL`). Optional, absent on older responses.
+- `earnings.getSummaries()` now returns `EarningsSummariesResponse`, which extends
+  `PreviewResponse<EarningsQuarter[]>` with the optional envelope `ticker` (the same meaning).
+  It stays assignable to `PreviewResponse<EarningsQuarter[]>`, so existing annotations compile.
+
 ## 0.68.0
 
 ### Added
