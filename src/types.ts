@@ -2482,6 +2482,16 @@ export interface EarningsEvent {
   confirmed: boolean;
   /** Consensus EPS estimate, nullable. */
   estimatedEps: number | null;
+  /** Consensus revenue estimate in the reporting currency, nullable. */
+  estimatedRevenue?: number | null;
+  /** Reported EPS; null until the company reports. */
+  actualEps?: number | null;
+  /** Reported revenue; null until the company reports. */
+  actualRevenue?: number | null;
+  /** EPS surprise in percent, (actual - estimate) / abs(estimate) * 100; null if either side is missing or the estimate is 0. */
+  epsSurprisePct?: number | null;
+  /** Revenue surprise in percent, same formula as epsSurprisePct. */
+  revenueSurprisePct?: number | null;
 }
 
 export interface CalendarMeta {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.71.0
+
+### Added
+
+- `EarningsEvent` (rows of `calendar.getEarnings()`) gains five optional fields:
+  `estimatedRevenue` (consensus revenue, reporting currency), `actualEps` and `actualRevenue`
+  (null until the company reports), and `epsSurprisePct` and `revenueSurprisePct`
+  (`(actual - estimate) / abs(estimate) * 100`, rounded to two decimals; null when either side is
+  missing or the estimate is 0). A recent row now tells you whether the company beat.
+
 ## 0.70.0
 
 ### Added
