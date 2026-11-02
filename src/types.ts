@@ -2492,6 +2492,8 @@ export interface EarningsEvent {
   epsSurprisePct?: number | null;
   /** Revenue surprise in percent, same formula as epsSurprisePct. */
   revenueSurprisePct?: number | null;
+  /** Basis of actualEps against the company's filed GAAP EPS for the quarter; null until the company reports. */
+  epsBasis?: "gaap" | "adjusted" | "unknown" | null;
 }
 
 export interface CalendarMeta {
