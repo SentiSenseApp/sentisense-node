@@ -2482,7 +2482,7 @@ export interface EarningsEvent {
   confirmed: boolean;
   /** Consensus EPS estimate, nullable. */
   estimatedEps: number | null;
-  /** Consensus revenue estimate in the reporting currency, nullable. */
+  /** Consensus revenue estimate, nullable. */
   estimatedRevenue?: number | null;
   /** Reported EPS; null until the company reports. */
   actualEps?: number | null;
