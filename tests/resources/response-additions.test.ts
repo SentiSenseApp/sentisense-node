@@ -111,4 +111,55 @@ describe("optional response fields", () => {
     const existingImplementation: typeof client.institutional.getInstitutionDetail = async () => "opaque";
     expect(typeof existingImplementation).toBe("function");
   });
+
+  it("keeps the sample flag and sample tickers on the preview envelope", async () => {
+    respond({
+      isPreview: false,
+      previewReason: null,
+      sample: true,
+      data: { ticker: "AAPL", companyName: "Apple Inc.", kpis: [] },
+    });
+    const full = await client.stocks.getKpis("AAPL");
+    expectTypeOf(full.sample).toEqualTypeOf<boolean | undefined>();
+    expect(full.sample).toBe(true);
+    expect(full.isPreview).toBe(false);
+
+    respond({
+      isPreview: true,
+      previewReason: "PRO_REQUIRED",
+      upgrade: { plan: "PRO", sampleTickers: ["AAPL", "TSLA"] },
+      data: { ticker: "MSFT", companyName: "Microsoft", kpis: [] },
+    });
+    const preview = await client.stocks.getKpis("MSFT");
+    expectTypeOf(preview.upgrade?.sampleTickers).toEqualTypeOf<string[] | undefined>();
+    expect(preview.upgrade?.sampleTickers).toEqual(["AAPL", "TSLA"]);
+    expect(preview.sample).toBeUndefined();
+  });
+
+  it("still parses envelopes without the sample fields", async () => {
+    respond({
+      isPreview: true,
+      previewReason: "PRO_REQUIRED",
+      upgrade: { plan: "PRO" },
+      data: { ticker: "MSFT", companyName: "Microsoft", kpis: [] },
+    });
+    const result = await client.stocks.getKpis("MSFT");
+    expect(result.sample).toBeUndefined();
+    expect(result.upgrade?.sampleTickers).toBeUndefined();
+    expect(result.data.ticker).toBe("MSFT");
+  });
+
+  it("keeps the sample flag on KPI coverage rows when present", async () => {
+    respond({
+      count: 2,
+      tickers: [
+        { ticker: "AAPL", companyName: "Apple Inc.", lastUpdated: "2026-04-30", kpiCount: 8, sample: true },
+        { ticker: "TSLA", companyName: "Tesla, Inc.", lastUpdated: "2026-04-15", kpiCount: 6 },
+      ],
+    });
+    const coverage = await client.stocks.listKpiCoverage();
+    expect(coverage.tickers[0].sample).toBe(true);
+    expect(coverage.tickers[1].sample).toBeUndefined();
+    expect(coverage.tickers[1].kpiCount).toBe(6);
+  });
 });

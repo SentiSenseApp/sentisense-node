@@ -2868,6 +2868,11 @@ export interface UpgradeHint {
   url?: string;
   /** What an automated caller should do with this object. */
   relay?: string;
+  /**
+   * Tickers whose full data a FREE key can read (the sample companies). Sent on a
+   * `PRO_REQUIRED` preview only.
+   */
+  sampleTickers?: string[];
 }
 
 export interface PreviewResponse<T> {
@@ -2878,6 +2883,11 @@ export interface PreviewResponse<T> {
    * Surface `message` and `url` to your user rather than hard-coding a price.
    */
   upgrade?: UpgradeHint;
+  /**
+   * `true` only when a FREE caller received the full response because the ticker is one of
+   * the sample companies. Absent otherwise.
+   */
+  sample?: boolean;
   /**
    * Size of the full result set, before any truncation your response went through.
    *
@@ -3128,6 +3138,8 @@ export interface KpiCoverageEntry {
   companyName: string;
   lastUpdated: string;
   kpiCount: number;
+  /** `true` for the sample companies, whose full data a FREE key can read. Absent otherwise. */
+  sample?: boolean;
 }
 
 /** Coverage listing envelope: count + list of covered tickers. */
@@ -3351,6 +3363,8 @@ export interface TrackerSnapshotResponse {
   totalCount?: number;
   /** How to lift the gate. Only set on preview responses. */
   upgrade?: UpgradeHint;
+  /** `true` only when a FREE caller received the full snapshot for a sample company. */
+  sample?: boolean;
   data: TrackerSnapshot;
 }
 
