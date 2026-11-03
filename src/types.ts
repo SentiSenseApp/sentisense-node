@@ -3363,8 +3363,6 @@ export interface TrackerSnapshotResponse {
   totalCount?: number;
   /** How to lift the gate. Only set on preview responses. */
   upgrade?: UpgradeHint;
-  /** `true` only when a FREE caller received the full snapshot for a sample company. */
-  sample?: boolean;
   data: TrackerSnapshot;
 }
 

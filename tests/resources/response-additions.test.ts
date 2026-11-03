@@ -127,12 +127,12 @@ describe("optional response fields", () => {
     respond({
       isPreview: true,
       previewReason: "PRO_REQUIRED",
-      upgrade: { plan: "PRO", sampleTickers: ["AAPL", "TSLA"] },
+      upgrade: { plan: "PRO", sampleTickers: ["TSLA", "MSFT"] },
       data: { ticker: "MSFT", companyName: "Microsoft", kpis: [] },
     });
     const preview = await client.stocks.getKpis("MSFT");
     expectTypeOf(preview.upgrade?.sampleTickers).toEqualTypeOf<string[] | undefined>();
-    expect(preview.upgrade?.sampleTickers).toEqual(["AAPL", "TSLA"]);
+    expect(preview.upgrade?.sampleTickers).toEqual(["TSLA", "MSFT"]);
     expect(preview.sample).toBeUndefined();
   });
 
