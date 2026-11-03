@@ -514,8 +514,10 @@ The envelope `ticker` names the listing the quarters' per-share figures are quot
 
 ### Company KPIs (PRO)
 
+Full series are free for the sample companies (`TSLA`, `MSFT`, `NFLX`, `UBER`, `SPOT`, `ABNB`, `PYPL`, `COST`, `RDDT`, `DUOL`, `RBLX`); every other company returns metadata only on a free key and the full series on PRO.
+
 ```typescript
-client.stocks.getKpis("AAPL")       // Product metrics and segment revenue. Free: metadata only. PRO: full series.
+client.stocks.getKpis("TSLA")       // Product metrics and segment revenue. Free: full series for the sample companies, metadata only for the rest. PRO: full series.
 client.stocks.listKpiCoverage()     // All tickers with curated KPI data (free, no quota cost)
 ```
 
