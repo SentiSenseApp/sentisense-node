@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.72.0
+
+### Added
+
+- `PreviewResponse` gains an optional `sampleCompany`: `true` when a free key received full
+  data because the ticker is one of the sample companies, absent otherwise. It never marks
+  placeholder data.
+- `UpgradeHint` gains an optional `sampleTickers`, the list of sample companies whose full data
+  a free key can read. Sent on a `PRO_REQUIRED` preview only.
+- KPI coverage rows gain an optional `sampleCompany`, `true` on the sample companies.
+
 ## 0.71.0
 
 ### Added

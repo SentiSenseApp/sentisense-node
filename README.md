@@ -514,7 +514,7 @@ The envelope `ticker` names the listing the quarters' per-share figures are quot
 
 ### Company KPIs (PRO)
 
-Full series are free for the sample companies (`TSLA`, `MSFT`, `NFLX`, `UBER`, `SPOT`, `ABNB`, `PYPL`, `COST`, `RDDT`, `DUOL`, `RBLX`); every other company returns metadata only on a free key and the full series on PRO.
+Full data on 11 sample companies, free, with a preview for every other company: a free key reads the full series for the sample companies and metadata only for the rest, and PRO reads the full series for all. Check `sampleCompany` on a response, or `upgrade.sampleTickers` on a preview for the list. See [full sample responses](https://sentisense.ai/docs/api/#full-sample-responses-with-a-free-key).
 
 ```typescript
 client.stocks.getKpis("TSLA")       // Product metrics and segment revenue. Free: full series for the sample companies, metadata only for the rest. PRO: full series.
