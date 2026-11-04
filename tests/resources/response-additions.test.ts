@@ -116,12 +116,14 @@ describe("optional response fields", () => {
     respond({
       isPreview: false,
       previewReason: null,
-      sample: true,
+      sampleCompany: true,
       data: { ticker: "AAPL", companyName: "Apple Inc.", kpis: [] },
     });
     const full = await client.stocks.getKpis("AAPL");
-    expectTypeOf(full.sample).toEqualTypeOf<boolean | undefined>();
-    expect(full.sample).toBe(true);
+    expectTypeOf(full.sampleCompany).toEqualTypeOf<boolean | undefined>();
+    expect(full.sampleCompany).toBe(true);
+    // The retired bare `sample` key is not part of the type.
+    expectTypeOf(full).not.toHaveProperty("sample");
     expect(full.isPreview).toBe(false);
 
     respond({
@@ -133,7 +135,7 @@ describe("optional response fields", () => {
     const preview = await client.stocks.getKpis("MSFT");
     expectTypeOf(preview.upgrade?.sampleTickers).toEqualTypeOf<string[] | undefined>();
     expect(preview.upgrade?.sampleTickers).toEqual(["TSLA", "MSFT"]);
-    expect(preview.sample).toBeUndefined();
+    expect(preview.sampleCompany).toBeUndefined();
   });
 
   it("still parses envelopes without the sample fields", async () => {
@@ -144,7 +146,7 @@ describe("optional response fields", () => {
       data: { ticker: "MSFT", companyName: "Microsoft", kpis: [] },
     });
     const result = await client.stocks.getKpis("MSFT");
-    expect(result.sample).toBeUndefined();
+    expect(result.sampleCompany).toBeUndefined();
     expect(result.upgrade?.sampleTickers).toBeUndefined();
     expect(result.data.ticker).toBe("MSFT");
   });
@@ -153,13 +155,14 @@ describe("optional response fields", () => {
     respond({
       count: 2,
       tickers: [
-        { ticker: "AAPL", companyName: "Apple Inc.", lastUpdated: "2026-04-30", kpiCount: 8, sample: true },
+        { ticker: "AAPL", companyName: "Apple Inc.", lastUpdated: "2026-04-30", kpiCount: 8, sampleCompany: true },
         { ticker: "TSLA", companyName: "Tesla, Inc.", lastUpdated: "2026-04-15", kpiCount: 6 },
       ],
     });
     const coverage = await client.stocks.listKpiCoverage();
-    expect(coverage.tickers[0].sample).toBe(true);
-    expect(coverage.tickers[1].sample).toBeUndefined();
+    expect(coverage.tickers[0].sampleCompany).toBe(true);
+    expect(coverage.tickers[1].sampleCompany).toBeUndefined();
+    expectTypeOf(coverage.tickers[0]).not.toHaveProperty("sample");
     expect(coverage.tickers[1].kpiCount).toBe(6);
   });
 });

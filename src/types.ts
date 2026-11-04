@@ -2884,10 +2884,10 @@ export interface PreviewResponse<T> {
    */
   upgrade?: UpgradeHint;
   /**
-   * `true` only when a FREE caller received the full response because the ticker is one of
-   * the sample companies. Absent otherwise.
+   * `true` only when a FREE caller received real, full data because the ticker is one of
+   * the sample companies. It never marks placeholder data. Absent otherwise.
    */
-  sample?: boolean;
+  sampleCompany?: boolean;
   /**
    * Size of the full result set, before any truncation your response went through.
    *
@@ -3139,7 +3139,7 @@ export interface KpiCoverageEntry {
   lastUpdated: string;
   kpiCount: number;
   /** `true` for the sample companies, whose full data a FREE key can read. Absent otherwise. */
-  sample?: boolean;
+  sampleCompany?: boolean;
 }
 
 /** Coverage listing envelope: count + list of covered tickers. */
