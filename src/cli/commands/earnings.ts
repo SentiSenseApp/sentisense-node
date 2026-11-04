@@ -1,4 +1,5 @@
 import type { GetEarningsCalendarOptions } from "../../types.js";
+import { sampleNote } from "../sample.js";
 import type { CommandDef } from "../command.js";
 import { CliUsageError } from "../errors.js";
 import {
@@ -30,8 +31,10 @@ export const earningsCommand: CommandDef = {
   notes: [
     "With no ticker this is the forward calendar: who reports, when, and the consensus EPS.",
     "With a ticker it is the backward-looking analysis: one entry per reported quarter with",
-    "the editorial headline, and on a PRO key the written summary and guidance language.",
-    "A free key sees the current week of the calendar and the latest quarter of the analysis.",
+    "the editorial headline, and on a PRO key or a sample company the written summary and",
+    "guidance language.",
+    "A free key sees the current week of the calendar and the latest quarter of the analysis,",
+    "or every quarter for a sample company.",
     "Coverage of the per-ticker analysis is not the whole market, so a tracked company can",
     "have no stored quarter yet.",
     EMPTY_VERIFY_NOTE,
@@ -127,7 +130,7 @@ export const earningsCommand: CommandDef = {
         });
       }
 
-      return { json: envelope, doc: doc(...blocks), notes };
+      return { json: envelope, doc: doc(...blocks, sampleNote(envelope, ticker)), notes };
     }
 
     const week = typeof args.flags.week === "string" ? args.flags.week : undefined;

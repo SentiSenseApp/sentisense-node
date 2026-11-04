@@ -1,4 +1,5 @@
 import type { CommandDef } from "../command.js";
+import { sampleNote } from "../sample.js";
 import { EMPTY_VERIFY_NOTE, EMPTY_VERIFY_NOTE_2, oneTicker, verifyTickerOnEmpty } from "../ticker.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import { humanize, truncate } from "../render/num.js";
@@ -19,7 +20,8 @@ export const insidersCommand: CommandDef = {
     "to sell, so they are excluded from sold and shown separately as withheld.",
     "The plan column says whether the trade was under a confirmed pre-arranged 10b5-1 plan,",
     "which is the difference between a scheduled sale and a discretionary one.",
-    "A free key sees the top few transactions; a PRO key sees the window you asked for.",
+    "A free key sees the top few transactions, or the full window for a sample company; a PRO",
+    "key sees the window you asked for.",
     EMPTY_VERIFY_NOTE,
     EMPTY_VERIFY_NOTE_2,
   ],
@@ -105,6 +107,6 @@ export const insidersCommand: CommandDef = {
       });
     }
 
-    return { json: envelope, doc: doc(...blocks), notes };
+    return { json: envelope, doc: doc(...blocks, sampleNote(envelope, ticker)), notes };
   },
 };

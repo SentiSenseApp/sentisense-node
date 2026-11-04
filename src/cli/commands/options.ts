@@ -1,4 +1,5 @@
 import type { SentiSense } from "../../client.js";
+import { sampleNote } from "../sample.js";
 import type { OptionsWall } from "../../types.js";
 import type { CommandDef, CommandResult } from "../command.js";
 import { CliUsageError } from "../errors.js";
@@ -24,8 +25,8 @@ function walls(rows: OptionsWall[] | undefined): string {
 /**
  * One session's intraday series, every 15-minute cycle the ticker was on the board.
  *
- * PRO only: a free key gets a preview with no payload, which is an answer rather than a
- * failure, so it exits 0 and says why the table is missing.
+ * PRO, or a sample company on a free key. Any other free call gets a preview with no payload,
+ * which is an answer rather than a failure, so it exits 0 and says why the table is missing.
  */
 async function intraday(api: SentiSense, ticker: string, session: string | undefined): Promise<CommandResult> {
   const envelope = await api.stocks.getOptionsIntradayHistory(ticker, { session });
@@ -38,7 +39,7 @@ async function intraday(api: SentiSense, ticker: string, session: string | undef
     if (envelope.upgrade?.url) {
       lines.push({ kind: "text", text: envelope.upgrade.url, tone: "dim" });
     }
-    return { json: envelope, doc: doc(...lines) };
+    return { json: envelope, doc: doc(...lines, sampleNote(envelope, ticker)) };
   }
 
   const series = data?.series ?? [];
@@ -93,7 +94,7 @@ async function intraday(api: SentiSense, ticker: string, session: string | undef
     tone: "dim",
   });
 
-  return { json: envelope, doc: doc(...blocks) };
+  return { json: envelope, doc: doc(...blocks, sampleNote(envelope, ticker)) };
 }
 
 export const optionsCommand: CommandDef = {
@@ -116,13 +117,14 @@ export const optionsCommand: CommandDef = {
     EMPTY_VERIFY_NOTE,
     EMPTY_VERIFY_NOTE_2,
     "A free key gets the full dossier for the first ten calls each month, then a headline",
-    "preview. Calls that return no dossier do not count against that.",
+    "preview. Calls that return no dossier do not count against that. Sample companies are",
+    "always full and spend none of the ten.",
     "--intraday shows one session's intraday series instead: the ticker's volumes, put/call",
-    "ratio, unusual-contract count and ATM IV at every 15-minute cycle (PRO keys only).",
+    "ratio, unusual-contract count and ATM IV at every 15-minute cycle (PRO keys and sample companies).",
     "--session picks the session and implies --intraday; omitted, the latest one.",
   ],
   flags: {
-    intraday: { type: "boolean", describe: "Show the session's intraday series, every 15-minute cycle (PRO)" },
+    intraday: { type: "boolean", describe: "Show the session's intraday series, every 15-minute cycle (PRO or a sample company)" },
     session: {
       type: "string",
       placeholder: "YYYY-MM-DD",
@@ -251,6 +253,6 @@ export const optionsCommand: CommandDef = {
       });
     }
 
-    return { json: envelope, doc: doc(...blocks) };
+    return { json: envelope, doc: doc(...blocks, sampleNote(envelope, ticker)) };
   },
 };

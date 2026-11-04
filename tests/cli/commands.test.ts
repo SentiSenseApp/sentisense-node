@@ -1587,3 +1587,97 @@ describe("analyst coverage, profiles, and entity search", () => {
     expect(help.stdout).toContain("Takes a slug, not a name");
   });
 });
+
+describe("sample companies", () => {
+  const trade = {
+    transactionDate: "2026-09-08",
+    insiderName: "Example Officer",
+    officerTitle: "Officer",
+    transactionType: "SELL",
+    shares: 1000,
+    totalValue: 100000,
+  };
+
+  it("says why a free key got the full answer", async () => {
+    const result = await run(["insiders", "TSLA"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/insider\/trades\/TSLA/, { isPreview: false, previewReason: null, sampleCompany: true, data: [trade] }],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("TSLA is a sample company: full data on every plan.");
+    expect(result.stdout).not.toContain("Preview response");
+  });
+
+  it("names the sample companies from the response on a preview", async () => {
+    const result = await run(["insiders", "AAPL"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [
+          /insider\/trades\/AAPL/,
+          {
+            isPreview: true,
+            previewReason: "PRO_REQUIRED",
+            totalCount: 71,
+            upgrade: { plan: "PRO", sampleTickers: ["TSLA", "MSFT"] },
+            data: [trade],
+          },
+        ],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("Preview response: 71 transactions exist");
+    expect(result.stdout).toContain("Full data on every plan for the sample companies: TSLA, MSFT.");
+  });
+
+  it("stays quiet on a PRO answer and on a preview with no list", async () => {
+    const pro = await run(["insiders", "TSLA"], {
+      env: KEYED,
+      fetch: routeFetch([[/insider\/trades\/TSLA/, { isPreview: false, previewReason: null, data: [trade] }]]),
+    });
+    expect(pro.stdout).not.toContain("sample compan");
+    const bare = await run(["insiders", "AAPL"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/insider\/trades\/AAPL/, { isPreview: true, previewReason: "PRO_REQUIRED", upgrade: { plan: "PRO" }, data: [trade] }],
+      ]),
+    });
+    expect(bare.stdout).not.toContain("sample compan");
+  });
+
+  it("keeps the JSON output untouched", async () => {
+    const envelope = { isPreview: false, previewReason: null, sampleCompany: true, data: [trade] };
+    const result = await run(["insiders", "TSLA", "--json"], {
+      env: KEYED,
+      fetch: routeFetch([[/insider\/trades\/TSLA/, envelope]]),
+    });
+    expect(JSON.parse(result.stdout)).toEqual(envelope);
+  });
+
+  it("carries the note on a ticker's filings and not on the market-wide feed", async () => {
+    const filing = {
+      ticker: "TSLA",
+      politicianName: "Example Member",
+      party: "D",
+      state: "CA",
+      transactionDate: "2026-09-08",
+      transactionType: "PURCHASE",
+      amountRange: "$1,001 - $15,000",
+    };
+    const byTicker = await run(["congress", "TSLA"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/politicians\/filings\/TSLA/, { isPreview: false, previewReason: null, sampleCompany: true, data: [filing] }],
+      ]),
+    });
+    expect(byTicker.stdout).toContain("TSLA is a sample company");
+    const feed = await run(["congress"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/politicians\/activity/, { isPreview: true, previewReason: "PRO_REQUIRED", upgrade: { plan: "PRO" }, data: [filing] }],
+      ]),
+    });
+    expect(feed.stdout).not.toContain("sample compan");
+  });
+});

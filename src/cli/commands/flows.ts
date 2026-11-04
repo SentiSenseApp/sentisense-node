@@ -1,4 +1,5 @@
 import type { Quarter } from "../../types.js";
+import { sampleNote } from "../sample.js";
 import type { CommandDef } from "../command.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import { humanize, percent, truncate } from "../render/num.js";
@@ -150,7 +151,7 @@ export const flowsCommand: CommandDef = {
         });
       }
 
-      return { json: envelope, doc: doc(...blocks), notes };
+      return { json: envelope, doc: doc(...blocks, sampleNote(envelope, ticker)), notes };
     }
 
     const envelope = await api.institutional.getFlows(quarter, { limit });

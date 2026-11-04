@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.72.1
+
+### Fixed
+
+- The CLI's plain-text output now names the sample companies. A free key's full answer says the
+  ticker is a sample company, and a preview lists the sample companies from
+  `upgrade.sampleTickers`. PRO output and `--json` are unchanged.
+- CLI help no longer says a free key is limited on every ticker: `insiders`, `analysts`,
+  `insights`, `congress`, `earnings` and `options` name the sample company exception.
+
 ## 0.72.0
 
 ### Added

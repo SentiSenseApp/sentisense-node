@@ -1,4 +1,5 @@
 import type { CongressTrade, PreviewResponse } from "../../types.js";
+import { sampleNote } from "../sample.js";
 import type { CommandDef } from "../command.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import {
@@ -23,7 +24,7 @@ export const congressCommand: CommandDef = {
     "Disclosures are filed after the fact, so the gap between the trade date and the",
     "disclosure date is part of the picture. The delay column carries it in days.",
     "Amounts are the filed ranges, never exact figures: that is how the filings work.",
-    "A free key sees a short preview of either feed.",
+    "A free key sees a short preview of either feed, or every filing for a sample company.",
     EMPTY_VERIFY_NOTE,
     EMPTY_VERIFY_NOTE_2,
   ],
@@ -119,6 +120,6 @@ export const congressCommand: CommandDef = {
       });
     }
 
-    return { json: envelope, doc: doc(...blocks), notes };
+    return { json: envelope, doc: doc(...blocks, ticker ? sampleNote(envelope, ticker) : undefined), notes };
   },
 };

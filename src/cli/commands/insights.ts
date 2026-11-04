@@ -1,4 +1,5 @@
 import type { GetInsightsOptions } from "../../types.js";
+import { sampleNote } from "../sample.js";
 import type { CommandDef } from "../command.js";
 import { CliUsageError } from "../errors.js";
 import { EMPTY_VERIFY_NOTE, EMPTY_VERIFY_NOTE_2, oneTicker, verifyTickerOnEmpty } from "../ticker.js";
@@ -23,7 +24,8 @@ export const insightsCommand: CommandDef = {
   notes: [
     "Signals are generated observations about filings, flows, and attention, ordered by",
     "urgency then confidence. They describe what the data shows, not what to do about it.",
-    "A free key sees the top three; a PRO key sees the whole list.",
+    "A free key sees the top three, or the whole list for a sample company; a PRO key sees the",
+    "whole list.",
     "Signal types vary by ticker and over time, so take --type from what a plain run reports",
     "rather than guessing a name.",
     EMPTY_VERIFY_NOTE,
@@ -116,6 +118,6 @@ export const insightsCommand: CommandDef = {
       });
     }
 
-    return { json: envelope, doc: doc(...blocks), notes };
+    return { json: envelope, doc: doc(...blocks, sampleNote(envelope, ticker)), notes };
   },
 };

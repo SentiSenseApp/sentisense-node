@@ -1,4 +1,5 @@
 import type { SentiSense } from "../../client.js";
+import { sampleNote } from "../sample.js";
 import type { AnalystCoverageFirm } from "../../resources/analyst.js";
 import type { CommandDef, CommandResult } from "../command.js";
 import type { ParsedArgs } from "../parse.js";
@@ -51,7 +52,8 @@ export const analystsCommand: CommandDef = {
   ],
   notes: [
     "The price target band and analyst count come back in full on every key.",
-    "The buy / hold / sell distribution and the longer action history are PRO.",
+    "The buy / hold / sell distribution and the longer action history are PRO, and full on a",
+    "free key for the sample companies.",
     "A ticker with no analyst coverage exits 4 rather than returning an empty band.",
     "--coverage answers who covers the ticker instead: one row per firm, the analyst that",
     "firm last published under, their latest target, and the firm's current rating. The slug",
@@ -157,7 +159,7 @@ export const analystsCommand: CommandDef = {
       });
     }
 
-    return { json: { consensus, actions }, doc: doc(...blocks), notes };
+    return { json: { consensus, actions }, doc: doc(...blocks, sampleNote(consensus, ticker)), notes };
   },
 };
 
@@ -268,5 +270,5 @@ async function coverageRun({ api, ticker, lookbackDays, full, args }: CoverageIn
     });
   }
 
-  return { json: envelope, doc: doc(...blocks) };
+  return { json: envelope, doc: doc(...blocks, sampleNote(envelope, ticker)) };
 }
