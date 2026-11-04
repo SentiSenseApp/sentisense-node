@@ -75,6 +75,7 @@ npx -y sentisense@latest health
 | `analysts <ticker>` | Consensus, price target band, recent upgrades and downgrades. `--coverage` for who covers it, by firm |
 | `analyst <slug>` | One analyst: their firms, their coverage book, and `--calls` for their price target notes |
 | `earnings [ticker]` | Forward calendar with no ticker, per-quarter analysis with one (`earnings AAPL`) |
+| `kpis <ticker>` | Company KPIs from earnings filings: latest value and year-over-year change per series, `--series ID` for one series' history, `--types` for the series list, `--coverage` for the covered tickers |
 | `insiders <ticker>` | Filed Form 4 transactions, including whether they were pre-planned |
 | `insights <ticker>` | Generated signals, filterable by `--urgency` and `--type` |
 | `congress [ticker]` | Congressional disclosures, market-wide or for one symbol |

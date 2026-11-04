@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.73.0
+
+### Added
+
+- CLI `kpis` command for company KPIs from earnings filings. `sentisense kpis TSLA` prints one
+  row per series with its latest period, value and unit, and the change from the same period a
+  year earlier, computed from that series' own values (percent series change in points).
+  Discontinued series are hidden unless `--full`. `--series ID` prints one series' periods,
+  newest first; `--types` lists the series without values on any key; `--coverage` lists the
+  covered tickers and marks the sample companies. On a free key, a company outside the sample
+  companies returns its metadata only, and the command says so and exits 0. `--json` prints the
+  response untouched.
+
 ## 0.72.1
 
 ### Fixed

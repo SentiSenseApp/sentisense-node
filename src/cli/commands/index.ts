@@ -9,6 +9,7 @@ import { healthCommand } from "./health.js";
 import { initCommand } from "./init.js";
 import { insidersCommand } from "./insiders.js";
 import { insightsCommand } from "./insights.js";
+import { kpisCommand } from "./kpis.js";
 import { moodCommand } from "./mood.js";
 import { newsCommand } from "./news.js";
 import { optionsCommand } from "./options.js";
@@ -28,6 +29,7 @@ export const COMMANDS: CommandDef[] = [
   analystsCommand,
   analystCommand,
   earningsCommand,
+  kpisCommand,
   insidersCommand,
   insightsCommand,
   congressCommand,

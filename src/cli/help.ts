@@ -22,6 +22,7 @@ const EXAMPLE: Record<string, string> = {
   analysts: "sentisense analysts NVDA --coverage",
   analyst: "sentisense analyst dan-ives --calls",
   earnings: "sentisense earnings --week next",
+  kpis: "sentisense kpis TSLA",
   insiders: "sentisense insiders NVDA",
   insights: "sentisense insights NVDA",
   congress: "sentisense congress NVDA",

@@ -1384,6 +1384,19 @@ describe("unknown ticker verification on an empty result", () => {
 });
 
 describe("examples demonstrate features that actually return data", () => {
+  it("every command shows an example in the top-level help", async () => {
+    const result = await run(["--help"], {});
+    const lines = result.stdout.split("\n");
+    for (const name of ["kpis", "insiders", "search"]) {
+      const at = lines.findIndex((line) => line.startsWith(`  ${name} `));
+      expect(at).toBeGreaterThan(-1);
+      expect(lines[at + 1]).toContain(`sentisense ${name} `);
+    }
+    for (let i = 0; i < lines.length; i++) {
+      if (/^  [a-z]+ {2,}\S/.test(lines[i])) expect(lines[i + 1]?.trim()).not.toBe("");
+    }
+  });
+
   it("earnings shows a ticker that has stored quarters", async () => {
     // Verified live: the per-ticker analysis has no stored quarter for every tracked name,
     // so an example has to name one that does or it demos an empty feature.
@@ -1404,7 +1417,7 @@ describe("examples demonstrate features that actually return data", () => {
   });
 
   it("commands that verify an empty result say so in their help", async () => {
-    for (const name of ["insiders", "insights", "earnings", "congress", "news", "flows", "options"]) {
+    for (const name of ["insiders", "insights", "earnings", "congress", "news", "flows", "options", "kpis"]) {
       const result = await run(["help", name], {});
       expect(result.stdout).toContain("An empty result verifies the ticker before reporting no data");
     }
@@ -1679,5 +1692,212 @@ describe("sample companies", () => {
       ]),
     });
     expect(feed.stdout).not.toContain("sample compan");
+  });
+});
+
+describe("kpis", () => {
+  // Illustrative values, not a live payload.
+  const deliveries = {
+    id: "vehicle_deliveries",
+    name: "Vehicle Deliveries",
+    category: "operating_metric",
+    unit: "vehicles",
+    displayFormat: "number",
+    chartType: "bar",
+    sourceRef: "Example 10-Q",
+    values: [
+      { period: "Q2 2026", date: "2026-06-30", value: 400000 },
+      { period: "Q3 2025", date: "2025-09-30", value: 400000 },
+      { period: "Q3 2026", date: "2026-09-30", value: 500000, isEstimate: true },
+    ],
+  };
+  const margin = {
+    id: "gross_margin",
+    name: "Gross Margin",
+    category: "margin",
+    unit: "percent",
+    displayFormat: "percent",
+    chartType: "line",
+    values: [
+      { period: "Q3 2025", date: "2025-09-30", value: 18.5 },
+      { period: "Q3 2026", date: "2026-09-30", value: 20 },
+    ],
+  };
+  const revenue = {
+    id: "automotive_revenue",
+    name: "Automotive Revenue",
+    category: "segment_revenue",
+    unit: "USD",
+    displayFormat: "currency_abbreviated",
+    chartType: "bar",
+    values: [{ period: "Q3 2026", date: "2026-09-30", value: 20000000000 }],
+  };
+  const retired = {
+    id: "regulatory_credits",
+    name: "Regulatory Credits",
+    category: "other_revenue",
+    unit: "USD",
+    displayFormat: "currency_abbreviated",
+    chartType: "bar",
+    discontinued: true,
+    discontinuedNote: "No longer broken out.",
+    values: [{ period: "Q4 2024", date: "2024-12-31", value: 600000000 }],
+  };
+  const company = { ticker: "TSLA", companyName: "Tesla, Inc.", lastUpdated: "2026-10-23T12:00:00Z" };
+  const FULL = {
+    isPreview: false,
+    previewReason: null,
+    sampleCompany: true,
+    data: { ...company, kpis: [deliveries, margin, revenue, retired] },
+  };
+  const PRO = { isPreview: false, previewReason: null, data: { ...company, kpis: [deliveries] } };
+  const LOCKED = {
+    isPreview: true,
+    previewReason: "PRO_REQUIRED",
+    upgrade: { plan: "PRO", sampleTickers: ["TSLA", "MSFT"] },
+    data: { ticker: "AAPL", companyName: "Apple Inc.", lastUpdated: "2026-10-31T12:00:00Z", kpis: [] },
+  };
+
+  it("prints one row per series with its latest value and year-over-year change", async () => {
+    const result = await run(["kpis", "tsla", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/stocks\/TSLA\/kpis$/, FULL]]),
+    });
+    expect(result.code).toBe(0);
+    expect(url(result, "/api/v1/stocks/TSLA/kpis")).toBeDefined();
+    expect(result.stdout).toContain("vehicle_deliveries");
+    expect(result.stdout).toContain("automotive_revenue");
+    expect(result.stdout).toContain("Q3 2026 (prelim)");
+    expect(result.stdout).toContain("500k vehicles");
+    expect(result.stdout).toContain("+25.0%");
+    expect(result.stdout).toContain("+1.5 pts");
+    expect(result.stdout).toContain("$20B");
+    expect(result.stdout).not.toContain("regulatory_credits");
+    expect(result.stdout).toContain("1 discontinued series hidden. Add --full to show them.");
+    expect(result.stdout).toContain("TSLA is a sample company: full data on every plan.");
+  });
+
+  it("shows discontinued series, marked, under --full", async () => {
+    const result = await run(["kpis", "TSLA", "--plain", "--full"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/stocks\/TSLA\/kpis$/, FULL]]),
+    });
+    expect(result.stdout).toContain("Regulatory Credits (discontinued)");
+    expect(result.stdout).not.toContain("discontinued series hidden");
+  });
+
+  it("explains a locked company on a free key and exits 0", async () => {
+    const result = await run(["kpis", "AAPL", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/stocks\/AAPL\/kpis$/, LOCKED]]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("Apple Inc.");
+    expect(result.stdout).not.toContain("series:  0");
+    expect(result.stdout).toContain("Preview response: KPI values for this company are PRO.");
+    expect(result.stdout).toContain('sentisense kpis AAPL --types');
+    expect(result.stdout).toContain("Full data on every plan for the sample companies: TSLA, MSFT.");
+    // An empty preview is an answer, so no verification lookup is spent on it.
+    expect(result.urls).toHaveLength(1);
+  });
+
+  it("stays quiet about sample companies on a PRO answer", async () => {
+    const result = await run(["kpis", "TSLA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/stocks\/TSLA\/kpis$/, PRO]]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).not.toContain("sample compan");
+    expect(result.stdout).not.toContain("Preview response");
+  });
+
+  it("prints one series' periods newest first with --series", async () => {
+    const result = await run(["kpis", "TSLA", "--series", "vehicle_deliveries", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/stocks\/TSLA\/kpis$/, FULL]]),
+    });
+    expect(result.code).toBe(0);
+    const newest = result.stdout.indexOf("Q3 2026");
+    const middle = result.stdout.indexOf("Q2 2026");
+    const oldest = result.stdout.indexOf("Q3 2025");
+    expect(newest).toBeGreaterThan(-1);
+    expect(newest).toBeLessThan(middle);
+    expect(middle).toBeLessThan(oldest);
+    expect(result.stdout).toContain("Source: Example 10-Q");
+  });
+
+  it("exits 4 on a series id the company does not report", async () => {
+    const result = await run(["kpis", "TSLA", "--series", "nope", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/stocks\/TSLA\/kpis$/, FULL]]),
+    });
+    expect(result.code).toBe(4);
+    expect(result.stderr).toContain('no KPI series "nope"');
+  });
+
+  it("lists the series without values with --types", async () => {
+    const types = [
+      { id: "vehicle_deliveries", name: "Vehicle Deliveries", category: "operating_metric", chartType: "bar" },
+    ];
+    const result = await run(["kpis", "TSLA", "--types", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/stocks\/TSLA\/kpis\/types/, types]]),
+    });
+    expect(result.code).toBe(0);
+    expect(url(result, "/api/v1/stocks/TSLA/kpis/types")).toBeDefined();
+    expect(result.urls).toHaveLength(1);
+    expect(result.stdout).toContain("Vehicle Deliveries");
+    expect(result.stdout).toContain("operating_metric");
+  });
+
+  it("lists coverage with the sample companies marked", async () => {
+    const coverage = {
+      count: 3,
+      tickers: [
+        { ticker: "AAA", companyName: "Example A Corp", lastUpdated: "2026-10-01", kpiCount: 4 },
+        { ticker: "MSFT", companyName: "Microsoft Corporation", lastUpdated: "2026-10-30", kpiCount: 9, sampleCompany: true },
+        { ticker: "TSLA", companyName: "Tesla, Inc.", lastUpdated: "2026-10-23", kpiCount: 8, sampleCompany: true },
+      ],
+    };
+    const fetch = () => routeFetch([[/\/stocks\/with-kpis/, coverage]]);
+    const brief = await run(["kpis", "--coverage", "--plain"], { env: KEYED, fetch: fetch() });
+    expect(brief.code).toBe(0);
+    expect(brief.stdout).toContain("3 tickers");
+    expect(brief.stdout).toContain("TSLA");
+    expect(brief.stdout).not.toContain("AAA");
+    expect(brief.stdout).toContain("Showing the 2 sample companies of 3 covered tickers. Add --full");
+    const all = await run(["kpis", "--coverage", "--full", "--plain"], { env: KEYED, fetch: fetch() });
+    expect(all.stdout).toContain("AAA");
+    expect(all.stdout).toContain("sample");
+  });
+
+  it("rejects a ticker alongside --coverage", async () => {
+    const result = await run(["kpis", "TSLA", "--coverage"], { env: KEYED });
+    expect(result.code).toBe(2);
+    expect(result.urls).toHaveLength(0);
+  });
+
+  it("passes the envelope through untouched with --json", async () => {
+    const result = await run(["kpis", "AAPL", "--json"], {
+      env: KEYED,
+      fetch: routeFetch([[/\/stocks\/AAPL\/kpis$/, LOCKED]]),
+    });
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual(LOCKED);
+  });
+
+  it("exits 4 for a real company without coverage, and for a typo", async () => {
+    const uncovered = await run(["kpis", "NVDA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/NVDA\/kpis$/, errorResponse(404, { error: "not_found", message: "no KPIs" })],
+        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
+      ]),
+    });
+    expect(uncovered.code).toBe(4);
+    expect(uncovered.stderr).toContain("NVDA has no curated KPI coverage yet.");
+    const typo = await run(["kpis", "ZZZZQ", "--plain"], { env: KEYED });
+    expect(typo.code).toBe(4);
+    expect(typo.stderr).toContain('unknown ticker "ZZZZQ"');
   });
 });
