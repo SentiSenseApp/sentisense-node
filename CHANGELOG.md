@@ -12,6 +12,8 @@
   accepts an array and adds `positions`: shares and value per filing for each ticker.
 - `institutional.getInstitutionDetail(slugOrCik, options?)` accepts optional `limit`, `offset`,
   `sortBy`, `sortDir`, `changeType`, `q` and `minWeight` to page, sort and filter the holdings.
+  `changeType` also accepts `"HELD"` (every position still held, whatever its change); values
+  combine as a union.
   Calls without `options` are unchanged, and the return type stays `Promise<unknown>`.
 - `InstitutionDetail` gains `priorTotalValueUsd`, `priorPositionsHeld`, `scope`,
   `comparisonStatus` and `comparisonReportDate`. New `InstitutionHolding` (`priorValueUsd`,

@@ -2243,6 +2243,14 @@ export interface InstitutionDetail {
 export type InstitutionChangeType = "NEW" | "INCREASED" | "DECREASED" | "SOLD_OUT" | "UNCHANGED";
 
 /**
+ * A value for the `changeType` filter of `institutional.getInstitutionDetail`: any
+ * {@link InstitutionChangeType}, or `"HELD"` (every position still held, whatever its change,
+ * including holdings without a `changeType`). Values combine as a union. A holding's own
+ * `changeType` never carries `"HELD"`.
+ */
+export type InstitutionChangeFilter = InstitutionChangeType | "HELD";
+
+/**
  * Paging, sort and filter options for `institutional.getInstitutionDetail`.
  *
  * Every option here only takes effect together with `limit`; send one without it and the
@@ -2270,8 +2278,12 @@ export interface GetInstitutionDetailOptions {
     | "priorValueUsd";
   /** Sort direction. Server default is `"desc"`. */
   sortDir?: "asc" | "desc";
-  /** Keep only holdings with these change types. An array is sent comma-joined. */
-  changeType?: InstitutionChangeType | readonly InstitutionChangeType[];
+  /**
+   * Keep only holdings matching these filters; values combine as a union. `"HELD"` keeps every
+   * position still held, whatever its change, including holdings without a `changeType`.
+   * An array is sent comma-joined.
+   */
+  changeType?: InstitutionChangeFilter | readonly InstitutionChangeFilter[];
   /** Case-insensitive match on ticker or company name, up to 100 characters. */
   q?: string;
   /** Keep holdings whose `portfolioWeight` or `priorPortfolioWeight` is at least this percent. */

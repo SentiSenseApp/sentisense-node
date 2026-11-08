@@ -279,6 +279,20 @@ describe("institutional.getInstitutionDetail options", () => {
     });
   });
 
+  it("sends HELD as given, alone or combined", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(DETAIL_PAGE));
+    await client.institutional.getInstitutionDetail("Berkshire-Hathaway", { limit: 5, changeType: "HELD" });
+    expect(lastUrl().searchParams.get("changeType")).toBe("HELD");
+
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValueOnce(jsonResponse(DETAIL_PAGE));
+    await client.institutional.getInstitutionDetail("Berkshire-Hathaway", {
+      limit: 5,
+      changeType: ["HELD", "SOLD_OUT"],
+    });
+    expect(lastUrl().searchParams.get("changeType")).toBe("HELD,SOLD_OUT");
+  });
+
   it("parses the new fields and still parses a response without them", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse(DETAIL_PAGE));
     const page = (await client.institutional.getInstitutionDetail("Berkshire-Hathaway", {

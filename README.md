@@ -350,7 +350,7 @@ const detail = await client.institutional.getInstitutionDetail("1067983") as Pre
 console.log(detail.data.positionsHeld); // undefined when an older response omits it
 ```
 
-Institution detail compares each filing with the quarter before it. When `comparisonStatus` is `AVAILABLE`, the payload carries `priorTotalValueUsd` and `priorPositionsHeld`, and each holding carries `priorValueUsd`, `priorPortfolioWeight` and `estimatedFlowUsd` (dollars bought, positive, or sold, negative, estimated from two quarter-end snapshots rather than a reported trade). Every one of these is absent when it does not apply. Pass `limit` to get a sorted page of holdings, with `sortBy`, `sortDir`, `changeType` (a value or an array), `q` and `minWeight` to sort and filter it; those only take effect together with `limit`. When a filter is set, `data.scope` sums every matching holding, not just the page:
+Institution detail compares each filing with the quarter before it. When `comparisonStatus` is `AVAILABLE`, the payload carries `priorTotalValueUsd` and `priorPositionsHeld`, and each holding carries `priorValueUsd`, `priorPortfolioWeight` and `estimatedFlowUsd` (dollars bought, positive, or sold, negative, estimated from two quarter-end snapshots rather than a reported trade). Every one of these is absent when it does not apply. Pass `limit` to get a sorted page of holdings, with `sortBy`, `sortDir`, `changeType` (a value or an array; `"HELD"` keeps every position still held, whatever its change), `q` and `minWeight` to sort and filter it; those only take effect together with `limit`. When a filter is set, `data.scope` sums every matching holding, not just the page:
 
 ```typescript
 // The ten biggest estimated buys of the latest quarter

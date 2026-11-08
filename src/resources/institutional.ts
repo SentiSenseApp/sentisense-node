@@ -170,7 +170,8 @@ export class Institutional {
    *
    * `options.limit` returns a sorted page of holdings and adds `returnedCount` and `offset` to
    * `data` and `totalCount` to the envelope; `sortBy`, `sortDir`, `changeType`, `q` and
-   * `minWeight` only take effect together with it (PRO only). With a filter set, `data.scope`
+   * `minWeight` only take effect together with it (PRO only). `changeType` also accepts `"HELD"`,
+   * every position still held whatever its change; values combine as a union. With a filter set, `data.scope`
    * sums every matching holding, not just the page. Calling without `options` is unchanged.
    *
    * @example

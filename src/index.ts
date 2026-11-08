@@ -238,6 +238,7 @@ export type {
   InstitutionHolding,
   InstitutionScope,
   InstitutionChangeType,
+  InstitutionChangeFilter,
   GetInstitutionDetailOptions,
   GetInstitutionHistoryOptions,
   InstitutionHistory,
