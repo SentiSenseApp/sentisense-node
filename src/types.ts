@@ -2151,6 +2151,48 @@ export interface HoldersHistory {
 }
 
 /**
+ * One row of an institution detail's `holdings`.
+ *
+ * `priorValueUsd`, `priorPortfolioWeight` and `estimatedFlowUsd` are present only when the
+ * detail's `comparisonStatus` is `AVAILABLE`.
+ */
+export interface InstitutionHolding {
+  ticker?: string | null;
+  companyName?: string | null;
+  shares?: number;
+  /** Position value in USD. */
+  valueUsd?: number;
+  /** `NEW`, `INCREASED`, `DECREASED`, `SOLD_OUT` or `UNCHANGED`. */
+  changeType?: InstitutionChangeType | (string & {}) | null;
+  sharesChange?: number;
+  sharesChangePct?: number;
+  /** Weight in the filer's portfolio, in percent. */
+  portfolioWeight?: number;
+  /** This ticker's value in the comparison filing; `0` for a `NEW` position. */
+  priorValueUsd?: number;
+  /** This ticker's weight in the comparison filing, in percent. */
+  priorPortfolioWeight?: number;
+  /**
+   * Estimated dollars bought (positive) or sold (negative): an estimate from two quarter-end
+   * snapshots, not a reported trade. Absent when the holding has no `changeType`.
+   */
+  estimatedFlowUsd?: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Totals over every holding that matches a filtered institution detail request, not just the
+ * returned page. `priorValueUsd` and `estimatedFlowUsd` are present only when the detail's
+ * `comparisonStatus` is `AVAILABLE`.
+ */
+export interface InstitutionScope {
+  count?: number;
+  valueUsd?: number;
+  priorValueUsd?: number;
+  estimatedFlowUsd?: number;
+}
+
+/**
  * Optional wire keys inside an institution detail's preview envelope.
  * Opt in with PreviewResponse<InstitutionDetail>; getInstitutionDetail retains
  * Promise<unknown> for compatibility with existing callers and implementations.
@@ -2171,16 +2213,158 @@ export interface InstitutionDetail {
   increasedPositions?: number;
   decreasedPositions?: number;
   soldOutPositions?: number;
+  /**
+   * `AVAILABLE` when the position counts and each holding's change fields compare with the
+   * immediately preceding quarter; other values mean they are not a quarter-over-quarter
+   * comparison.
+   */
+  comparisonStatus?: string | null;
+  /** The preceding quarter used for changes (ISO date); absent when none applies. */
+  comparisonReportDate?: string | null;
   multiCikRollup?: boolean | null;
   childCikCount?: number | null;
   childCiks?: string[] | null;
-  holdings?: Record<string, unknown>[] | null;
+  holdings?: InstitutionHolding[] | null;
   optionPositions?: Record<string, unknown>[];
   returnedCount?: number;
   offset?: number;
   /** max(0, holdingsCount - soldOutPositions), for the full portfolio on every tier. */
   positionsHeld?: number;
+  /** Equity value of the comparison filing. Present only when `comparisonStatus` is `AVAILABLE`. */
+  priorTotalValueUsd?: number;
+  /** Positions held in the comparison filing. Present only when `comparisonStatus` is `AVAILABLE`. */
+  priorPositionsHeld?: number;
+  /** Present only on a filtered page: totals over every matching holding, not just the page. */
+  scope?: InstitutionScope;
   [key: string]: unknown;
+}
+
+/** A holding's change type in an institution detail. */
+export type InstitutionChangeType = "NEW" | "INCREASED" | "DECREASED" | "SOLD_OUT" | "UNCHANGED";
+
+/**
+ * Paging, sort and filter options for `institutional.getInstitutionDetail`.
+ *
+ * Every option here only takes effect together with `limit`; send one without it and the
+ * server ignores it and returns the full holdings list. A free key ignores them all and gets
+ * the top 10 holdings.
+ */
+export interface GetInstitutionDetailOptions {
+  /** Page size, 1 to 1000. Omit for the full holdings list. */
+  limit?: number;
+  /** Start position within the sorted holdings. Server default is 0. */
+  offset?: number;
+  /**
+   * Sort field. Server default is `"valueUsd"`. `valueChangeUsd` is `valueUsd - priorValueUsd`;
+   * for `sharesChange`, `estimatedFlowUsd` and `priorValueUsd`, holdings without the field are
+   * placed last in either direction.
+   */
+  sortBy?:
+    | "valueUsd"
+    | "shares"
+    | "portfolioWeight"
+    | "sharesChangePct"
+    | "valueChangeUsd"
+    | "sharesChange"
+    | "estimatedFlowUsd"
+    | "priorValueUsd";
+  /** Sort direction. Server default is `"desc"`. */
+  sortDir?: "asc" | "desc";
+  /** Keep only holdings with these change types. An array is sent comma-joined. */
+  changeType?: InstitutionChangeType | readonly InstitutionChangeType[];
+  /** Case-insensitive match on ticker or company name, up to 100 characters. */
+  q?: string;
+  /** Keep holdings whose `portfolioWeight` or `priorPortfolioWeight` is at least this percent. */
+  minWeight?: number;
+}
+
+/** Options for `institutional.getInstitutionHistory`. */
+export interface GetInstitutionHistoryOptions {
+  /**
+   * How many of the newest filings to return. Server default is 12; values above 40 are
+   * capped server-side, and values below 1 are rejected with a 400.
+   */
+  quarters?: number;
+  /**
+   * Up to 100 tickers; adds `positions` to the response. An array is sent comma-joined. A bad
+   * symbol or more than 100 is rejected with a 400.
+   */
+  tickers?: string | readonly string[];
+}
+
+/** One filing's holding of one ticker, from an institution's history. */
+export interface InstitutionPositionPoint {
+  /** Quarter end, ISO date (`YYYY-MM-DD`). */
+  reportDate: string;
+  shares: number;
+  /** Position value in US dollars. */
+  valueUsd: number;
+}
+
+/**
+ * One filing of an institution's 13F book.
+ *
+ * Fields marked "AVAILABLE only" are absent unless `comparisonStatus` is `AVAILABLE`, meaning
+ * the filing compares with the immediately preceding quarter. Absent, never zero: a zero would
+ * claim the institution did not trade. The flow figures are estimates from two quarter-end
+ * snapshots, not reported cash flow.
+ */
+export interface InstitutionHistoryQuarter {
+  /** Quarter end, ISO date (`YYYY-MM-DD`). */
+  reportDate: string;
+  /** Quarter id in `YYYYQN` form, e.g. `"2026Q2"`. */
+  value: string;
+  /** Display label, e.g. `"Q2 2026"`. */
+  label: string;
+  /** `settled` once the quarter's filing deadline has passed, `filing` before. */
+  status: "settled" | "filing" | (string & {});
+  /** `AVAILABLE`, or one of the other values documented for the institution detail. */
+  comparisonStatus: "AVAILABLE" | (string & {});
+  /** The preceding quarter used for the comparison; absent when none applies. */
+  comparisonReportDate?: string;
+  /** Reported equity value of the filing, in US dollars. */
+  totalValueUsd: number;
+  /** Equity positions held. */
+  positionsHeld: number;
+  /** Share of `totalValueUsd` in the ten largest positions, in percent. */
+  top10Pct: number;
+  /** AVAILABLE only. Positions opened. */
+  newPositions?: number;
+  /** AVAILABLE only. Positions added to. */
+  increasedPositions?: number;
+  /** AVAILABLE only. Positions trimmed. */
+  decreasedPositions?: number;
+  /** AVAILABLE only. Positions exited. */
+  soldOutPositions?: number;
+  /** AVAILABLE only. Shares added (new and increased positions) valued at this filing's prices. */
+  boughtUsd?: number;
+  /** AVAILABLE only. Shares sold from positions still held, valued at this filing's prices. */
+  trimmedUsd?: number;
+  /** AVAILABLE only. Positions exited, at the previous filing's value. */
+  exitedUsd?: number;
+  /** AVAILABLE only. `boughtUsd - trimmedUsd - exitedUsd`. */
+  netFlowUsd?: number;
+  /**
+   * AVAILABLE only. The change in `totalValueUsd` since the previous filing minus `netFlowUsd`:
+   * the part of the change that came from prices rather than trading.
+   */
+  priceEffectUsd?: number;
+}
+
+/**
+ * An institution's 13F book filing by filing, newest first: the `data` payload of
+ * `institutional.getInstitutionHistory()`, which returns `PreviewResponse<InstitutionHistory>`.
+ */
+export interface InstitutionHistory {
+  filerCik: string;
+  urlSlug: string;
+  displayName: string;
+  quarters: InstitutionHistoryQuarter[];
+  /**
+   * Present only when `tickers` was requested: each ticker maps to its filings, newest first.
+   * A filing in which the institution did not hold the ticker is absent from its list.
+   */
+  positions?: Record<string, InstitutionPositionPoint[]>;
 }
 
 /** A single institution summary from the discovery list. */

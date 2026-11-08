@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.74.0
+
+### Added
+
+- `institutional.getInstitutionHistory(slugOrCik, { quarters, tickers })`: an institution's 13F
+  book filing by filing, newest first, as `PreviewResponse<InstitutionHistory>`. Each
+  `InstitutionHistoryQuarter` carries the reported value, positions held and top-10
+  concentration, and, when the filing compares with the quarter before, the position counts and
+  the estimated dollars bought, trimmed and exited (absent otherwise, never zero). `tickers`
+  accepts an array and adds `positions`: shares and value per filing for each ticker.
+- `institutional.getInstitutionDetail(slugOrCik, options?)` accepts optional `limit`, `offset`,
+  `sortBy`, `sortDir`, `changeType`, `q` and `minWeight` to page, sort and filter the holdings.
+  Calls without `options` are unchanged, and the return type stays `Promise<unknown>`.
+- `InstitutionDetail` gains `priorTotalValueUsd`, `priorPositionsHeld`, `scope`,
+  `comparisonStatus` and `comparisonReportDate`. New `InstitutionHolding` (`priorValueUsd`,
+  `priorPortfolioWeight`, `estimatedFlowUsd`) and `InstitutionScope` types describe a holding
+  row and the filtered-set totals; `holdings` is now typed as `InstitutionHolding[]`, which
+  keeps an index signature so existing field reads still compile. Every new field is optional
+  and absent when it does not apply.
+
 ## 0.73.0
 
 ### Added

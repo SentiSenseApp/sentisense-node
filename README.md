@@ -193,7 +193,7 @@ Affected: every method whose declared return type is `PreviewResponse<T>`. A tes
 | `etfs` | `analystAggregate` `insiderAggregate` `sentimentAggregate` |
 | `insider` | `getActivity` `getTrades` `getClusterBuys` |
 | `insights` | `stock` `stockRange` `market` `latest` `user` |
-| `institutional` | `getFlows` `getHolders` `getHoldersHistory` `getActivists` |
+| `institutional` | `getFlows` `getHolders` `getHoldersHistory` `getInstitutionHistory` `getActivists` |
 | `options` | `getOverview` |
 | `politicians` | `getActivity` `getFilings` `getMembers` `getMember` |
 | `stocks` | `getSentiment` `getKpis` `getOptionsSummary` `getOptionsHistory` `getOptionsIntradayHistory` |
@@ -307,6 +307,8 @@ client.institutional.getFlows("2025-02-14", { limit: 20 })
 client.institutional.getHolders("AAPL", "2025-02-14")
 client.institutional.getHolders("AAPL")  // no date: the ticker's latest settled quarter
 client.institutional.getHoldersHistory("AAPL", { quarters: 8 })
+client.institutional.getInstitutionDetail("Berkshire-Hathaway", { limit: 10, sortBy: "estimatedFlowUsd" })
+client.institutional.getInstitutionHistory("Renaissance-Technologies", { quarters: 8, tickers: ["NVDA"] })
 client.institutional.getActivists("2025-02-14")
 ```
 
@@ -346,6 +348,34 @@ import type { InstitutionDetail, PreviewResponse } from "sentisense";
 
 const detail = await client.institutional.getInstitutionDetail("1067983") as PreviewResponse<InstitutionDetail>;
 console.log(detail.data.positionsHeld); // undefined when an older response omits it
+```
+
+Institution detail compares each filing with the quarter before it. When `comparisonStatus` is `AVAILABLE`, the payload carries `priorTotalValueUsd` and `priorPositionsHeld`, and each holding carries `priorValueUsd`, `priorPortfolioWeight` and `estimatedFlowUsd` (dollars bought, positive, or sold, negative, estimated from two quarter-end snapshots rather than a reported trade). Every one of these is absent when it does not apply. Pass `limit` to get a sorted page of holdings, with `sortBy`, `sortDir`, `changeType` (a value or an array), `q` and `minWeight` to sort and filter it; those only take effect together with `limit`. When a filter is set, `data.scope` sums every matching holding, not just the page:
+
+```typescript
+// The ten biggest estimated buys of the latest quarter
+const page = await client.institutional.getInstitutionDetail("Berkshire-Hathaway", {
+  limit: 10,
+  sortBy: "estimatedFlowUsd",
+  changeType: ["NEW", "INCREASED"],
+}) as PreviewResponse<InstitutionDetail>;
+for (const h of page.data.holdings ?? []) console.log(h.ticker, h.estimatedFlowUsd);
+console.log(page.data.scope?.estimatedFlowUsd); // every matching holding, not only these ten
+```
+
+**Institution history.** `getInstitutionHistory()` returns one row per filing, newest first (`quarters` up to 40, 12 by default). Free keys see the newest four, with `totalCount` naming the window. The comparison fields (`newPositions`, `boughtUsd`, `netFlowUsd` and the rest) are absent unless that filing's `comparisonStatus` is `AVAILABLE`, never zero. Pass `tickers` (up to 100) to also get `positions`: each ticker's shares and value per filing, newest first, with filings where the institution did not hold it left out:
+
+```typescript
+const { data } = await client.institutional.getInstitutionHistory("Renaissance-Technologies", {
+  quarters: 8,
+  tickers: ["NVDA", "META"],
+});
+for (const q of data.quarters) {
+  console.log(q.label, q.totalValueUsd, q.netFlowUsd, q.priceEffectUsd);
+}
+for (const point of data.positions?.NVDA ?? []) {
+  console.log(point.reportDate, point.shares, point.valueUsd);
+}
 ```
 
 **Paging the holder list.** A widely held ticker returns thousands of rows: a megacap quarter is roughly 6,000 holders and 1.5 MB on the wire. Pass `limit` unless you really want the whole list; omitting the options object sends the original unbounded request, so existing code keeps working.
