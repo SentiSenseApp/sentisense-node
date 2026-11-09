@@ -2185,7 +2185,7 @@ export interface InstitutionHolding {
  * returned page. `priorValueUsd` and `estimatedFlowUsd` are present only when the detail's
  * `comparisonStatus` is `AVAILABLE`.
  */
-export interface InstitutionScope {
+export interface InstitutionMatchTotals {
   count?: number;
   valueUsd?: number;
   priorValueUsd?: number;
@@ -2235,7 +2235,7 @@ export interface InstitutionDetail {
   /** Positions held in the comparison filing. Present only when `comparisonStatus` is `AVAILABLE`. */
   priorPositionsHeld?: number;
   /** Present only on a filtered page: totals over every matching holding, not just the page. */
-  scope?: InstitutionScope;
+  matchTotals?: InstitutionMatchTotals;
   [key: string]: unknown;
 }
 

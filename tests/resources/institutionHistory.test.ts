@@ -4,7 +4,7 @@ import SentiSense, {
   type InstitutionHistory,
   type InstitutionHistoryQuarter,
   type InstitutionHolding,
-  type InstitutionScope,
+  type InstitutionMatchTotals,
   type PreviewResponse,
 } from "../../src/index.js";
 
@@ -218,7 +218,7 @@ const DETAIL_PAGE = {
     holdings: [HOLDING],
     returnedCount: 1,
     offset: 0,
-    scope: { count: 5, valueUsd: 900000, priorValueUsd: 700000, estimatedFlowUsd: 90000 },
+    matchTotals: { count: 5, valueUsd: 900000, priorValueUsd: 700000, estimatedFlowUsd: 90000 },
   },
 };
 
@@ -301,8 +301,8 @@ describe("institutional.getInstitutionDetail options", () => {
     expect(page.totalCount).toBe(40);
     expect(page.data.priorTotalValueUsd).toBe(280000000000);
     expect(page.data.priorPositionsHeld).toBe(38);
-    const scope: InstitutionScope | undefined = page.data.scope;
-    expect(scope?.estimatedFlowUsd).toBe(90000);
+    const totals: InstitutionMatchTotals | undefined = page.data.matchTotals;
+    expect(totals?.estimatedFlowUsd).toBe(90000);
     const holding = page.data.holdings?.[0];
     expectTypeOf(holding?.estimatedFlowUsd).toEqualTypeOf<number | undefined>();
     expect(holding?.priorValueUsd).toBe(330000);
@@ -315,7 +315,7 @@ describe("institutional.getInstitutionDetail options", () => {
     )) as PreviewResponse<InstitutionDetail>;
     expect(old.data.priorTotalValueUsd).toBeUndefined();
     expect(old.data.priorPositionsHeld).toBeUndefined();
-    expect(old.data.scope).toBeUndefined();
+    expect(old.data.matchTotals).toBeUndefined();
     expect(old.data.holdings?.[0].priorValueUsd).toBeUndefined();
     expect(old.data.holdings?.[0].valueUsd).toBe(400000);
   });

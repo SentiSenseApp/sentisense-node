@@ -350,7 +350,7 @@ const detail = await client.institutional.getInstitutionDetail("1067983") as Pre
 console.log(detail.data.positionsHeld); // undefined when an older response omits it
 ```
 
-Institution detail compares each filing with the quarter before it. When `comparisonStatus` is `AVAILABLE`, the payload carries `priorTotalValueUsd` and `priorPositionsHeld`, and each holding carries `priorValueUsd`, `priorPortfolioWeight` and `estimatedFlowUsd` (dollars bought, positive, or sold, negative, estimated from two quarter-end snapshots rather than a reported trade). Every one of these is absent when it does not apply. Pass `limit` to get a sorted page of holdings, with `sortBy`, `sortDir`, `changeType` (a value or an array; `"HELD"` keeps every position still held, whatever its change), `q` and `minWeight` to sort and filter it; those only take effect together with `limit`. When a filter is set, `data.scope` sums every matching holding, not just the page:
+Institution detail compares each filing with the quarter before it. When `comparisonStatus` is `AVAILABLE`, the payload carries `priorTotalValueUsd` and `priorPositionsHeld`, and each holding carries `priorValueUsd`, `priorPortfolioWeight` and `estimatedFlowUsd` (dollars bought, positive, or sold, negative, estimated from two quarter-end snapshots rather than a reported trade). Every one of these is absent when it does not apply. Pass `limit` to get a sorted page of holdings, with `sortBy`, `sortDir`, `changeType` (a value or an array; `"HELD"` keeps every position still held, whatever its change), `q` and `minWeight` to sort and filter it; those only take effect together with `limit`. When a filter is set, `data.matchTotals` sums every matching holding, not just the page:
 
 ```typescript
 // The ten biggest estimated buys of the latest quarter
@@ -360,7 +360,7 @@ const page = await client.institutional.getInstitutionDetail("Berkshire-Hathaway
   changeType: ["NEW", "INCREASED"],
 }) as PreviewResponse<InstitutionDetail>;
 for (const h of page.data.holdings ?? []) console.log(h.ticker, h.estimatedFlowUsd);
-console.log(page.data.scope?.estimatedFlowUsd); // every matching holding, not only these ten
+console.log(page.data.matchTotals?.estimatedFlowUsd); // every matching holding, not only these ten
 ```
 
 **Institution history.** `getInstitutionHistory()` returns one row per filing, newest first (`quarters` up to 40, 12 by default). Free keys see the newest four, with `totalCount` naming the window. The comparison fields (`newPositions`, `boughtUsd`, `netFlowUsd` and the rest) are absent unless that filing's `comparisonStatus` is `AVAILABLE`, never zero. Pass `tickers` (up to 100) to also get `positions`: each ticker's shares and value per filing, newest first, with filings where the institution did not hold it left out. Free keys receive `positions` only for the institution's ten largest holdings. `priceEffectUsd` is the remainder after `netFlowUsd`, mostly price moves; it also absorbs rounding, the different price bases of exits and trades, and positions whose change could not be restated:

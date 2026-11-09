@@ -16,9 +16,9 @@
   `changeType` also accepts `"HELD"` (every position still held, whatever its change); values
   combine as a union.
   Calls without `options` are unchanged, and the return type stays `Promise<unknown>`.
-- `InstitutionDetail` gains `priorTotalValueUsd`, `priorPositionsHeld`, `scope`,
+- `InstitutionDetail` gains `priorTotalValueUsd`, `priorPositionsHeld`, `matchTotals`,
   `comparisonStatus` and `comparisonReportDate`. New `InstitutionHolding` (`priorValueUsd`,
-  `priorPortfolioWeight`, `estimatedFlowUsd`) and `InstitutionScope` types describe a holding
+  `priorPortfolioWeight`, `estimatedFlowUsd`) and `InstitutionMatchTotals` types describe a holding
   row and the filtered-set totals; `holdings` is now typed as `InstitutionHolding[]`, which
   keeps an index signature so existing field reads still compile. Every new field is optional
   and absent when it does not apply.

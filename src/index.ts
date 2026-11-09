@@ -236,7 +236,7 @@ export type {
   InstitutionSummary,
   InstitutionDetail,
   InstitutionHolding,
-  InstitutionScope,
+  InstitutionMatchTotals,
   InstitutionChangeType,
   InstitutionChangeFilter,
   GetInstitutionDetailOptions,
