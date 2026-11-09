@@ -208,7 +208,8 @@ export class Institutional {
    *
    * Pass `tickers` to also get `data.positions`: each ticker maps to its shares and value per
    * filing, newest first. A filing in which the institution did not hold the ticker is absent
-   * from its list.
+   * from its list. Free keys receive positions only for the institution's ten largest
+   * holdings; other tickers are left out.
    *
    * Free keys receive the newest four filings with `isPreview: true` and `totalCount` holding
    * the number of filings in the requested window. The first request for a large multi-filer

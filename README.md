@@ -363,7 +363,7 @@ for (const h of page.data.holdings ?? []) console.log(h.ticker, h.estimatedFlowU
 console.log(page.data.scope?.estimatedFlowUsd); // every matching holding, not only these ten
 ```
 
-**Institution history.** `getInstitutionHistory()` returns one row per filing, newest first (`quarters` up to 40, 12 by default). Free keys see the newest four, with `totalCount` naming the window. The comparison fields (`newPositions`, `boughtUsd`, `netFlowUsd` and the rest) are absent unless that filing's `comparisonStatus` is `AVAILABLE`, never zero. Pass `tickers` (up to 100) to also get `positions`: each ticker's shares and value per filing, newest first, with filings where the institution did not hold it left out:
+**Institution history.** `getInstitutionHistory()` returns one row per filing, newest first (`quarters` up to 40, 12 by default). Free keys see the newest four, with `totalCount` naming the window. The comparison fields (`newPositions`, `boughtUsd`, `netFlowUsd` and the rest) are absent unless that filing's `comparisonStatus` is `AVAILABLE`, never zero. Pass `tickers` (up to 100) to also get `positions`: each ticker's shares and value per filing, newest first, with filings where the institution did not hold it left out. Free keys receive `positions` only for the institution's ten largest holdings. `priceEffectUsd` is the remainder after `netFlowUsd`, mostly price moves; it also absorbs rounding, the different price bases of exits and trades, and positions whose change could not be restated:
 
 ```typescript
 const { data } = await client.institutional.getInstitutionHistory("Renaissance-Technologies", {

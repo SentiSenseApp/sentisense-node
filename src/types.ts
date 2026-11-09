@@ -2299,7 +2299,8 @@ export interface GetInstitutionHistoryOptions {
   quarters?: number;
   /**
    * Up to 100 tickers; adds `positions` to the response. An array is sent comma-joined. A bad
-   * symbol or more than 100 is rejected with a 400.
+   * symbol or more than 100 is rejected with a 400. Free keys receive positions only for the
+   * institution's ten largest holdings; other tickers are left out.
    */
   tickers?: string | readonly string[];
 }
@@ -2358,7 +2359,9 @@ export interface InstitutionHistoryQuarter {
   netFlowUsd?: number;
   /**
    * AVAILABLE only. The change in `totalValueUsd` since the previous filing minus `netFlowUsd`:
-   * the part of the change that came from prices rather than trading.
+   * the remainder after trading, mostly price moves. It also absorbs rounding, the different
+   * price bases of exits (previous filing) and trades (this filing), and positions whose change
+   * could not be restated.
    */
   priceEffectUsd?: number;
 }
