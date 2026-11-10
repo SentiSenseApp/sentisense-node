@@ -262,6 +262,8 @@ export type {
   IndexSnapshot,
   IndexHistoryPoint,
   IndexHistoryResponse,
+  TrackerFilter,
+  TrackerGetParams,
   TrackerListing,
   TrackerListResponse,
   TrackerSnapshot,

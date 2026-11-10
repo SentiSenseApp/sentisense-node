@@ -675,6 +675,24 @@ const symbol = hits.find((hit) => hit.ticker)?.ticker;   // "TSLA"
 
 An empty array is the normal answer for a query that matches nothing, so branch on `length` rather than catching.
 
+### Trackers
+
+Every tracker returns the same snapshot envelope, so one renderer per `viewType` covers them all. `trackers.list()` says which trackers exist and, on those that have them, the `filters` each accepts (`{ key, values }`, with `values` the complete list).
+
+```typescript
+const { trackers } = await client.trackers.list();
+const heatmap = await client.trackers.get("market-heatmap", { scope: "nasdaq100" });
+
+// Narrow a tracker that lists filters, as an object or the wire string "state:TX".
+const tx = await client.trackers.get("data-center-moratoriums", { filter: { state: "TX" } });
+console.log(tx.totalCount, "Texas records");
+for (const row of tx.data.rows ?? []) {
+  console.log(row.rowId, row.name, row.ticker, row.endsDate, row.statesNamed);
+}
+```
+
+Rows carry `ticker`, `url`, `endsDate` (ISO date) and `statesNamed` when a row has them, and absent otherwise. Other named cells, such as the `market-heatmap` columns, are on the row too (`row.marketCap`, typed `unknown`). Combine filters with commas: `{ state: "TX", category: "local" }` sends `filter=state:TX,category:local`. An unknown filter key or value throws `APIError` with `status: 400` and `code: "invalid_filter"`, the same way a bad `scope` throws `code: "invalid_scope"`, so a call never comes back unfiltered by accident.
+
 ### Screener
 
 Filter the tracked universe on the SentiSense Score, attention, analyst consensus, technicals, price and end-of-day options readings in one query. Screening on analyst ratings alone is something a dozen free tools do; screening on analyst ratings *where the Score disagrees* is not.

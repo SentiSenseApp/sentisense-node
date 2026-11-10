@@ -3418,6 +3418,44 @@ export interface TrackerListing {
   refreshIntervalSeconds: number;
   /** Canonical detail URL (e.g. `"/api/v1/trackers/institution-concentration"`). */
   canonicalUrl: string;
+  /**
+   * What this tracker accepts through `client.trackers.get(id, { filter })`: one entry per
+   * key, each with the complete list of accepted values. Absent on a tracker with no filters.
+   */
+  filters?: TrackerFilter[];
+}
+
+/** One filter a tracker accepts, as listed by `client.trackers.list()`. */
+export interface TrackerFilter {
+  /** Filter name, e.g. `"state"`. */
+  key: string;
+  /** The complete list of accepted values, e.g. `["AZ", "FEDERAL", "TX"]`. */
+  values: string[];
+}
+
+/**
+ * Query parameters for `client.trackers.get()`. Each is optional and provider-specific;
+ * other keys are passed through as query parameters.
+ */
+export interface TrackerGetParams {
+  /**
+   * Which universe a scoped tracker returns, e.g. `"nasdaq100"` for `market-heatmap`.
+   * A value the tracker does not serve throws `APIError` with `code: "invalid_scope"`.
+   */
+  scope?: string;
+  /**
+   * For the institution rankings: overrides the default filer-category filter. Pass `""`
+   * to open the universe across all categories.
+   */
+  category?: string;
+  /**
+   * Narrows a tracker that declares `filters`. An object such as
+   * `{ state: "TX", category: "local" }` or the wire string `"state:TX,category:local"`.
+   * An unknown key or value, or a filter on a tracker with none, throws `APIError` with
+   * `status: 400` and `code: "invalid_filter"`.
+   */
+  filter?: string | Record<string, string>;
+  [param: string]: string | number | boolean | Record<string, string> | undefined;
 }
 
 /** Discovery envelope returned by `client.trackers.list()`. */
@@ -3439,6 +3477,20 @@ export interface TrackerTableRow {
   url: string | null;
   /** Per-cell metric values; each carries its own label and unit. */
   metrics: TrackerMetricValue[];
+  /** The stock symbol the row is about, when it is about one company. Absent otherwise. */
+  ticker?: string;
+  /** ISO calendar day (`YYYY-MM-DD`) a row's stated term ends. Absent when it has none. */
+  endsDate?: string;
+  /**
+   * Two-letter state codes a record names (`data-center-moratoriums` company filings). A row
+   * appears under a `state` filter for each of them. Absent when it names none.
+   */
+  statesNamed?: string[];
+  /**
+   * Any other named cell a tracker writes on the row, such as the `market-heatmap` columns
+   * (`marketCap`, `changePercent`, ...).
+   */
+  [field: string]: unknown;
 }
 
 /**

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.75.0
+
+### Added
+
+- `trackers.get(trackerId, params?)` accepts an optional `filter`, an object such as
+  `{ state: "TX", category: "local" }` or the wire string `"state:TX,category:local"`, to narrow
+  a tracker that declares filters. An unknown key or value throws `APIError` with `status: 400`
+  and `code: "invalid_filter"`. `params` is now typed as `TrackerGetParams` (`scope`,
+  `category`, `filter`, plus any other key); existing calls compile and behave as before.
+- `TrackerListing` gains optional `filters`: a list of `TrackerFilter` (`key`, `values`), absent
+  on a tracker with no filters.
+- `TrackerTableRow` gains optional `ticker`, `endsDate` (ISO date) and `statesNamed`, and an
+  index signature, so other named cells such as the `market-heatmap` columns are readable as
+  `unknown` without a cast.
+- New exported types `TrackerFilter` and `TrackerGetParams`, and the helper
+  `serializeTrackerFilter` on the trackers resource module.
+
 ## 0.74.0
 
 ### Added
