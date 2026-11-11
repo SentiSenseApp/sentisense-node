@@ -157,6 +157,8 @@ export type {
   StockImage,
   StockProfile,
   StockEntity,
+  EtfMembership,
+  GetStockEtfsOptions,
   StockGraph,
   GraphNode,
   GraphEdge,

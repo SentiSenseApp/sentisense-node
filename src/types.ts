@@ -193,6 +193,25 @@ export interface SimilarStock {
   changePercent: number | null;
 }
 
+/** One ETF that holds a given stock. Returned by `stocks.getEtfs`. */
+export interface EtfMembership {
+  /** The fund's ticker. */
+  etfTicker: string;
+  /** The fund's name; the fund ticker when no name is known. */
+  etfName: string;
+  /**
+   * The stock's weight in the fund as a percentage (0 to 100, so `7.1` means 7.1%). For a
+   * company with several listed share classes (GOOGL and GOOG, BRK.B and BRK.A) it is the
+   * combined weight of all the classes in that fund, and every class returns the same rows.
+   */
+  weightPct: number;
+  /**
+   * ISO date `YYYY-MM-DD` of this fund's holdings file. It is per fund, so rows in one
+   * response can carry different dates. May be absent.
+   */
+  asOfDate?: string;
+}
+
 export interface StockImage {
   iconUrl: string | null;
   logoUrl: string | null;
@@ -727,6 +746,11 @@ export interface GetDescriptionsOptions {
 }
 
 export interface GetSimilarOptions {
+  limit?: number;
+}
+
+export interface GetStockEtfsOptions {
+  /** Return at most this many rows. Omitted, 0 or negative returns every row. */
   limit?: number;
 }
 

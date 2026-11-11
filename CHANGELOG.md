@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.76.0
+
+### Added
+
+- `stocks.getEtfs(ticker, { limit })`: the ETFs SentiSense tracks that hold a stock, heaviest
+  weight first, as `EtfMembership[]` (`etfTicker`, `etfName`, `weightPct`, `asOfDate`).
+  `weightPct` is a percentage (0 to 100), combined across share classes for a company with
+  several; `asOfDate` is an ISO date, per fund, and may be absent. `limit` caps the rows; omit
+  it for all of them. A ticker no tracked fund holds resolves to `[]`. It resolves to a bare
+  array on every tier. `EtfMembership` and `GetStockEtfsOptions` are exported from the package.
+
 ## 0.75.1
 
 ### Changed

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import SentiSense, { type StockEntity, type StockGraph } from "../../src/index.js";
+import SentiSense, { type EtfMembership, type StockEntity, type StockGraph } from "../../src/index.js";
 
 const mockFetch = vi.fn();
 
@@ -157,6 +157,42 @@ describe("stocks.getSimilar", () => {
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/stocks/AAPL/similar");
     expect(url).toContain("limit=3");
+  });
+});
+
+describe("stocks.getEtfs", () => {
+  const rows = [
+    { etfTicker: "XLK", etfName: "Technology Select Sector SPDR Fund", weightPct: 14.2, asOfDate: "2026-01-15" },
+    { etfTicker: "VGT", etfName: "Vanguard Information Technology ETF", weightPct: 9.8 },
+  ];
+
+  it("calls the path for the ticker and returns camelCase rows as-is", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(rows));
+    const result: EtfMembership[] = await client.stocks.getEtfs("NVDA");
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/stocks/NVDA/etfs");
+    expect(url).not.toContain("limit");
+    expect(result).toEqual(rows);
+    expect(result[1].asOfDate).toBeUndefined();
+  });
+
+  it("passes limit as a query param", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    await client.stocks.getEtfs("NVDA", { limit: 3 });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain("/api/v1/stocks/NVDA/etfs");
+    expect(url).toContain("limit=3");
+  });
+
+  it("keeps a dotted share-class ticker intact", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    await client.stocks.getEtfs("brk.b");
+    expect(mockFetch.mock.calls[0][0]).toContain("/api/v1/stocks/brk.b/etfs");
+  });
+
+  it("resolves to an empty array when no tracked fund holds the stock", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+    expect(await client.stocks.getEtfs("ZZZZ")).toEqual([]);
   });
 });
 
@@ -374,7 +410,7 @@ describe("stocks.getSentiment", () => {
     expect(result.data.bySource?.[0].value).toBe(0.31);
   });
 
-  it("encodes the ticker", async () => {
+  it("keeps a dotted share-class ticker intact", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ isPreview: false, previewReason: null, data: {} }));
     await client.stocks.getSentiment("BRK B");
     expect(mockFetch.mock.calls[0][0] as string).toContain("BRK%20B");

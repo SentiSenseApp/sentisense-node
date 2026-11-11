@@ -4,6 +4,7 @@ import type {
   ChartData,
   ChartDataPoint,
   CompanyKpisData,
+  EtfMembership,
   FloatInfo,
   Fundamentals,
   FundamentalsPeriodsResponse,
@@ -18,6 +19,7 @@ import type {
   GetOptionsHistoryOptions,
   GetOptionsIntradayHistoryOptions,
   GetSimilarOptions,
+  GetStockEtfsOptions,
   GetShortInterestOptions,
   GetShortVolumeOptions,
   GetStockGraphOptions,
@@ -128,6 +130,20 @@ export class Stocks {
   /** Get peer/similar stocks. */
   async getSimilar(ticker: string, options?: GetSimilarOptions): Promise<SimilarStock[]> {
     return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/similar`, options);
+  }
+
+  /**
+   * List the ETFs that hold a stock, heaviest weight first.
+   *
+   * Resolves to a bare array (no preview envelope) on every tier, sorted by `weightPct`
+   * descending, then `etfTicker` ascending. A ticker no tracked fund holds, or an unknown
+   * ticker, resolves to `[]` rather than throwing. Only funds SentiSense tracks with a
+   * holdings file are searched, and some funds' holdings are partial, so the list is not
+   * every fund in the market. `ticker` is case-insensitive. Counts against the monthly
+   * quota like other data endpoints.
+   */
+  async getEtfs(ticker: string, options?: GetStockEtfsOptions): Promise<EtfMembership[]> {
+    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/etfs`, options);
   }
 
   /** Get company profile (CEO, sector, industry, market data). */

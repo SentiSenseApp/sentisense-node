@@ -263,6 +263,7 @@ client.stocks.getShortInterest("GME", { limit: 12 })    // Short interest by set
 client.stocks.getShortVolume("GME")                     // Daily short volume
 client.stocks.getFloat("GME")                           // Free float
 client.stocks.getGraph("AAPL", { depth: 1 })            // Company knowledge graph: people, products, peers
+client.stocks.getEtfs("NVDA", { limit: 5 })             // ETFs that hold the stock, heaviest weight first
 client.stocks.getOptionsSummary("NVDA")                 // End-of-day options dossier
 client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // Daily options aggregates over time
 client.stocks.getOptionsIntradayHistory("NVDA")         // One session's intraday options series (PRO)
@@ -271,6 +272,8 @@ client.stocks.getAISummary("AAPL", { depth: "deep" })   // AI report (PRO)
 ```
 
 Price fields carry `priceAsOf` (Unix milliseconds) for the age of the market data; read that for freshness rather than `timestamp`, which is when the response was served.
+
+`stocks.getEtfs` resolves to a bare array (no preview envelope) on every tier. Each row has `etfTicker`, `etfName`, `weightPct` (the stock's weight in the fund as a percentage from 0 to 100, combined across share classes for a company with several) and `asOfDate` (that fund's own holdings date, so it can differ between rows; may be absent). It searches only the funds SentiSense tracks with a holdings file, some of which are partial, so it is not every fund in the market. A ticker no tracked fund holds resolves to `[]`. See the [API reference](https://sentisense.ai/docs/api/stocks/#get-stock-etfs).
 
 Short interest and short volume come back newest first, and an unknown ticker returns an empty `dataPoints` array rather than an error. Every identifier in `getGraph` is a slug, the same handle the metric and document endpoints take. An ETF symbol is refused by `getQuote` with an `APIError` whose `code` is `"ticker_is_etf"`; use `etfs.quote()` for funds.
 
