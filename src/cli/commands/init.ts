@@ -13,6 +13,19 @@ export const PROVISION_PATH = "/api/v1/keys/provision";
 export const CLIENT_ID_HEADER = "X-SentiSense-Client-Id";
 export const LLMS_URL = "https://sentisense.ai/llms.txt";
 export const SKILL_URL = "https://sentisense.ai/skill.md";
+/**
+ * The first call init suggests. Tesla is one of the sample companies, so a temporary key gets its
+ * full sentiment reading rather than a preview.
+ */
+export const STARTER_ARGS = "sentiment TSLA";
+
+/**
+ * One command to paste and run right after init. The key travels as `--api-key`, which works in
+ * every shell and applies to that call only, so nothing has to be exported first.
+ */
+export function starterCommand(apiKey: string): string {
+  return `npx sentisense ${STARTER_ARGS} --api-key ${apiKey}`;
+}
 
 /** What the server answers when it mints a temporary key. */
 export interface ProvisionedKey {
@@ -115,6 +128,7 @@ export const initCommand: CommandDef = {
     "it prints SENTISENSE_API_KEY=<key> and a keep link. Store the key the way the project",
     "already stores secrets (an environment variable, a .env file kept out of git, a secret",
     "manager). The SDK and every sentisense command read SENTISENSE_API_KEY from the environment.",
+    "After the key it prints one command to try next (Tesla's sentiment, a sample company).",
     "The key is temporary until kept: open the link, sign in or create a free account, and the",
     "same key stays on your account. Until then it stops working after a few days and has request",
     "limits; the link keeps it for about two weeks, even after it stops working.",
@@ -150,6 +164,7 @@ export const initCommand: CommandDef = {
 
     const minted = await mintKey(context);
     const keepWindow = minted.keepUntil ? `; it works until ${formatUtc(minted.keepUntil)}, even after the key stops` : "";
+    const starter = starterCommand(minted.apiKey);
     return {
       json: {
         apiKey: minted.apiKey,
@@ -159,6 +174,7 @@ export const initCommand: CommandDef = {
         keepUntil: minted.keepUntil ?? null,
         keepUrl: minted.keepUrl,
         limits: minted.limits ?? null,
+        starterCommand: starter,
         docs: { llms: LLMS_URL, skill: SKILL_URL },
       },
       doc: doc(
@@ -170,6 +186,9 @@ export const initCommand: CommandDef = {
             `A temporary key, working until ${formatUtc(minted.expiresAt)} unless kept. Set it as the ${ENV_VAR} ` +
             "environment variable wherever this project keeps its secrets; the SDK and the sentisense commands read it from there.",
         },
+        { kind: "blank" },
+        { kind: "text", text: "Run this next. Tesla is a sample company, so this key gets its full sentiment reading:" },
+        { kind: "text", text: starter, tone: "accent" },
         { kind: "blank" },
         {
           kind: "text",

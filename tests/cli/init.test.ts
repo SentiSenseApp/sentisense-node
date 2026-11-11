@@ -62,6 +62,8 @@ describe("sentisense init", () => {
     expect(result.stdout).toContain("1,000 requests in all (at most 500 a day, 10 a minute)");
     expect(result.stdout).toContain("works until 2026-10-31 16:00 UTC, even after the key stops");
     expect(result.stdout).toContain("https://sentisense.ai/llms.txt");
+    // One command to run next, on its own line, ready to paste with the key it just made.
+    expect(result.stdout.split("\n")).toContain(`npx sentisense sentiment TSLA --api-key ${KEY}`);
     expectNeutralCopy(result.stdout);
 
     // The only file init writes is its own install id, inside the CLI's config directory.
@@ -80,8 +82,34 @@ describe("sentisense init", () => {
       keepUntil: 1793462400,
       keepUrl: KEEP_URL,
       limits: { requestsPerMinute: 10, requestsPerDay: 500, requestsTotal: 1000 },
+      starterCommand: `npx sentisense sentiment TSLA --api-key ${KEY}`,
       docs: { llms: "https://sentisense.ai/llms.txt", skill: "https://sentisense.ai/skill.md" },
     });
+  });
+
+  it("prints a starter command that is a real command and runs with the new key alone", async () => {
+    const minted = await run(["init", "--json"], { fetch: mintRoute(), configDir });
+    const starter: string = JSON.parse(minted.stdout).starterCommand;
+    expect(starter.startsWith("npx sentisense ")).toBe(true);
+
+    // Run exactly what was printed, with no key in the environment and none stored.
+    const argv = starter.slice("npx sentisense ".length).split(" ");
+    const fetch = routeFetch([
+      [/\/api\/v1\/stocks\/TSLA\/sentiment/, { isPreview: false, previewReason: null, data: { ticker: "TSLA" } }],
+      [/\/api\/v2\/metrics\//, []],
+    ]);
+    const result = await run([...argv, "--plain"], { fetch, env: {}, configDir });
+
+    expect(result.code).toBe(0);
+    expect(result.urls.some((url) => /\/api\/v1\/stocks\/TSLA\/sentiment/.test(url))).toBe(true);
+    for (const init of result.inits as Array<{ headers: Record<string, string> }>) {
+      expect(init.headers["X-SentiSense-API-Key"]).toBe(KEY);
+    }
+  });
+
+  it("prints no starter command when it makes no key", async () => {
+    const result = await run(["init", "--plain"], { fetch: mintRoute(), env: { SENTISENSE_API_KEY: OTHER }, configDir });
+    expect(result.stdout).not.toContain("npx sentisense sentiment");
   });
 
   it("sends a stable per-install id with the request, and only to the key endpoint", async () => {

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.75.1
+
+### Changed
+
+- `sentisense init` prints one command to run next, right after the key:
+  `npx sentisense sentiment TSLA --api-key <key>`. Tesla is a sample company, so a temporary key
+  gets its full sentiment reading. `init --json` carries the same line as `starterCommand`.
+  Nothing is written to disk, and a run that finds a key already configured prints no command.
+
 ## 0.75.0
 
 ### Added
