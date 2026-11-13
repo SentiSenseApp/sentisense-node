@@ -16,6 +16,28 @@ function actionTone(actionType: string | undefined | null): Tone | undefined {
   return undefined;
 }
 
+function isTarget(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+/** A target as the firm stated it: whole dollars stay whole, anything else keeps two decimals. */
+function targetText(value: number): string {
+  return Number.isInteger(value) ? `$${value}` : money(value);
+}
+
+/**
+ * The price target move stated with an action: "$400 to $200" when the row carries both,
+ * "$180" when only the target (a kept or first target), blank when the firm stated none or
+ * the key cannot see it. Coloured by the direction of the move when there is one.
+ */
+export function targetMove(action: { priceTarget?: number | null; priorPriceTarget?: number | null }): Cell {
+  const target = action.priceTarget;
+  if (!isTarget(target)) return cell("");
+  const prior = action.priorPriceTarget;
+  if (!isTarget(prior)) return cell(targetText(target));
+  return cell(`${targetText(prior)} to ${targetText(target)}`, direction(target - prior));
+}
+
 /**
  * The individual to print on a firm row.
  *
@@ -60,6 +82,9 @@ export const analystsCommand: CommandDef = {
     "on a row is what \"sentisense analyst <slug>\" takes.",
     "A firm can cover a ticker on a rating action alone, so a blank target is a real reading",
     "rather than missing data, and a blank analyst means the note named nobody.",
+    "TARGET on a rating change is the price target the firm stated with it, shown as",
+    "\"$400 to $200\" when it moved from a prior target. It is blank when the firm stated",
+    "none, and blank on a free key outside the sample companies.",
     "--limit trims the rows printed under --coverage; the API returns the whole book either",
     "way, and --full prints all of it.",
   ],
@@ -133,13 +158,14 @@ export const analystsCommand: CommandDef = {
       blocks.push({ kind: "blank" });
       blocks.push({
         kind: "table",
-        head: ["DATE", "FIRM", "ACTION", "FROM", "TO"],
+        head: ["DATE", "FIRM", "ACTION", "FROM", "TO", "TARGET"],
         rows: shown.map((action) => [
           cell(action.actionDate),
           cell(action.firm),
           cell(action.actionType, actionTone(action.actionType)),
           cell(action.fromGrade ?? ""),
           cell(action.toGrade ?? ""),
+          targetMove(action),
         ]),
       });
       if (!full && rows.length > shown.length) {

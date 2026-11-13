@@ -72,7 +72,7 @@ npx -y sentisense@latest health
 | `quote <ticker>...` | Price, day range, 52-week range, market cap, P/E. One request per ticker; ETFs show AUM, expense ratio and NAV |
 | `sentiment <ticker>` | SentiSense Score, tone, attention, per-source breakdown, `--days N` history |
 | `mood` | Composite market sentiment, the signals behind it, and the sector map |
-| `analysts <ticker>` | Consensus, price target band, recent upgrades and downgrades. `--coverage` for who covers it, by firm |
+| `analysts <ticker>` | Consensus, price target band, recent upgrades and downgrades with each firm's target move. `--coverage` for who covers it, by firm |
 | `analyst <slug>` | One analyst: their firms, their coverage book, and `--calls` for their price target notes |
 | `earnings [ticker]` | Forward calendar with no ticker, per-quarter analysis with one (`earnings AAPL`) |
 | `kpis <ticker>` | Company KPIs from earnings filings: latest value and year-over-year change per series, `--series ID` for one series' history, `--types` for the series list, `--coverage` for the covered tickers |
@@ -469,9 +469,21 @@ The price target cone (mean, high, low, upside %) and consensus are free for eve
 client.analyst.consensus("AAPL")                        // Price target cone + consensus. Free, full data.
 client.analyst.consensusHistory("AAPL", { limit: 90 })  // Daily history. Free: last 30 days; distribution fields null.
 client.analyst.calledIt("AAPL", { limit: 10 })         // Recorded calls for 20% moves over five sessions. Free: newest move, up to 5 calls, move counts intact.
-client.analyst.actions("AAPL", { lookbackDays: 30 })    // Upgrade/downgrade feed. Free: 3 most recent.
+client.analyst.actions("AAPL", { lookbackDays: 30 })    // Upgrade/downgrade feed with price targets (PRO). Free: 3 most recent, targets null.
 client.analyst.estimates("AAPL")                        // Forward EPS + surprises. Free: 1 quarter. data.ticker: the listing per-share figures are for (BRK-A answers BRK.B).
 client.analyst.marketActivity({ lookbackDays: 7 })      // Market-wide analyst actions (PRO).
+```
+
+Action rows carry `priceTarget`, the target the firm stated with the action, and `priorPriceTarget`, the target it moved from. Each is `null` when the firm stated none or we do not hold it, never zero; `priorPriceTarget` is also `null` when the firm kept its target unchanged, and always `null` when `priceTarget` is. Both are PRO (and sample companies): free preview rows carry `null` for both. Firms do not restate old targets after a stock split, so `actions` rows dated before a split carry `null` for both; `marketActivity` skips that check, so read a stock that split from `actions`. Both fields are optional on `AnalystAction`, since older responses lack them.
+
+```typescript
+const { data: rows } = await client.analyst.actions("NVDA", { lookbackDays: 7 });
+for (const row of rows) {
+  const { priceTarget: target, priorPriceTarget: prior } = row;
+  if (target != null && prior != null && target < prior) {
+    console.log(`${row.actionDate} ${row.firm} cut its target from ${prior} to ${target}`);
+  }
+}
 ```
 
 Coverage answers "who covers this stock and what did they say" in one call, and it is the entry point into the per-analyst surfaces: every named analyst carries the slug that addresses their profile and their calls.

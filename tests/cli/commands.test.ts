@@ -19,6 +19,7 @@ import {
   type Route,
 } from "./harness.js";
 import { readConfig } from "../../src/cli/config.js";
+import { targetMove } from "../../src/cli/commands/analysts.js";
 import { latestSettledQuarter } from "../../src/cli/commands/flows.js";
 import { VERSION } from "../../src/version.js";
 
@@ -238,6 +239,44 @@ describe("command wiring", () => {
     expect(result.code).toBe(0);
     expect(url(result, "/analyst/NVDA/actions")).toContain("lookbackDays=180");
     expect(result.stdout).toContain("Example Research");
+  });
+
+  it("analysts prints each action's target move, a lone target, and a blank", async () => {
+    const result = await run(["analysts", "NVDA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/analyst\/NVDA\/consensus/, preview({ ticker: "NVDA", numberOfAnalysts: 58, targetMean: 210 })],
+        [
+          /\/analyst\/NVDA\/actions/,
+          preview([
+            { ticker: "NVDA", actionDate: "2026-11-12", firm: "Cut Research", actionType: "DOWNGRADE",
+              fromGrade: "Outperform", toGrade: "Market Perform", priceTarget: 200, priorPriceTarget: 400 },
+            { ticker: "NVDA", actionDate: "2026-11-12", firm: "Kept Research", actionType: "REITERATE",
+              fromGrade: "Buy", toGrade: "Buy", priceTarget: 182.5, priorPriceTarget: null },
+            { ticker: "NVDA", actionDate: "2026-11-11", firm: "Silent Research", actionType: "DOWNGRADE",
+              fromGrade: "Buy", toGrade: "Hold", priceTarget: null, priorPriceTarget: null },
+            { ticker: "NVDA", actionDate: "2026-11-10", firm: "Older Research", actionType: "UPGRADE",
+              fromGrade: "Hold", toGrade: "Buy" },
+          ]),
+        ],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("TARGET");
+    const line = (firm: string) => result.stdout.split("\n").find((l) => l.includes(firm)) ?? "";
+    expect(line("Cut Research")).toContain("$400 to $200");
+    expect(line("Kept Research")).toContain("$182.50");
+    expect(line("Kept Research")).not.toContain(" to $");
+    expect(line("Silent Research")).not.toContain("$");
+    expect(line("Older Research")).not.toContain("$");
+  });
+
+  it("analysts colours a target move by its direction", () => {
+    expect(targetMove({ priceTarget: 200, priorPriceTarget: 400 })).toEqual({ text: "$400 to $200", tone: "down" });
+    expect(targetMove({ priceTarget: 450, priorPriceTarget: 400 })).toEqual({ text: "$400 to $450", tone: "up" });
+    expect(targetMove({ priceTarget: 180, priorPriceTarget: null })).toEqual({ text: "$180" });
+    expect(targetMove({ priceTarget: null, priorPriceTarget: 400 })).toEqual({ text: "" });
+    expect(targetMove({})).toEqual({ text: "" });
   });
 
   it("earnings with no ticker reads the forward calendar", async () => {

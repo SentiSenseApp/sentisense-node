@@ -124,6 +124,21 @@ export interface AnalystAction {
   actionType: string;
   fromGrade: string | null;
   toGrade: string | null;
+  /**
+   * The price target the firm stated with this action, raw as stated on the day. `null`
+   * when the firm stated none or the row is not covered, never zero. PRO (and sample
+   * companies): every free preview row carries `null`. On {@link Analyst.actions}, rows
+   * dated before a split of the ticker carry `null`, because firms do not restate old
+   * targets. Absent on older responses.
+   */
+  priceTarget?: number | null;
+  /**
+   * The target the firm moved from, as stated with this action; read the pair as
+   * "400 to 200". `null` when we hold none, when the firm kept its target unchanged, and
+   * always when `priceTarget` is `null`. Same PRO and split rules as `priceTarget`.
+   * Absent on older responses.
+   */
+  priorPriceTarget?: number | null;
 }
 
 /** Which forward period an {@link AnalystEstimate} covers. */
@@ -459,6 +474,10 @@ export class Analyst {
   /**
    * Get recent analyst upgrade/downgrade actions for a ticker, newest first.
    * Free users receive the 3 most recent.
+   *
+   * Each row carries `priceTarget`, the target the firm stated with the action, and
+   * `priorPriceTarget`, the target it moved from (PRO; `null` on free preview rows,
+   * `null` when the firm stated none or kept its target unchanged).
    */
   async actions(
     ticker: string,
@@ -485,6 +504,10 @@ export class Analyst {
   /**
    * Get market-wide recent analyst actions across all covered tickers, newest first.
    * Free users receive the 5 most recent.
+   *
+   * Rows carry the same `priceTarget` and `priorPriceTarget` as {@link actions} (PRO;
+   * `null` on free preview rows). This feed does not check for stock splits, so for a
+   * stock that split inside the window, read its targets from {@link actions}.
    */
   async marketActivity(
     options?: GetAnalystMarketActivityOptions,

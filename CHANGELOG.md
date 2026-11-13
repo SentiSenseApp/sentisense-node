@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.77.0
+
+### Added
+
+- `AnalystAction` rows from `analyst.actions()` and `analyst.marketActivity()` gain optional
+  `priceTarget`, the price target the firm stated with the action, and `priorPriceTarget`, the
+  target it moved from. Each is `null` when the firm stated none or the row is not covered, never
+  zero; `priorPriceTarget` is also `null` when the firm kept its target unchanged. Both are PRO:
+  free preview rows carry `null` for both. Rows dated before a split of the ticker carry `null`
+  for both on `analyst.actions()`. Both are optional because older responses lack them; existing
+  code compiles and behaves as before.
+- `sentisense analysts <ticker>` prints a TARGET column on the rating changes: `$400 to $200`
+  when the firm moved its target, the target alone when there is no prior, blank when there is
+  none. `--json` carries the two fields as received.
+
 ## 0.76.0
 
 ### Added

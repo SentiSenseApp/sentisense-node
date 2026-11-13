@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import SentiSense, {
+  type AnalystAction,
   type AnalystEarningsSurprise,
   type GraphNode,
   type InstitutionDetail,
@@ -164,5 +165,41 @@ describe("optional response fields", () => {
     expect(coverage.tickers[1].sampleCompany).toBeUndefined();
     expectTypeOf(coverage.tickers[0]).not.toHaveProperty("sample");
     expect(coverage.tickers[1].kpiCount).toBe(6);
+  });
+
+  it.each([
+    ["actions", () => client.analyst.actions("NVDA")],
+    ["marketActivity", () => client.analyst.marketActivity()],
+  ] as const)("reads the price target and prior on %s rows", async (_name, call) => {
+    respond(payloads.analystActions);
+    const result = await call();
+    expectTypeOf(result.data).toEqualTypeOf<AnalystAction[]>();
+    expectTypeOf(result.data[0].priceTarget).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(result.data[0].priorPriceTarget).toEqualTypeOf<number | null | undefined>();
+    const [barclays, blair, bernstein] = result.data;
+    expect(bernstein.firm).toBe("Bernstein");
+    expect(bernstein.priceTarget).toBe(200);
+    expect(bernstein.priorPriceTarget).toBe(400);
+    // A kept target serves no prior; a row with no stated target serves neither.
+    expect(barclays.priceTarget).toBe(210);
+    expect(barclays.priorPriceTarget).toBeNull();
+    expect(blair.priceTarget).toBeNull();
+    expect(blair.priorPriceTarget).toBeNull();
+  });
+
+  it("carries null targets on a free preview action row", async () => {
+    respond(payloads.analystActionsPreview);
+    const result = await client.analyst.actions("NVDA");
+    expect(result.isPreview).toBe(true);
+    expect(result.data[0].priceTarget).toBeNull();
+    expect(result.data[0].priorPriceTarget).toBeNull();
+  });
+
+  it("leaves both targets undefined on an action row from an older response", async () => {
+    respond(payloads.analystActionsLegacy);
+    const result = await client.analyst.actions("NVDA");
+    expect(result.data[0].toGrade).toBe("Market Perform");
+    expect(result.data[0].priceTarget).toBeUndefined();
+    expect(result.data[0].priorPriceTarget).toBeUndefined();
   });
 });
