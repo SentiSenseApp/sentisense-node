@@ -3,15 +3,9 @@
 [![npm version](https://img.shields.io/npm/v/sentisense.svg)](https://www.npmjs.com/package/sentisense)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-Official JavaScript/TypeScript SDK and CLI for the [SentiSense](https://sentisense.ai) market intelligence API: stock prices, news and social sentiment, the SentiSense Score, the SentiSense Rating, insider and congressional trading, institutional 13F flows, options positioning, analyst ratings, earnings analysis, and a cross-signal screener.
+The official JavaScript and TypeScript client for the [SentiSense](https://sentisense.ai) API, plus a command line tool in the same package. It covers prices and fundamentals, news and social sentiment, the SentiSense Score and Rating, insider and congressional trades, 13F holdings, analyst ratings, earnings, options positioning, ETFs and a screener that mixes all of them.
 
-- Full TypeScript support with detailed type definitions
-- Works in Node.js 18+, Deno, Bun, and browsers
-- Zero runtime dependencies (native `fetch`)
-- Namespaced resources (`stocks`, `documents`, `institutional`, ...) and a typed error hierarchy
-- A complete command line interface in the same package, runnable via `npx` with nothing to install
-
-Get a free API key at [app.sentisense.ai/get-api-key](https://app.sentisense.ai/get-api-key). Full API docs at [sentisense.ai/docs/api](https://sentisense.ai/docs/api).
+It ships its own types and has no runtime dependencies. It runs on Node 18+, Deno, Bun and the browser.
 
 ## Contents
 
@@ -29,6 +23,8 @@ Get a free API key at [app.sentisense.ai/get-api-key](https://app.sentisense.ai/
 npm install sentisense
 ```
 
+You need an API key. The free one at [app.sentisense.ai/get-api-key](https://app.sentisense.ai/get-api-key) works with every endpoint, or run `npx sentisense init` for a temporary key without signing up.
+
 ## Quick start
 
 ```typescript
@@ -36,105 +32,63 @@ import SentiSense from "sentisense";
 
 const client = new SentiSense(); // reads SENTISENSE_API_KEY, or pass { apiKey }
 
-const price = await client.stocks.getPrice("AAPL");
-console.log(price.currentPrice);
+const tickers = await client.stocks.list();
+console.log(tickers.length, "stocks covered");
 
-// reportDate is optional; omit it to get the latest available quarter
-// (this one returns a wrapper: see "Response shapes" below)
-const flows = await client.institutional.getFlows();
+const price = await client.stocks.getPrice("NVDA");
+console.log(price.currentPrice, price.changePercent);
+
+const score = await client.entityMetrics.getMetrics("NVDA", { metricType: "sentisense_score" });
+console.log("SentiSense Score:", score.at(-1)?.value);
+
+for (const story of await client.documents.getStoriesByTicker("NVDA", { limit: 3 })) {
+  console.log(story.cluster.title);
+}
+
+const trades = await client.insider.getTrades("NVDA");
+for (const trade of trades.data.slice(0, 5)) {
+  console.log(trade.insiderName, trade.transactionCode, trade.sharesTransacted);
+}
 ```
 
 ## The CLI
 
-The same package ships a command line tool. Nothing to install:
+Try the API without writing code:
 
 ```bash
+export SENTISENSE_API_KEY=<your key>     # or: npx -y sentisense@latest auth <your key>
 npx -y sentisense@latest quote NVDA
+npx -y sentisense@latest health          # checks your key and the connection
 ```
-
-Every endpoint needs a key, so set one first. Either works:
-
-```bash
-export SENTISENSE_API_KEY=<your key>
-# or store it once, owner-readable only, at ~/.config/sentisense/config.json
-npx -y sentisense@latest auth <your key>
-
-npx -y sentisense@latest health
-```
-
-### Commands
 
 | Command | What you get |
 |---------|--------------|
-| `auth [key]` | Store a key, show what is configured, or `--remove` it |
-| `init` | A temporary key with no signup, printed as `SENTISENSE_API_KEY=...`, plus a command to try it and a link to keep it |
-| `health` | Reachability, key validity, latency, and the resolved base URL |
-| `quote <ticker>...` | Price, day range, 52-week range, market cap, P/E. One request per ticker; ETFs show AUM, expense ratio and NAV |
-| `sentiment <ticker>` | SentiSense Score, tone, attention, per-source breakdown, `--days N` history |
-| `mood` | Composite market sentiment, the signals behind it, and the sector map |
-| `analysts <ticker>` | Consensus, price target band, recent upgrades and downgrades with each firm's target move. `--coverage` for who covers it, by firm |
-| `analyst <slug>` | One analyst: their firms, their coverage book, and `--calls` for their price target notes |
-| `earnings [ticker]` | Forward calendar with no ticker, per-quarter analysis with one (`earnings AAPL`) |
-| `kpis <ticker>` | Company KPIs from earnings filings: latest value and year-over-year change per series, `--series ID` for one series' history, `--types` for the series list, `--coverage` for the covered tickers |
-| `insiders <ticker>` | Filed Form 4 transactions, including whether they were pre-planned |
-| `insights <ticker>` | Generated signals, filterable by `--urgency` and `--type` |
-| `congress [ticker]` | Congressional disclosures, market-wide or for one symbol |
-| `news [ticker]` | Clustered news stories with impact and tone |
-| `flows [ticker]` | Institutional 13F flows, or one ticker's holders and notable changes |
-| `options <ticker>` | End-of-day options positioning, IV rank, walls, unusual contracts; `--intraday` for the session's 15-minute series (PRO) |
-| `screen --filter ...` | Screen the universe on Score, analyst, technical, price, and end-of-day options fields |
-| `search <name>` | Resolve a name, alias, ticker or slug to a symbol and the entity handle |
+| `auth [key]` | Store a key, show what's configured, or `--remove` it |
+| `init` | A temporary key with no signup, and a link to keep it |
+| `health` | Whether the API is reachable and your key works |
+| `quote <ticker>...` | Price, day and 52-week range, market cap, P/E |
+| `sentiment <ticker>` | SentiSense Score, tone, attention and the split by source |
+| `mood` | Market Mood and the sector map |
+| `analysts <ticker>` | Consensus, price targets, recent upgrades and downgrades. `--coverage` lists who covers it |
+| `analyst <slug>` | One analyst's firms and coverage. `--calls` for their notes |
+| `earnings [ticker]` | The calendar, or one company's quarters |
+| `kpis <ticker>` | Company KPIs from earnings filings |
+| `insiders <ticker>` | Form 4 trades, including whether they were pre-planned |
+| `insights <ticker>` | Signals for a stock |
+| `congress [ticker]` | Trades disclosed by members of Congress |
+| `news [ticker]` | Stories with impact and tone |
+| `flows [ticker]` | 13F flows, or one stock's holders |
+| `options <ticker>` | End-of-day options positioning. `--intraday` for the latest session's 15-minute series (PRO) |
+| `screen --filter ...` | Screen stocks on Score, analysts, technicals, price and options |
+| `search <name>` | Turn a name into a ticker and entity slug |
 
-Run `sentisense help <command>` for its flags and examples.
+`sentisense help <command>` shows the flags and examples for each one.
 
-### Getting a key with no signup
+**A key with no signup.** `npx -y sentisense@latest init` prints `SENTISENSE_API_KEY=<key>` and a command to try it with. The key is temporary and rate-limited. To keep it, open the link it prints and sign in or create a free account; the same key then stays yours. `init` writes nothing into your project, and if a key is already configured it says so instead of making a new one.
 
-`init` is built for coding agents: it asks nothing and writes nothing into your project.
+**Output.** Commands print a readable layout in a terminal and plain text when piped. `--json` prints the API's JSON, under one key per call when a command makes several, so `isPreview` and `totalCount` are still there for `jq`. `--full` shows every column.
 
-```bash
-npx -y sentisense@latest init          # prints SENTISENSE_API_KEY=<key>, a command to try, and a keep link
-npx -y sentisense@latest init --json   # the same, as JSON
-```
-
-Right after the key, `init` prints one command to run next:
-
-```bash
-npx sentisense sentiment TSLA --api-key <key>
-```
-
-Tesla is a sample company, so the temporary key gets its full sentiment reading. `--api-key` applies to that one call, so it works before the key is stored anywhere. With `--json`, the same line is in `starterCommand`.
-
-It prints a temporary free key as `SENTISENSE_API_KEY=<key>`. Store it the way your project already stores secrets; the SDK and every command read `SENTISENSE_API_KEY` from the environment. To keep the key, open the link it prints, sign in or create a free account, and the same key stays on your account with nothing else to change. Until it is kept, the key stops working after a few days and has request limits; the link still keeps it for about two weeks. When a key is already configured, `init` says so and makes no new one; `--new` asks for a fresh temporary key anyway. To tell machines that share a network apart, the request carries a random per-install id, stored as `install-id` in the CLI's config directory; it identifies nothing about you.
-
-Three of these chain into each other. Start from a name, land on a person:
-
-```bash
-npx -y sentisense@latest search Tesla --type company   # "Tesla" -> TSLA, plus the entity slug
-npx -y sentisense@latest analysts NVDA --coverage      # who covers it, by firm, with analyst slugs
-npx -y sentisense@latest analyst quinn-bolton --calls  # that analyst's firms, book, and notes
-```
-
-`analyst` takes a slug, not a name: slugs are lowercase and hyphenated, and every named analyst in a `--coverage` row carries the one that addresses them. A name is rejected before a request is spent. What comes back is call history, not accuracy scoring: there is no hit rate, no ranking, and nothing in it rates the person.
-
-Ranking on `search` is the API's own, and a company can sort below its own products, so pass `--type company` when what you want is the issuer.
-
-### Output modes
-
-Readable in a terminal, plain text when piped, and exact API JSON on request:
-
-```bash
-npx -y sentisense@latest quote NVDA              # terminal layout
-npx -y sentisense@latest quote NVDA | cat        # plain text, no escape codes
-npx -y sentisense@latest quote NVDA --json | jq  # the API response untouched
-```
-
-`--json` prints what the API returned, envelope and all, so `isPreview` and `totalCount` stay visible. For `quote` that is the exact quote response for one ticker, and an object keyed by ticker for several. `--full` widens any command. `--no-color` and `NO_COLOR` drop the colour, `--plain` and `--pretty` force a layout, and `--debug` prints stack traces.
-
-Commands spend requests on the answer, not on decoration: `quote` looks up the company name only for the terminal layout, so piped and `--json` output cost one request per ticker. When something supplementary does not come back, such as the Score history behind a sparkline, the command still prints its answer and exits 0 with a `note:` line on stderr, so stdout stays clean for a pipe and the gap is never silent.
-
-### Exit codes
-
-Failures print two lines to stderr, what went wrong and what to do about it, and exit with a code you can branch on. The CLI does not retry, so a 5 is yours to handle.
+Exit codes:
 
 | Code | Meaning |
 |------|---------|
@@ -143,55 +97,32 @@ Failures print two lines to stderr, what went wrong and what to do about it, and
 | 2 | Bad usage: unknown command, flag, or missing argument |
 | 3 | Missing or rejected API key |
 | 4 | No data for that symbol or identifier |
-| 5 | Rate limited |
+| 5 | Rate limited, or the monthly allowance is used up (the CLI doesn't retry) |
 | 6 | Network failure or timeout |
 
-### Saying who is calling
-
-If you set `SENTISENSE_AGENT_NAME` (what your agent is called) and `SENTISENSE_SKILL` (the slug of the skill driving it), requests carry that identity, so usage can be understood and the tools improved. Both are optional, never required, and nothing is inferred when they are absent.
-
-```bash
-export SENTISENSE_AGENT_NAME=research-desk
-export SENTISENSE_SKILL=us-stocks-analysis
-npx -y sentisense@latest quote NVDA
-# User-Agent: sentisense-node/{version} sentisense-cli/{version} (us-stocks-analysis; agent/research-desk)
-```
-
-Either can also be a flag (`--agent`, `--skill`) or a stored setting (`sentisense auth --agent research-desk --skill us-stocks-analysis`), resolved flag first, then environment, then config. Values are reduced to letters, digits, dot, underscore and hyphen, and capped at 32 characters, so nothing you set can reshape the header.
-
-Research data, not investment advice.
+If an agent drives the CLI, set `SENTISENSE_AGENT_NAME` and `SENTISENSE_SKILL` (or pass `--agent` and `--skill`) and requests carry them in the User-Agent.
 
 ## Configuration
 
 ```typescript
-const client = new SentiSense({
-  apiKey: process.env.SENTISENSE_API_KEY,  // Get yours at app.sentisense.ai/get-api-key
-  baseUrl: "https://...",                  // Default: https://app.sentisense.ai
-  timeout: 30000,                          // Default: 30s (in milliseconds)
-  maxRetries: 3,                           // Default: 3
-  userAgentSuffix: "my-bot/1.4",           // Default: none
-});
+const client = new SentiSense({ timeout: 30000, maxRetries: 3 });
 ```
 
 | Option | Default | What it does |
 |--------|---------|--------------|
-| `apiKey` | `SENTISENSE_API_KEY` env var | Sent as `X-SentiSense-API-Key`. Required by every endpoint. An explicit value wins over the environment. |
-| `baseUrl` | `https://app.sentisense.ai` | Override for a non-production host. |
-| `timeout` | `30000` | Per-request timeout in milliseconds. |
-| `maxRetries` | `3` | Retries the per-minute 429 and 5xx, honouring `Retry-After`. The monthly-allowance 429 is never retried. Set `0` to fail fast. |
-| `userAgentSuffix` | none | Appended to the User-Agent, after `sentisense-node/{version}`. |
+| `apiKey` | `SENTISENSE_API_KEY` | Your key, sent as the `X-SentiSense-API-Key` header |
+| `baseUrl` | `https://app.sentisense.ai` | Change it only to point at another host |
+| `timeout` | `30000` | Milliseconds per request |
+| `maxRetries` | `3` | Retries for the per-minute 429 and server errors. Set `0` to handle them yourself |
+| `userAgentSuffix` | none | Added to the User-Agent, such as `"my-bot/1.4"`, so your traffic is easy to spot in logs (Node only) |
 
-`userAgentSuffix` is how you say what is calling on top of the SDK, so your traffic is legible in your own logs and in ours. A tool name and version works (`"my-bot/1.4"`), optionally with an agent label (`"my-bot/1.4 agent/research-desk"`). Node only, since browsers set the header themselves. Newlines are collapsed and an empty value is ignored.
-
-Keep the key in the environment rather than in source. Committing a literal key leaks it into git history and into every registry security scan that reads your repo.
+Keep the key in the environment rather than in your code, so it never lands in git.
 
 ## Response shapes
 
-Most methods resolve to the payload directly, but two families wrap it. The return types describe the wrapper, so `.data` / `.documents` type-check natively, no cast.
+Most methods resolve to the data itself. Two kinds of response wrap it, and the return types say which, so `.data` and `.documents` type-check without a cast.
 
-**1. Tier-gated endpoints return a preview envelope.** The payload is in `data`, and `isPreview` tells you whether it was truncated for your tier. `totalCount` carries the untruncated size whenever the server knows it: on a truncated response, so you can render "showing N of M", and on a paged endpoint such as `politicians.getActivity`, where it is the full match count on every tier including PRO. A missing `totalCount` means "count `data` yourself", never "zero results".
-
-Affected: every method whose declared return type is `PreviewResponse<T>`. A test keeps this table in step with the source, so it is the full list rather than a sample.
+**1. Tier-gated endpoints return a preview envelope.** The payload is in `data`. `isPreview` says whether your plan got a shortened version, and `totalCount` is the full size when the server knows it. These are the methods that return it:
 
 | Namespace | Methods |
 |-----------|---------|
@@ -206,615 +137,307 @@ Affected: every method whose declared return type is `PreviewResponse<T>`. A tes
 | `politicians` | `getActivity` `getFilings` `getMembers` `getMember` |
 | `stocks` | `getSentiment` `getKpis` `getOptionsSummary` `getOptionsHistory` `getOptionsIntradayHistory` |
 
-The envelope itself is always an object, so test the payload rather than the response. Three of these declare a `data` that can be null: `stocks.getOptionsSummary`, for a ticker outside the covered options universe, `options.getOverview`, before its first nightly build, and `stocks.getOptionsIntradayHistory`, on a FREE key's `PRO_REQUIRED` preview. Everywhere else `data` is an array or an object.
-
 ```typescript
 const flows = await client.institutional.getFlows();
-if (flows.isPreview) {
-  console.log(`Preview: ${flows.data.inflows.length} of ${flows.totalCount}`);
-}
-for (const flow of flows.data.inflows) {
-  console.log(flow.ticker, flow.netSharesChange);
-}
-
-// holders nest one level deeper: ticker-level totals plus the rows
-const holders = await client.institutional.getHolders("AAPL", "2026-06-30");
-console.log(`${holders.data.holderCount} holders`);
-const newPositions = holders.data.holders.filter((h) => h.changeType === "NEW");
-
-// insights use the same envelope, wrapping a plain array
-const insights = await client.insights.stock("AAPL");
-for (const insight of insights.data) {
-  console.log(insight.insightText);
-}
+if (flows.isPreview) console.log(`Preview: ${flows.data.inflows.length} of ${flows.totalCount}`);
+for (const flow of flows.data.inflows) console.log(flow.ticker, flow.netSharesChange);
 ```
 
-**2. Document endpoints return a search wrapper.** This is not the preview envelope: the rows are in `documents` and there is no `isPreview`.
+The envelope is always an object, so test `data`, not the response. `data` can be `null` on three of them: `stocks.getOptionsSummary` for an uncovered ticker, `options.getOverview` before its first nightly build, and `stocks.getOptionsIntradayHistory` on a free key.
 
-Affected: `documents.getByTicker` / `getByTickerRange` / `getByEntity` / `search` / `getBySource`. Also `stocks.getFundamentalsPeriods`, whose periods are in `periods`.
+**2. Document endpoints return a search wrapper.** The rows are in `documents`, next to `totalCount`, with no preview flag. That covers `documents.getByTicker`, `getByTickerRange`, `getByEntity`, `search` and `getBySource`. `stocks.getFundamentalsPeriods` puts its rows in `periods`.
 
-```typescript
-const results = await client.documents.search("NVDA earnings", { days: 7 });
-console.log(`${results.totalCount} matches`);
-for (const doc of results.documents) {
-  console.log(doc.url, doc.averageSentiment);
-}
-```
-
-Everything else, including `stocks.getPrice()`, `documents.getStories()`, `insights.types()` and `institutional.getQuarters()`, resolves to the value itself with no wrapper.
-
-> **Upgrading from 0.28.x or earlier?** These return types were corrected in 0.29.0. If your code read the flat shape (`flows.inflows`, `holders.filter(...)`), it was returning `undefined` / throwing at runtime already; switch to `flows.data.inflows` / `holders.data.holders`. See [CHANGELOG.md](./CHANGELOG.md) for the full mapping.
+[Using the Python and Node SDKs](https://sentisense.ai/docs/support/using-the-python-and-node-sdks/) covers previews, paging, retries and errors for both SDKs.
 
 ## API reference
+
+Each section lists the calls and links to the API docs page that explains every field.
 
 ### Stocks
 
 ```typescript
-client.stocks.list()                                    // All ticker symbols
-client.stocks.listDetailed()                            // All stocks with details
-client.stocks.getPrice("AAPL")                          // Latest price
-client.stocks.getPrices(["AAPL", "NVDA"])               // Batch prices
-client.stocks.getQuote("AAPL")                          // Fuller quote: ranges, market cap, P/E
-client.stocks.getProfile("AAPL")                        // Company profile
-client.stocks.getChart("AAPL", { timeframe: "6M" })     // OHLCV chart data
-client.stocks.getMarketStatus()                         // Market open/closed
-client.stocks.getFundamentals("AAPL")                   // Financial data
-client.stocks.getShortInterest("GME", { limit: 12 })    // Short interest by settlement date
-client.stocks.getShortVolume("GME")                     // Daily short volume
-client.stocks.getFloat("GME")                           // Free float
-client.stocks.getGraph("AAPL", { depth: 1 })            // Company knowledge graph: people, products, peers
-client.stocks.getEtfs("NVDA", { limit: 5 })             // ETFs that hold the stock, heaviest weight first
-client.stocks.getOptionsSummary("NVDA")                 // End-of-day options dossier
-client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // Daily options aggregates over time
-client.stocks.getOptionsIntradayHistory("NVDA")         // One session's intraday options series (PRO)
-client.stocks.getRating("AAPL")                         // SentiSense Rating: score, letter, percentile, dimensions
-client.stocks.getAISummary("AAPL", { depth: "deep" })   // AI report (PRO)
+client.stocks.list()                                       // every ticker we cover
+client.stocks.listDetailed()                               // the same, with names and entity ids
+client.stocks.listPopular()                                // the most-followed tickers
+client.stocks.getPrice("AAPL")                             // latest price, delayed 15 minutes
+client.stocks.getPrices(["AAPL", "NVDA"])                  // several at once
+client.stocks.getQuote("AAPL")                             // day range, 52-week range, market cap, P/E
+client.stocks.getProfile("AAPL")                           // company profile
+client.stocks.getChart("AAPL", { timeframe: "6M" })        // price bars
+client.stocks.getMarketStatus()                            // is the market open
+client.stocks.getSimilar("AAPL")                           // peers
+client.stocks.getEtfs("NVDA", { limit: 5 })                // ETFs that hold it, heaviest weight first
+client.stocks.getGraph("AAPL", { depth: 1 })               // people, products and peers
+client.stocks.getEntities("AAPL")                          // entities linked to the stock
+client.stocks.getAISummary("AAPL", { depth: "deep" })      // our research report
+client.stocks.getFundamentals("AAPL")                      // statements, as filed
+client.stocks.getCurrentFundamentals("AAPL")               // the latest snapshot
+client.stocks.getShortInterest("GME", { limit: 12 })       // short interest by settlement date
+client.stocks.getShortVolume("GME")                        // daily short volume
+client.stocks.getFloat("GME")                              // shares available to trade
+client.stocks.getImages(["AAPL"])                          // logos
+client.stocks.getDescriptions(["AAPL"])                    // short company descriptions
 ```
 
-Price fields carry `priceAsOf` (Unix milliseconds) for the age of the market data; read that for freshness rather than `timestamp`, which is when the response was served.
-
-`stocks.getEtfs` resolves to a bare array (no preview envelope) on every tier. Each row has `etfTicker`, `etfName`, `weightPct` (the stock's weight in the fund as a percentage from 0 to 100, combined across share classes for a company with several) and `asOfDate` (that fund's own holdings date, so it can differ between rows; may be absent). It searches only the funds SentiSense tracks with a holdings file, some of which are partial, so it is not every fund in the market. A ticker no tracked fund holds resolves to `[]`. See the [API reference](https://sentisense.ai/docs/api/stocks/#get-stock-etfs).
-
-Short interest and short volume come back newest first, and an unknown ticker returns an empty `dataPoints` array rather than an error. Every identifier in `getGraph` is a slug, the same handle the metric and document endpoints take. An ETF symbol is refused by `getQuote` with an `APIError` whose `code` is `"ticker_is_etf"`; use `etfs.quote()` for funds.
-
-Product nodes (`type === "PRODUCT_OR_SERVICE"`) in `stocks.getGraph` now carry optional `category` when known. Other nodes and products without a category omit it.
+For a fund, use `etfs.quote()`. `getQuote` accepts a fund ticker but leaves out AUM, NAV and expense ratio. Only the `10Y` and `MAX` charts are dividend-adjusted. Statement figures are in the company's own currency (`reportedCurrency`). [Stocks API docs](https://sentisense.ai/docs/api/stocks/)
 
 ### Documents & news
 
 ```typescript
-client.documents.getByTicker("AAPL", { source: "news", days: 3 })
-client.documents.search("NVDA earnings", { days: 7, limit: 20 })
-client.documents.getStories({ limit: 10 })
-client.documents.searchStories({ query: "fed decision", days: 30, limit: 20 })
-client.documents.getStoryDetail("cluster_abc123")
+client.documents.getByTicker("AAPL", { source: "news", days: 3 })   // news and social posts about a stock
+client.documents.search("NVDA earnings", { days: 7, limit: 20 })      // plain-language search
+client.documents.getStories({ limit: 10 })                           // today's stories
+client.documents.getStoriesByTicker("AAPL", { limit: 5 })            // stories about one stock
+client.documents.searchStories({ query: "fed decision", days: 30 })   // search stories
+client.documents.getStoryDetail("cluster_abc123")                    // one story in full
+client.marketSummary.get()                                           // our written market summary
 ```
 
-A story's `cluster` says where it came from and whether it has settled. `storySource` is
-`"ORIGINAL"` for an editorially authored SentiSense Original and `"AI"` for a
-pipeline-generated story, and `isLive` is true while the story is still being revised as
-the event develops. Both are optional: against an API build that predates them they are
-`undefined`, which means "not known" rather than `"AI"` or `false`.
-
-`getStoryDetail` returns `unknown`, so narrow it yourself. It carries the same two fields
-plus a `timeline` array of dated updates, newest first and empty when a story has none.
-The `StoryTimelineEntry` type is exported for that array:
-
-```typescript
-import type { StoryTimelineEntry } from "sentisense";
-
-const detail = (await client.documents.getStoryDetail("cluster_abc123")) as {
-  timeline: StoryTimelineEntry[];
-};
-for (const update of detail.timeline) {
-  console.log(new Date(update.publishedAt), update.updateType, update.content);
-}
-```
-
-### Institutional flows (13F)
-
-```typescript
-client.institutional.getQuarters()
-client.institutional.getFlows("2025-02-14", { limit: 20 })
-client.institutional.getHolders("AAPL", "2025-02-14")
-client.institutional.getHolders("AAPL")  // no date: the ticker's latest settled quarter
-client.institutional.getHoldersHistory("AAPL", { quarters: 8 })
-client.institutional.getInstitutionDetail("Berkshire-Hathaway", { limit: 10, sortBy: "estimatedFlowUsd" })
-client.institutional.getInstitutionHistory("Renaissance-Technologies", { quarters: 8, tickers: ["NVDA"] })
-client.institutional.getActivists("2025-02-14")
-```
-
-**Pick a filed quarter by its flag.** `getQuarters()` is newest first, and its first entry is usually still filing. Each `Quarter` carries `pending`, `ownershipEligible` and `ownershipEligibleAt`, so select on the flag rather than by position:
-
-```typescript
-const quarters = await client.institutional.getQuarters();
-const latest = quarters.find((q) => !q.pending)?.reportDate;
-if (latest) {
-  const holders = await client.institutional.getHolders("AAPL", latest, { limit: 25 });
-  console.log(holders.data.selection?.status, holders.data.earlyFilers?.reportDate);
-}
-```
-
-The holders payload also says how its quarter was chosen (`selection`), reports a newer still-filing quarter separately (`earlyFilersStatus`, `earlyFilers`), lists well-known institutions matched against the full roster (`notableHolders`), and summarizes the quarter-over-quarter comparison (`comparisonReportDate`, `comparisonStatus`). Each holder row carries its own `comparisonStatus`; only `AVAILABLE` on that row supports its change figures.
-
-**Ownership history.** `getHoldersHistory()` returns one row per quarter for a stock, newest
-first, covering the 12 newest quarters by default (`quarters` up to 20). Free keys see the
-newest four. The newest row can still be filing (`status: "filing"`), in which case it covers
-only the institutions that have filed so far. `sharesOutstanding`, `institutionalOwnershipPct`,
-`avgClosePrice` and `dollarFlowUsd` are absent when they cannot be computed, never zero:
-
-```typescript
-const { data } = await client.institutional.getHoldersHistory("AAPL", { quarters: 8 });
-for (const q of data.quarters) {
-  console.log(q.label, q.status, q.holderCount, q.institutionalOwnershipPct, q.netSharesChange);
-}
-```
-
-`positionsHeld` on an institution detail counts the full portfolio's held positions:
-`max(0, holdingsCount - soldOutPositions)`, even when the holdings list is truncated.
-`getInstitutionDetail` keeps its `Promise<unknown>` signature. The exported all-optional
-`InstitutionDetail` type is available for callers who want to opt in:
-
-```typescript
-import type { InstitutionDetail, PreviewResponse } from "sentisense";
-
-const detail = await client.institutional.getInstitutionDetail("1067983") as PreviewResponse<InstitutionDetail>;
-console.log(detail.data.positionsHeld); // undefined when an older response omits it
-```
-
-Institution detail compares each filing with the quarter before it. When `comparisonStatus` is `AVAILABLE`, the payload carries `priorTotalValueUsd` and `priorPositionsHeld`, and each holding carries `priorValueUsd`, `priorPortfolioWeight` and `estimatedFlowUsd` (dollars bought, positive, or sold, negative, estimated from two quarter-end snapshots rather than a reported trade). Every one of these is absent when it does not apply. Pass `limit` to get a sorted page of holdings, with `sortBy`, `sortDir`, `changeType` (a value or an array; `"HELD"` keeps every position still held, whatever its change), `q` and `minWeight` to sort and filter it; those only take effect together with `limit`. When a filter is set, `data.matchTotals` sums every matching holding, not just the page:
-
-```typescript
-// The ten biggest estimated buys of the latest quarter
-const page = await client.institutional.getInstitutionDetail("Berkshire-Hathaway", {
-  limit: 10,
-  sortBy: "estimatedFlowUsd",
-  changeType: ["NEW", "INCREASED"],
-}) as PreviewResponse<InstitutionDetail>;
-for (const h of page.data.holdings ?? []) console.log(h.ticker, h.estimatedFlowUsd);
-console.log(page.data.matchTotals?.estimatedFlowUsd); // every matching holding, not only these ten
-```
-
-**Institution history.** `getInstitutionHistory()` returns one row per filing, newest first (`quarters` up to 40, 12 by default). Free keys see the newest four, with `totalCount` naming the window. The comparison fields (`newPositions`, `boughtUsd`, `netFlowUsd` and the rest) are absent unless that filing's `comparisonStatus` is `AVAILABLE`, never zero. Pass `tickers` (up to 100) to also get `positions`: each ticker's shares and value per filing, newest first, with filings where the institution did not hold it left out. Free keys receive `positions` only for the institution's ten largest holdings. `priceEffectUsd` is the remainder after `netFlowUsd`, mostly price moves; it also absorbs rounding, the different price bases of exits and trades, and positions whose change could not be restated:
-
-```typescript
-const { data } = await client.institutional.getInstitutionHistory("Renaissance-Technologies", {
-  quarters: 8,
-  tickers: ["NVDA", "META"],
-});
-for (const q of data.quarters) {
-  console.log(q.label, q.totalValueUsd, q.netFlowUsd, q.priceEffectUsd);
-}
-for (const point of data.positions?.NVDA ?? []) {
-  console.log(point.reportDate, point.shares, point.valueUsd);
-}
-```
-
-**Paging the holder list.** A widely held ticker returns thousands of rows: a megacap quarter is roughly 6,000 holders and 1.5 MB on the wire. Pass `limit` unless you really want the whole list; omitting the options object sends the original unbounded request, so existing code keeps working.
-
-| Option | Values |
-|--------|--------|
-| `limit` | Maximum rows to return. Must be >= 1; values above 1000 are capped server-side. Omit for the full list. |
-| `offset` | Row offset to start from. Server default is 0. Requires `limit`. |
-| `sortBy` | `"shares"` (server default), `"valueUsd"`, or `"sharesChangePct"`. Requires `limit`. |
-| `sortDir` | `"desc"` (server default) or `"asc"`. Requires `limit`. |
-
-`limit` is the switch for the whole set: send `offset`, `sortBy`, or `sortDir` without it and the server ignores them, returning the full unsorted list with a 200 and no warning.
-
-```typescript
-// Top 10 holders by position value, largest first
-const top = await client.institutional.getHolders("AAPL", "2026-03-31", {
-  limit: 10,
-  sortBy: "valueUsd",
-  sortDir: "desc",
-});
-for (const holder of top.data.holders) {
-  console.log(holder.filerName, holder.valueUsd);
-}
-
-// Walk the list a page at a time
-const page = await client.institutional.getHolders("AAPL", "2026-03-31", {
-  limit: 100,
-  offset: 100,
-});
-console.log(`${page.data.holders.length} rows of ${page.data.holderCount}`);
-```
-
-A response to a request carrying `limit` also has three fields the unbounded response does not: `returnedCount` (rows on this page, smaller than your `limit` on the last one), `offset` (echoed back), and `notableChanges`, a ticker-wide summary of the quarter's biggest position moves so you do not have to scan every page to find them. Each holder row also carries `entitySlug`, which you can hand straight to `institutional.getInstitutionDetail()`, and `cikCount` when the row rolls up several SEC filers under one manager; both are null for filers not matched to an institution page, so check before building a link.
-
-### Congressional trading
-
-```typescript
-client.politicians.getActivity({ lookbackDays: 90 })  // Market-wide STOCK Act feed
-client.politicians.getFilings("NVDA")                 // Trades in one stock
-client.politicians.getMembers()                       // Tracked members + trade stats
-client.politicians.getMember("nancy-pelosi")          // One member's profile and trades
-client.politicians.getDirectory({ q: "tex" })         // Discover slugs, including former members
-```
-
-**Paging the activity feed.** A 90-day window is routinely well over a thousand disclosures, and without `limit` the server returns the first 200 with nothing in the payload to say it stopped. `totalCount` on the envelope is the real size on every tier, so size the walk from that rather than from `data.length`.
-
-| Option | Values |
-|--------|--------|
-| `lookbackDays` | Days to look back (1-365). Defaults to 90. |
-| `limit` | Rows to return. Must be >= 1; anything above 500 is capped at 500. Omit for the default 200. |
-| `offset` | Row offset to start from. Defaults to 0. Works with or without `limit`. |
-
-```typescript
-const first = await client.politicians.getActivity({ limit: 100 });
-console.log(`${first.data.length} of ${first.totalCount} disclosures`);
-
-for (let offset = 100; offset < (first.totalCount ?? 0); offset += 100) {
-  const page = await client.politicians.getActivity({ limit: 100, offset });
-  for (const trade of page.data) {
-    console.log(trade.politicianName, trade.ticker, trade.transactionType);
-  }
-}
-```
-
-### Insider trading (Form 4)
-
-```typescript
-client.insider.getActivity({ lookbackDays: 30 })   // Market-wide buys and sells by ticker
-client.insider.getTrades("NVDA", { lookbackDays: 90 })  // Individual filed transactions
-client.insider.getClusterBuys({ lookbackDays: 90 })     // 3+ distinct insiders buying the same stock
-```
-
-Each trade row carries both the raw SEC `transactionCode` and a simplified `transactionType`. Only codes `P` and `S` are open-market trades; awards, gifts, exercises, and code `F` (shares withheld to cover taxes at vest, served as `SELL`) are corporate mechanics, so read `transactionCode` when you tally discretionary buying or selling. The market-wide activity endpoint's sells already exclude code `F` server-side.
-
-### Analyst ratings
-
-The price target cone (mean, high, low, upside %) and consensus are free for everyone with full data. Upgrade/downgrade feeds and forward EPS estimates are limited on free, unlimited on PRO.
-
-```typescript
-client.analyst.consensus("AAPL")                        // Price target cone + consensus. Free, full data.
-client.analyst.consensusHistory("AAPL", { limit: 90 })  // Daily history. Free: last 30 days; distribution fields null.
-client.analyst.calledIt("AAPL", { limit: 10 })         // Recorded calls for 20% moves over five sessions. Free: newest move, up to 5 calls, move counts intact.
-client.analyst.actions("AAPL", { lookbackDays: 30 })    // Upgrade/downgrade feed with price targets (PRO). Free: 3 most recent, targets null.
-client.analyst.estimates("AAPL")                        // Forward EPS + surprises. Free: 1 quarter. data.ticker: the listing per-share figures are for (BRK-A answers BRK.B).
-client.analyst.marketActivity({ lookbackDays: 7 })      // Market-wide analyst actions (PRO).
-```
-
-Action rows carry `priceTarget`, the target the firm stated with the action, and `priorPriceTarget`, the target it moved from. Each is `null` when the firm stated none or we do not hold it, never zero; `priorPriceTarget` is also `null` when the firm kept its target unchanged, and always `null` when `priceTarget` is. Both are PRO (and sample companies): free preview rows carry `null` for both. Firms do not restate old targets after a stock split, so `actions` rows dated before a split carry `null` for both; `marketActivity` skips that check, so read a stock that split from `actions`. Both fields are optional on `AnalystAction`, since older responses lack them.
-
-```typescript
-const { data: rows } = await client.analyst.actions("NVDA", { lookbackDays: 7 });
-for (const row of rows) {
-  const { priceTarget: target, priorPriceTarget: prior } = row;
-  if (target != null && prior != null && target < prior) {
-    console.log(`${row.actionDate} ${row.firm} cut its target from ${prior} to ${target}`);
-  }
-}
-```
-
-Coverage answers "who covers this stock and what did they say" in one call, and it is the entry point into the per-analyst surfaces: every named analyst carries the slug that addresses their profile and their calls.
-
-```typescript
-client.analyst.coverage("NVDA", { lookbackDays: 365 })  // Who covers it, by firm. Free: 5 firms.
-client.analyst.profile("gil-luria")                     // One analyst's firms + coverage book.
-client.analyst.calls("gil-luria", { limit: 25 })        // Their price target notes, newest first.
-```
-
-```typescript
-const { data: book } = await client.analyst.coverage("NVDA");
-
-console.log(`${book.firmCount} firms, ${book.namedAnalystCount} named analysts`);
-console.log(`${book.attributedNoteCount} of ${book.noteCount} notes name someone`);
-
-const buckets = book.ratingBuckets;
-if (buckets) {
-  console.log(`${buckets.buy} buy, ${buckets.hold} hold, ${buckets.sell} sell, ${buckets.unrated} unrated of ${buckets.total}`);
-}
-
-for (const row of book.coverage.slice(0, 5)) {
-  if (row.noteCount === 0) {
-    // A desk can cover a stock on rating actions alone, with no price target.
-    console.log(`${row.firm}: rating only, ${row.firmRating?.rating}`);
-    continue;
-  }
-  const who = row.latestNote?.analyst ?? "unattributed";
-  console.log(`${row.firm}: ${row.latestNote?.priceTarget} (${who})`);
-
-  for (const analyst of row.analysts) {
-    if (!analyst.slug) continue;
-    const calls = await client.analyst.calls(analyst.slug, { limit: 10 });
-    console.log(`  ${analyst.name}: ${calls.totalCount} notes on record`);
-  }
-}
-```
-
-Two shapes to read rather than assume. A firm can appear with `noteCount: 0`, a `null` `latestNote` and a populated `firmRating`, because coverage means a price target **or** a rating action in the window. And a large, publisher-dependent share of notes name no individual, so an empty `analysts` array alongside a non-zero `noteCount` is normal: read `attributedNoteCount` and `unattributedNoteCount` off the response rather than hardcoding a rate. The response-level counts survive the free truncation, so they describe the whole window even when only 5 rows come back. An unknown slug throws `NotFoundError`, which keeps "published nothing we hold" distinguishable from "does not exist".
-
-`ratingBuckets` sizes the same book by rating tier: `buy`, `hold`, `sell`, `unrated` and `total`, counted over every covering firm before the free truncation, so `buy + hold + sell + unrated === total` and a free key reads the same numbers as a PRO one. `unrated` is a desk with no current rating on record, such as a price-target-only firm. These count the firms in this coverage book, a different population from the `strongBuy` through `strongSell` figures on `client.analyst.consensus`, which come from the provider's analyst survey. Read one or the other, do not reconcile them.
-
-Surprise rows now carry optional `surprisePct`, the signed true percent rounded half-up to two decimals: `(actualEps - estimateEps) * 100 / abs(estimateEps)`. It is `null` when either EPS is missing or the estimate is zero, and `undefined` on older responses. The existing `surprisePercent` fraction is unchanged (`0.03` means about 3%).
-
-### Earnings
-
-The earnings analysis report is the assembled version of a quarter: one object per fiscal period carrying the editorial headline, the KPI cards with year-over-year deltas, the guidance language as management phrased it, and a summary of the earnings call. Pair it with the recent-reporters feed to drive a post-earnings sweep. Summaries, recent reports, statistics, and rankings return the preview envelope; per-ticker reactions return a direct payload.
-
-```typescript
-client.earnings.getSummaries("AAPL", { limit: 4 })   // Per-quarter analysis, newest first. Free: latest quarter, shaped.
-client.earnings.getRecent({ days: 7, limit: 25 })    // Who reported in the last N days. Full window on every key.
-client.earnings.getReactions("AAPL")                 // Up to twelve measured post-report moves. Full series on every key.
-client.earnings.getStatistics({ window: "week_to_date" }) // Market-wide outcomes, reaction rates, baseline, and coverage.
-client.earnings.getRanked({ reportedDays: 14, upcomingDays: 7 }) // Free: first 3 rows per section. PRO: full ranking.
-```
-
-```typescript
-const res = await client.earnings.getSummaries("AAPL", { limit: 1 });
-const quarter = res.data[0];
-
-if (quarter) {
-  console.log(quarter.fiscalPeriod, quarter.reportDate);
-  console.log(quarter.headline);
-  for (const kpi of quarter.kpiHighlights ?? []) {
-    console.log(`  ${kpi.label}: ${kpi.value} (${kpi.yoy ?? "no YoY"})`);
-  }
-
-  if (res.isPreview) {
-    // Free key: section titles stand in for the bodies.
-    console.log("Summary covers:", quarter.summaryTopics?.join(", "));
-  } else {
-    console.log(quarter.summaryMd);
-  }
-}
-```
-
-The forward-looking half of the family is `client.calendar.getEarnings()`, which covers scheduled dates and consensus EPS rather than results.
-
-`earnings.getSummaries` exposes optional `totalCount` on the envelope on both PRO and FREE. It counts indexed quarters; returned rows can be fewer because of `limit` or an unavailable body. Older responses without the count still read as `undefined`.
-
-The envelope `ticker` names the listing the quarters' per-share figures are quoted for: `BRK-A` answers `BRK.B` and `GOOG` answers `GOOGL`. It reads `undefined` on older responses.
-
-### Company KPIs (PRO)
-
-Full data on 11 sample companies, free, with a preview for every other company: a free key reads the full series for the sample companies and metadata only for the rest, and PRO reads the full series for all. Check `sampleCompany` on a response, or `upgrade.sampleTickers` on a preview for the list. See [full sample responses](https://sentisense.ai/docs/api/#full-sample-responses-with-a-free-key).
-
-```typescript
-client.stocks.getKpis("TSLA")       // Product metrics and segment revenue. Free: full series for the sample companies, metadata only for the rest. PRO: full series.
-client.stocks.listKpiCoverage()     // All tickers with curated KPI data (free, no quota cost)
-```
-
-### ETFs (beta)
-
-Composition data is public; the holdings-weighted aggregate views follow the same PRO-with-preview pattern as analyst and insider data. Aggregates synthesize fund-level views from each constituent's per-stock data, weighted by allocation, with a `coverage` block on every response.
-
-```typescript
-client.etfs.list()                                              // Every ETF tracked
-client.etfs.quote("SPY")                                        // Price, ranges, AUM, expense ratio, NAV
-client.etfs.holdings("QQQ")                                     // Full composition + freshness metadata
-client.etfs.analystAggregate("QQQ")                             // Holdings-weighted analyst consensus
-client.etfs.insiderAggregate("ARKK", { lookbackDays: 90 })      // Holdings-weighted Form 4 net flow
-client.etfs.sentimentAggregate("QQQ")                           // Constituent-weighted vs direct Score
-```
+Documents carry sentiment, entities and a link, not the article text. `getStoryDetail` returns `unknown`, so narrow it yourself; `StoryTimelineEntry` types its `timeline`. [Documents API docs](https://sentisense.ai/docs/api/documents/)
 
 ### Entity metrics
 
 ```typescript
-// Time-series metrics (v2 API)
-client.entityMetrics.getMetrics("AAPL", { metricType: "sentiment" })
-client.entityMetrics.getMetrics("AAPL", {
-  metricType: "mentions",
-  startTime: Date.now() - 7 * 86400000,
-  endTime: Date.now(),
-  maxDataPoints: 100,
-})
-
-// Daily App Store ratings for a product entity with an app (an entity slug, not a ticker)
-client.entityMetrics.getMetrics("Instagram", { metricType: "app_all_ratings_count" })
-
-// Share of mentions by source (valueType "SHARE_PERCENT")
-client.entityMetrics.getDistribution("AAPL", "mentions")
-client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })
-
-// Mean sentiment by source, in [-1, 1] (valueType "MEAN")
-client.entityMetrics.getDistribution("AAPL", "sentiment")
+client.entityMetrics.getMetrics("AAPL", { metricType: "sentiment" })          // one metric over time
+client.entityMetrics.getMetrics("AAPL", { metricType: "mentions", startTime: Date.now() - 7 * 86400000 })
+client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })  // share of mentions by source, valueType "SHARE_PERCENT"
+client.entityMetrics.getDistribution("AAPL", "sentiment")                       // mean sentiment by source, valueType "MEAN"
+client.stocks.getSentiment("AAPL")                                             // Score, mentions, tone by source
 ```
 
-In a distribution, `valueType` says what each number is. For a count metric such as `mentions` or `creators` it is `"SHARE_PERCENT"`: each value is that source's percentage share of the total, summing to about 100. For `sentiment` it is `"MEAN"`: each value is that source's mean polarity over the window, in [-1, 1], the same numbers as `GET /api/v2/metrics/entity/{symbol}/metric/sentiment/mean-by/source` in the [API reference](https://sentisense.ai/docs/api/metrics/). `sentisense_score` has no per-source split and answers with an empty distribution.
+Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense_rating`, `social_dominance`, `creators`, `app_review_count`, `app_rating`, `app_all_ratings_count`, `app_all_ratings_avg`. The `app_` ones take a product slug such as `"Instagram"`, not a ticker.
 
-Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense_rating`, `social_dominance`, `creators`, `app_review_count`, `app_rating`, `app_all_ratings_count`, `app_all_ratings_avg`. `sentisense` is an alias for `sentisense_score`; either spelling returns the same series, and keys are case-insensitive. Responses always name the canonical type, so a `sentisense` request answers with `SENTISENSE_SCORE`. `sentisense_rating` is the SentiSense Rating score and is a time series only: it has no source breakdown, so `getDistribution` answers with an empty distribution for it.
-
-The four `app_` metrics are daily Apple App Store series for product entities that have an app, so pass an entity slug such as `"Instagram"` rather than a ticker. `app_review_count` and `app_rating` cover the written reviews published that day, a small share of all ratings whose stars skew lower; `app_all_ratings_count` and `app_all_ratings_avg` cover every new rating, star-only and written together, and have no point on a day with no net new ratings or when the store's totals fell. Over a range, weight each day's `app_all_ratings_avg` by `app_all_ratings_count` for the period average. Each point's flat `value` is the count or the average stars.
-
-### Options
-
-End-of-day options positioning: where implied volatility, put/call flow and skew are unusual today, and how a name's readings have trended.
-
-```typescript
-client.options.getOverview()                            // Market-wide radar, ranked
-client.stocks.getOptionsSummary("NVDA")                 // One name's full dossier
-client.stocks.getOptionsHistory("NVDA", { window: "2y" })  // That name's daily series
-client.stocks.getOptionsIntradayHistory("NVDA", { session: "2026-10-14" })  // Every 15-minute cycle of one session (PRO)
-```
-
-The radar carries two separately-ranked boards: `data.rows` for stocks and `data.etfRows` for ETFs. Keep them apart. Every reading behind a row's `interestScore` is a percentile of that ticker's own trailing history, so a ranking built across both boards compares numbers measured against different baselines. The aggregates split the same way, with the `etf`-prefixed fields describing the ETF board alone.
-
-During the trading session the dossier and the radar also carry a few intraday fields, the same on every tier: `intradayFlow` (a count of the ticker's unusual contracts so far, when the first one was flagged, and the board's own clock), `largePrintCount` and `largestPrintPctl` on the dossier, and `intradayActiveCount` with `intradayRanking` on the radar. They carry no contract, strike, price or premium, and are absent before the day's first board. On the radar, `intradayAsOf` (epoch seconds) and `intradayAsOfEt` date the board the ranking was read from. `capabilities.intradayBoard` says where the contract-level board lives; its rows are served in the SentiSense app, not by the API.
-
-`getOptionsIntradayHistory` keeps every cycle of that board for one ticker, so you can test an intraday signal against what the board showed at each point in the day and then compare it with the session's end-of-day row from `getOptionsHistory`:
-
-```typescript
-const day = await client.stocks.getOptionsIntradayHistory("NVDA", { session: "2026-10-14" });
-if (day.data === null) {
-  console.log(day.upgrade?.message);    // PRO only: a FREE key gets a preview with no series
-} else {
-  for (const point of day.data.series) { // oldest cycle first
-    console.log(point.asOfEt, point.callVol, point.putVol, point.pcVol, point.unusualCount, point.atmIv);
-  }
-}
-```
-
-Each point carries call and put volume so far, the put/call ratio, the unusual-contract count, the percentile of the largest qualifying contract against the ticker's own year (`maxPremiumPctl1y`) and the ATM implied volatility; readings that are unavailable are absent, never zero. Omit `session` for the session the board ran most recently, and read `data.session` for the date served. A ticker appears only on cycles where it was on the board, so gaps show in each point's `cycle`, and `missingCycles` lists cycles whose stored point could not be read. A weekend, a holiday, a ticker outside the board and an unknown symbol all return an empty `series`, not a null payload. A malformed or future date rejects with an `APIError` whose `code` is `"invalid_session"`. From the CLI: `sentisense options NVDA --intraday`, or `--session YYYY-MM-DD` for another day.
-
-A FREE key that has spent its ten monthly dossiers receives a headline preview from `getOptionsSummary`: `asOf`, `sentiment` and six flat readings, `ivRank1y`, `atmIv`, `expectedMove1d`, `pcVol`, `pcVolPctl1y` and `maxPain`, with no `latest`, `context` or `oiWalls`. On a full dossier those six are absent and the same readings live in the nested objects, so branch on `isPreview`.
-
-A row whose baseline is still building carries its raw readings with the percentiles and `interestScore` omitted, which means "not enough history yet" rather than "nothing interesting". `getOptionsSummary` reports an uncovered ticker as a null payload inside the usual envelope, so the check is `result.data === null`: the response object itself is always truthy, and a bare `if (summary === null)` never fires. `getOptionsHistory` reports it as an empty `series` instead, so check the array's length rather than null-checking there.
-
-On a delisted symbol, the options summary carries `listingStatus === "DELISTED"` and, when known, `delistedDate` (YYYY-MM-DD). This marks a frozen last dossier, so read `asOf` before treating it as current. Listed and pending symbols omit both fields.
+Sentiment runs from -1 to 1. The SentiSense Score is sentiment weighted by attention and has no fixed range. Each point's reading is in `value`. `startTime` and `endTime` are epoch milliseconds. [Metrics API docs](https://sentisense.ai/docs/api/metrics/)
 
 ### SentiSense Rating
-
-Where a stock ranks against the other stocks rated that day, as a score, a letter and a percentile, plus the seven dimensions the rank is blended from. It is a relative research signal for informational and educational purposes, not financial, investment or trading advice, and not a recommendation about any security. Every response carries the wording to display alongside a grade in `disclaimer`. [Methodology](https://sentisense.ai/methodology/#sentisense-rating).
 
 ```typescript
 const rating = await client.stocks.getRating("AAPL");
 if (rating.rated) {
-  console.log(rating.letter, rating.score, "percentile", rating.percentile, "of", rating.ratedCount);
-  for (const adj of rating.riskAdjustments ?? []) console.log(" ", adj.condition, -adj.points);
-  for (const dim of rating.dimensions.filter((d) => d.present)) {
-    console.log(" ", dim.label, dim.percentile);
-  }
+  console.log(rating.letter, rating.score, "percentile", rating.percentile);
 } else {
   console.log("no grade today:", rating.reason);
 }
 ```
 
-`getRating` returns `StockRatingResponse`, a discriminated union on `rated` of `StockRating` (graded) and `StockNotRated`. The `if` narrows to `score`, `letter`, `percentile`, `composite`, `ratedCount` and `methodologyVersion`, the `else` to `reason`, `dimensionsPresent` and `presentDimensions`. Branch on that flag rather than testing a field for `undefined`.
+`rated` narrows the type, so check it first: an unrated stock comes back as a normal response. Each response carries a `disclaimer` to show next to the grade. [Rating API docs](https://sentisense.ai/docs/api/sentisense-rating/)
 
-Having no grade is a normal 200, not a 404: ETFs and tickers outside the swept universe answer that way, and `reason` is one of `stale`, `not_rated_today`, `insufficient_dimensions` or `insufficient_coverage_weight`. Only a ticker that resolves to nothing we track rejects with `NotFoundError`.
-
-`dimensions` always holds all seven rows in a fixed order, including the ones with no data, which arrive with `present` false and a `null` percentile. Read `present` first and never substitute zero for a missing percentile: zero is the bottom of the cross-section, absence is not a position on it. Only the smart-money dimension carries `subLegs`.
-
-**`score` is not `percentile`.** `percentile` is the rank of the blended signals against the day's rated set. `score = percentile - sum(riskAdjustments.map((a) => a.points))`, floored at 10 when fewer than five dimensions are available, and it is the number `letter` bands (A 90, B 70, C 30, D 10). `bucketLetter` is the band the percentile alone would give, so the two letters differ by exactly what the conditions cost. `riskAdjustments` itemises that cost, `penaltyPoints` totals it, and `riskConditions` names the active ones from the `RiskCondition` union: `thin_coverage`, `weak_dimension`, `unprofitable`, `no_fundamentals`, `high_leverage`, `unseasoned_listing`, `small_market_cap`, `thin_liquidity`, `extended_price`, `insider_selling` and `institutional_outflow`.
-
-All five are optional: a response served before they shipped omits them. For the daily history of a stock's score, ask `entityMetrics.getMetrics` for the `sentisense_rating` metric.
-
-### Market mood & knowledge base
+### Insights
 
 ```typescript
-client.marketMood.get()             // Composite market sentiment with sub-signals
-client.marketMood.get({ days: 30 }) // Same, with 30 days of history (default 180)
-client.kb.getPopularEntities()      // Most-tracked entities
-client.kb.searchEntities("Tesla")   // Resolve a name, alias, ticker or slug to what we track
+client.insights.stock("AAPL")      // signals for one stock
+client.insights.market()           // market-wide signals
+client.insights.latest()           // the newest across every stock; free keys get the top 5
+client.insights.types("AAPL")      // which signal types exist for a stock
 ```
 
-Entity search is resolution, not enumeration: the query must be at least 2 characters, the match count is capped at 25, and it returns a bare `EntitySearchResult[]` rather than a `PreviewResponse` envelope. Each hit carries `name`, `type`, the `ticker` for a listed entity (`null` for everything else), and the `urlSlug` the metric endpoints address that entity by, which is the only way to get a handle for a person, product or topic with no ticker.
+[Insights API docs](https://sentisense.ai/docs/api/insights/)
+
+### Insider trading (Form 4)
 
 ```typescript
-const hits = await client.kb.searchEntities("Tesla", { type: "company", limit: 5 });
-const symbol = hits.find((hit) => hit.ticker)?.ticker;   // "TSLA"
+client.insider.getActivity({ lookbackDays: 30 })         // buying and selling across the market
+client.insider.getTrades("NVDA", { lookbackDays: 90 })   // each filed trade in one stock
+client.insider.getClusterBuys({ lookbackDays: 90 })      // three or more insiders buying the same stock
 ```
 
-An empty array is the normal answer for a query that matches nothing, so branch on `length` rather than catching.
+Count real buying and selling by `transactionCode` (`P` and `S` are open-market trades). `transactionType` also labels shares withheld for taxes, code `F`, as `SELL`. [Insider API docs](https://sentisense.ai/docs/api/insider-trading/)
 
-### Trackers
-
-Every tracker returns the same snapshot envelope, so one renderer per `viewType` covers them all. `trackers.list()` says which trackers exist and, on those that have them, the `filters` each accepts (`{ key, values }`, with `values` the complete list).
+### Options
 
 ```typescript
-const { trackers } = await client.trackers.list();
-const heatmap = await client.trackers.get("market-heatmap", { scope: "nasdaq100" });
+client.options.getOverview()                                  // where options activity is unusual today
+client.stocks.getOptionsSummary("NVDA")                       // one stock's options picture
+client.stocks.getOptionsHistory("NVDA", { window: "2y" })     // the same readings as a daily series
+client.stocks.getOptionsIntradayHistory("NVDA")               // every 15-minute reading from one session (PRO)
+```
 
-// Narrow a tracker that lists filters, as an object or the wire string "state:TX".
-const tx = await client.trackers.get("data-center-moratoriums", { filter: { state: "TX" } });
-console.log(tx.totalCount, "Texas records");
-for (const row of tx.data.rows ?? []) {
-  console.log(row.rowId, row.name, row.ticker, row.endsDate, row.statesNamed);
+Apart from the intraday history, these are end-of-day readings, each measured against the stock's own past year. The overview ranks stocks and ETFs separately. For an uncovered ticker, `getOptionsSummary` returns `data: null`. [Options API docs](https://sentisense.ai/docs/api/options/)
+
+### Congressional trading
+
+```typescript
+client.politicians.getActivity({ lookbackDays: 90 })   // recent disclosed trades
+client.politicians.getFilings("NVDA")                  // trades in one stock
+client.politicians.getMembers()                        // members in office, with trading stats
+client.politicians.getMember("nancy-pelosi")           // one member's profile and trades
+client.politicians.getDirectory({ q: "tex" })          // find a slug, including former members
+```
+
+The activity feed returns 200 rows unless you pass `limit`, so walk it with `offset` until you reach `totalCount`:
+
+```typescript
+const first = await client.politicians.getActivity({ limit: 100 });
+console.log(`${first.data.length} of ${first.totalCount} disclosures`);
+```
+
+[Politicians API docs](https://sentisense.ai/docs/api/politicians/)
+
+### Institutional flows (13F)
+
+```typescript
+client.institutional.getQuarters()                                    // the 13F quarters we hold, newest first
+client.institutional.getFlows()                                       // the latest quarter's biggest inflows and outflows
+client.institutional.getHolders("AAPL", "2026-06-30", { limit: 25 })  // who holds a stock
+client.institutional.getHoldersHistory("AAPL", { quarters: 8 })       // ownership quarter by quarter
+client.institutional.listInstitutions()                               // find funds, largest first
+client.institutional.getInstitutionDetail("Berkshire-Hathaway", { limit: 10, sortBy: "estimatedFlowUsd" })
+client.institutional.getInstitutionHistory("Renaissance-Technologies", { quarters: 8, tickers: ["NVDA"] })
+client.institutional.getActivists("2026-06-30")                       // activist positions for a quarter
+```
+
+The newest quarter is often incomplete, so pick one by its `pending` flag rather than taking the first. A widely held stock has thousands of holders, so pass `limit`; `offset`, `sortBy` and `sortDir` only work alongside it.
+
+```typescript
+const quarter = (await client.institutional.getQuarters()).find((q) => !q.pending)?.reportDate;
+if (quarter) {
+  const top = await client.institutional.getHolders("AAPL", quarter, { limit: 10, sortBy: "valueUsd" });
+  for (const holder of top.data.holders) console.log(holder.filerName, holder.valueUsd);
 }
 ```
 
-Rows carry `ticker`, `url`, `endsDate` (ISO date) and `statesNamed` when a row has them, and absent otherwise. Other named cells, such as the `market-heatmap` columns, are on the row too (`row.marketCap`, typed `unknown`). Combine filters with commas: `{ state: "TX", category: "local" }` sends `filter=state:TX,category:local`. An unknown filter key or value throws `APIError` with `status: 400` and `code: "invalid_filter"`, the same way a bad `scope` throws `code: "invalid_scope"`, so a call never comes back unfiltered by accident.
+[13F API docs](https://sentisense.ai/docs/api/institutional-flows/)
 
-### Screener
-
-Filter the tracked universe on the SentiSense Score, attention, analyst consensus, technicals, price and end-of-day options readings in one query. Screening on analyst ratings alone is something a dozen free tools do; screening on analyst ratings *where the Score disagrees* is not.
+### Analyst ratings
 
 ```typescript
-client.screener.fields()                      // Every filterable field, both universes, with units + operators
-client.screener.screens()                     // The curated screens shipped in the product, each with a runnable plan
-client.screener.run({ plan, tickers, limit }) // Run a screen against the stock universe
-client.screener.runEtfs({ plan, limit })      // Run a screen against the ETF universe
+client.analyst.consensus("AAPL")                          // price target range, analyst count, upside
+client.analyst.consensusHistory("AAPL", { limit: 90 })    // the consensus day by day
+client.analyst.calledIt("AAPL")                           // which analysts called the stock's big moves
+client.analyst.actions("AAPL", { lookbackDays: 30 })      // upgrades and downgrades, with price targets
+client.analyst.estimates("AAPL")                          // EPS estimates and past surprises
+client.analyst.marketActivity({ lookbackDays: 7 })        // analyst actions across every stock
+client.analyst.coverage("NVDA")                           // who covers a stock and what they said last
+client.analyst.profile("gil-luria")                       // one analyst and the stocks they cover
+client.analyst.calls("gil-luria", { limit: 25 })          // their price target notes, newest first
+```
+
+`priceTarget` and `priorPriceTarget` on action rows are `null` when the firm stated none, never zero. [Analyst API docs](https://sentisense.ai/docs/api/analyst-ratings/)
+
+### Earnings
+
+```typescript
+client.calendar.getEarnings()                                       // upcoming report dates and estimates
+client.earnings.getSummaries("AAPL", { limit: 4 })                  // each quarter written up: headline, KPIs, guidance, call summary
+client.earnings.getRecent({ days: 7 })                              // who reported recently
+client.earnings.getReactions("AAPL")                                // how the stock moved after its last reports
+client.earnings.getStatistics({ window: "week_to_date" })           // beat rates and reactions across the market
+client.earnings.getRanked({ reportedDays: 14, upcomingDays: 7 })    // the reports that mattered most
 ```
 
 ```typescript
-// Run a curated screen as-is
-const { screens } = await client.screener.screens();
-const crowdVsStreet = screens.find((s) => s.id === "crowd-vs-street")!;
-const curated = await client.screener.run({ plan: crowdVsStreet.plan, limit: 25 });
-console.log(`${curated.matched} matched, showing ${curated.results.length}`);
+const [quarter] = (await client.earnings.getSummaries("AAPL", { limit: 1 })).data;
+if (quarter) console.log(quarter.fiscalPeriod, quarter.headline);
+```
 
-// Or build your own: bullish Score, thin analyst enthusiasm
+[Earnings API docs](https://sentisense.ai/docs/api/earnings/)
+
+### Company KPIs (PRO)
+
+```typescript
+client.stocks.getKpis("TSLA")        // product and segment metrics over time, like Tesla deliveries
+client.stocks.listKpiCoverage()      // which companies have KPIs (free, no quota cost)
+client.stocks.getKpiTypes("TSLA")    // which KPIs a company has
+```
+
+Free keys get the full series for the [sample companies](https://sentisense.ai/docs/api/#full-sample-responses-with-a-free-key), such as TSLA, and a preview for the rest.
+
+### ETFs (beta)
+
+```typescript
+client.etfs.list()                                           // every ETF we track
+client.etfs.quote("SPY")                                     // a fund's quote with AUM, expense ratio and NAV
+client.etfs.holdings("QQQ")                                  // what the fund holds, with weights
+client.etfs.analystAggregate("QQQ")                          // analyst consensus across the holdings, by weight
+client.etfs.insiderAggregate("ARKK", { lookbackDays: 90 })   // insider buying and selling across the holdings
+client.etfs.sentimentAggregate("QQQ")                        // the fund's Score, from holdings and from talk about the fund
+```
+
+[ETF API docs](https://sentisense.ai/docs/api/etfs/)
+
+### Screener
+
+```typescript
+client.screener.fields()                        // every field you can filter on
+client.screener.screens()                       // our ready-made screens
+client.screener.run({ plan, tickers, limit })   // run a screen over stocks
+client.screener.runEtfs({ plan, limit })        // run a screen over ETFs
+```
+
+```typescript
+// High 7-day Score, few analyst buy ratings
 const res = await client.screener.run({
   plan: {
     filters: [
       { fieldName: "SENTI_SCORE_7D", op: "GTE", value: 13 },
       { fieldName: "ANALYST_BUY_RATIO_PCT", op: "LTE", value: 30 },
-      { fieldName: "ANALYST_COUNT", op: "GTE", value: 5 },
     ],
     sort: { fieldName: "SENTI_SCORE_7D", dir: "DESC" },
   },
   limit: 25,
 });
-for (const row of res.results) {
-  console.log(row.ticker, row.sentiSenseScore7D, row.analystBuyRatioPct);
-}
-
-// Options positioning: implied volatility in the top quarter of its own year
-const highIv = await client.screener.run({
-  plan: {
-    filters: [{ fieldName: "IV_RANK_1Y", op: "GTE", value: 75 }],
-    sort: { fieldName: "IV_RANK_1Y", dir: "DESC" },
-  },
-  limit: 25,
-});
-for (const row of highIv.results) {
-  console.log(row.ticker, row.ivRank1y, row.expectedMove20d, row.optionsAsOf);
-}
+for (const row of res.results) console.log(row.ticker, row.sentiSenseScore7D, row.analystBuyRatioPct);
 ```
 
-`limit` rides next to the plan rather than inside it, because a plan is a stored object and paging is a transport concern. It defaults to 100 and caps at 500. `matched` is the count before `limit` was applied, so truncation is visible. `tickers` is optional: omit it to screen the whole tracked universe, pass a list to screen a watchlist.
+`ANALYST_RATING_MEAN` runs backwards (1 is strong buy), so prefer `ANALYST_BUY_RATIO_PCT`. [Screener API docs](https://sentisense.ai/docs/api/screener/)
 
-Three field semantics are worth stating outright, because guessing them wrong produces a screen that looks fine and means nothing:
+### Market mood
 
-- **`ANALYST_RATING_MEAN` is inverted.** It is the vendor's 1-to-5 scale where **1.0 is strong buy**, so bullish is `LTE 2.5`. Prefer `ANALYST_BUY_RATIO_PCT`, which runs the intuitive direction.
-- **`MA_CROSS_STATE` is ordinal**, not a percentage: `1` golden cross, `-1` death cross, `0` neither. Use `EQ`.
-- **`SENTIMENT_DIRECTION` is the sign of the 7-day SentiSense Score** (`1` / `0` / `-1`) with a neutral band of plus-or-minus 5. Despite the name it is not sentiment polarity.
+```typescript
+client.marketMood.get({ days: 30 })   // Market Mood, from fear to greed, with its history
+client.indexes.list()                 // our indexes
+client.indexes.history("ai-sentiment") // one index over time
+```
 
-The Score fields (`SENTI_SCORE_7D`, `SENTI_SCORE_1M`, `SCORE_CHANGE_7D`) are the SentiSense Score, not polarity: unbounded, banded at 5 / 13 / 23 either side of zero. Filter on those band edges, not on values like `0.5`, which behave as "any positive score". Nulls never match in either direction, so `RETURN_1Y >= 0` and `RETURN_1Y < 0` do not partition the universe: a stock listed four months ago is in neither result. If a screen returns fewer rows than you expect, check coverage before you check your thresholds.
+[Market Mood API docs](https://sentisense.ai/docs/api/market-mood/)
 
-On the ETF side, `CONSTITUENTS_WEIGHTED_SENTISENSE` is the holdings-weighted Score across what the fund owns and is usually the one you want; `DIRECT_SENTISENSE` is the Score from chatter about the fund ticker itself. `WEIGHT_COVERED_PCT` tells you how much of the fund's weight had constituent data behind the weighted number.
+### Trackers
 
-Stock rows also carry seven end-of-day options readings, `ivRank1y`, `pcVol`, `pcVolPctl1y`, `skew25dPctl1y`, `optionsInterestScore`, `maxUnusualPremium` and `expectedMove20d`, plus `optionsAsOf`, the session date they are from. `expectedMove20d` is a fraction of price (`0.2` is 20%) and `optionsAsOf` is a `YYYY-MM-DD` date; filter on the options fields with names like `IV_RANK_1Y`.
+```typescript
+const { trackers } = await client.trackers.list();
+const tx = await client.trackers.get("data-center-moratoriums", { filter: { state: "TX" } });
+for (const row of tx.data.rows ?? []) console.log(row.rowId, row.name);
+```
 
-Every stock row carries `priceAsOf`, when the market data behind `currentPrice`, `change` and `changePercent` is from, in epoch milliseconds (the same unit as the quote endpoints). It is `null` outside regular hours, on a previous-close fallback and when no quote was available, so read `null` as unknown rather than fresh, and judge a price's age from `priceAsOf`, not `lastUpdated`. Rated stocks also carry `ratingLetter`, `ratingScore` and `ratingPercentile`; all three are `null` for an unrated one.
+Every tracker uses the same envelope, so render by its `viewType`. Columns we don't type yet are still on each row. [Trackers API docs](https://sentisense.ai/docs/api/trackers/)
 
-Prices are 15-minute delayed quotes, refreshed at request time during the regular session from a cache at most 5 minutes old. Everything else on a row comes from a snapshot rebuilt about every 20 minutes during the session, so this is not a quote feed: use `client.stocks.getQuote()` for one ticker's current quote.
+### Knowledge base
+
+```typescript
+client.kb.getPopularEntities()                                  // the most-followed people, products and companies
+client.kb.searchEntities("Tesla", { type: "company", limit: 5 }) // turn a name into a ticker and slug
+```
+
+`searchEntities` returns a plain array, empty when nothing matches. [Entities API docs](https://sentisense.ai/docs/api/entities/)
 
 ## Error handling
 
 ```typescript
-import SentiSense, { AuthenticationError, RateLimitError } from "sentisense";
+import SentiSense, { NotFoundError, RateLimitError } from "sentisense";
 
 try {
-  const summary = await client.stocks.getAISummary("AAPL");
+  const price = await client.stocks.getPrice("AAPL");
 } catch (error) {
-  if (error instanceof AuthenticationError) {
-    // 401 or 403: invalid/missing API key or insufficient tier
-  } else if (error instanceof RateLimitError) {
-    if (error.code === "quota_exceeded") {
-      // 429: monthly allowance used up. Not retried; error.message says when it resets.
-    } else {
-      // 429: per-minute limit ("rate_limit_exceeded"), thrown once retries are used up.
-      // error.retryAfter is the server's wait in seconds.
-    }
-  }
+  if (error instanceof NotFoundError) console.log("Not covered:", error.code);
+  else if (error instanceof RateLimitError) console.log(error.message);
 }
 ```
 
 | Error class | HTTP status | When |
-|------------|-------------|------|
-| `AuthenticationError` | 401, 403 | Invalid API key or insufficient tier |
-| `NotFoundError` | 404 | Resource not found |
-| `RateLimitError` | 429 | Per-minute limit (`code: "rate_limit_exceeded"`, retried first) or monthly allowance used up (`code: "quota_exceeded"`, thrown immediately) |
-| `APIError` | Other 4xx/5xx | General API error |
+|-------------|-------------|------|
+| `AuthenticationError` | 401, 403 | The key is missing or wrong |
+| `NotFoundError` | 404 | We don't track that symbol, or hold nothing of that kind for it |
+| `RateLimitError` | 429 | The per-minute limit (`retryAfter`) or the monthly allowance (`code: "quota_exceeded"`) |
+| `DeepHistoryUnavailableError` | 202 | A `10Y` or `MAX` chart is still being built. Try again shortly |
+| `TemporarilyUnavailableError` | 503 | The server asked for a longer wait than the client allows |
+| `APIError` | other | Anything else |
 
-All errors extend `SentiSenseError` and include `status`, `code`, and `message` properties.
+All of them extend `SentiSenseError` and carry `status`, `code` and `message`. The client already retried what it could before throwing.
 
 ## Links
 
-- Get a free API key: [app.sentisense.ai/get-api-key](https://app.sentisense.ai/get-api-key)
-- API documentation: [sentisense.ai/docs/api](https://sentisense.ai/docs/api)
+- API docs: [sentisense.ai/docs/api](https://sentisense.ai/docs/api/)
+- Help with keys, limits and previews: [sentisense.ai/docs/support](https://sentisense.ai/docs/support/)
 - Changelog: [CHANGELOG.md](./CHANGELOG.md)
 
 SentiSense provides research data for informational and educational purposes, not investment advice.
