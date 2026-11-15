@@ -63,7 +63,10 @@ export const analystCommand: CommandDef = {
     "is where they last published, not necessarily where they work today.",
     NOT_A_SCORECARD,
     "A slug that matches no analyst exits 4.",
+    "--json prints the profile response. With --calls it is one object combining two responses,",
+    "\"profile\" and \"calls\", each the API response with its envelope.",
   ],
+  jsonShape: 'Print the profile response as JSON; with --calls, {"profile": ..., "calls": ...}',
   flags: {
     calls: { type: "boolean", describe: "Append their price target notes, newest first" },
     limit: { type: "number", placeholder: "N", describe: `Calls to request, 1 to 200 (default ${DEFAULT_CALLS})` },

@@ -540,3 +540,150 @@ describe("API key from the environment", () => {
     expect(init.headers["X-SentiSense-API-Key"]).toBeUndefined();
   });
 });
+
+describe("error.body", () => {
+  // The client used to keep only `error` and `message`, so the rest of an error body (the
+  // coverage block on a 404, the upgrade block on a free key's 429) was unreachable.
+
+  async function thrown(promise: Promise<unknown>): Promise<SentiSenseError> {
+    try {
+      await promise;
+    } catch (error) {
+      expect(error).toBeInstanceOf(SentiSenseError);
+      return error as SentiSenseError;
+    }
+    throw new Error("expected the call to throw");
+  }
+
+  it("keeps a 404's suggestions and coverage block", async () => {
+    const body = {
+      error: "not_found",
+      message: "No company profile found for ticker: XYZQ",
+      suggestions: [],
+      coverage: {
+        message: "We don't cover XYZQ yet.",
+        coveredTickersUrl: "https://app.sentisense.ai/api/v1/stocks",
+        docsUrl: "https://sentisense.ai/docs/api/#two-kinds-of-404-on-a-per-ticker-endpoint",
+      },
+    };
+    mockFetch.mockResolvedValueOnce(jsonResponse(body, 404));
+
+    const err = await thrown(new SentiSense({ apiKey: "ssk_test" }).stocks.getProfile("XYZQ"));
+    expect(err).toBeInstanceOf(NotFoundError);
+    expect(err.code).toBe("not_found");
+    expect(err.message).toBe(body.message);
+    expect(err.body).toEqual(body);
+    expect(err.body?.coverage?.coveredTickersUrl).toBe("https://app.sentisense.ai/api/v1/stocks");
+    expect(err.body?.suggestions).toEqual([]);
+  });
+
+  it("reads coverage.didYouMean when the server suggests a spelling", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          error: "entity_not_found",
+          message: "Unknown symbol 'BRK/B'.",
+          suggestions: [{ name: "Berkshire Hathaway", urlSlug: "berkshire-hathaway", ticker: "BRK.B" }],
+          coverage: { message: "We don't cover BRK/B as spelled. Try BRK.B.", didYouMean: "BRK.B" },
+        },
+        404,
+      ),
+    );
+
+    const err = await thrown(new SentiSense({ apiKey: "ssk_test" }).analyst.consensus("BRK/B"));
+    expect(err.body?.coverage?.didYouMean).toBe("BRK.B");
+    expect(err.body?.suggestions?.[0]?.ticker).toBe("BRK.B");
+  });
+
+  it("keeps a free key's 429 upgrade block", async () => {
+    const upgrade = {
+      plan: "PRO",
+      message: "PRO allows 300 requests/minute with no monthly cap.",
+      requestsPerMinute: 300,
+      unlimitedMonthlyRequests: true,
+      url: "https://app.sentisense.ai/pricing",
+    };
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ error: "rate_limit_exceeded", message: "Rate limit exceeded", upgrade }, 429),
+    );
+
+    const err = await thrown(new SentiSense({ apiKey: "ssk_free", maxRetries: 0 }).stocks.list());
+    expect(err).toBeInstanceOf(RateLimitError);
+    expect(err.code).toBe("rate_limit_exceeded");
+    expect(err.body?.upgrade).toEqual(upgrade);
+    expect(err.body?.upgrade?.requestsPerMinute).toBe(300);
+  });
+
+  it("keeps the body on a monthly-allowance 429, thrown without a retry", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(
+        { error: "quota_exceeded", message: "Monthly quota used", upgrade: { plan: "PRO" } },
+        429,
+      ),
+    );
+
+    const err = await thrown(new SentiSense({ apiKey: "ssk_free" }).stocks.list());
+    expect(err.body?.upgrade?.plan).toBe("PRO");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the body on 401 and on other statuses", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ error: "invalid_api_key", message: "Invalid API key" }, 401),
+    );
+    const auth = await thrown(new SentiSense({ apiKey: "bad" }).stocks.list());
+    expect(auth).toBeInstanceOf(AuthenticationError);
+    expect(auth.body).toEqual({ error: "invalid_api_key", message: "Invalid API key" });
+
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ error: "invalid_filter", message: "Unknown key", zzUnknown: 1 }, 400),
+    );
+    const other = await thrown(new SentiSense({ apiKey: "ssk_test", maxRetries: 0 }).stocks.list());
+    expect(other).toBeInstanceOf(APIError);
+    expect(other.body?.zzUnknown).toBe(1);
+  });
+
+  it("keeps the body on a 503 whose wait exceeds the client's budget", async () => {
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: "Temporarily unavailable" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json", "Retry-After": "600" },
+      }),
+    );
+
+    const err = await thrown(new SentiSense({ apiKey: "ssk_test", maxRetries: 1 }).stocks.list());
+    expect(err.name).toBe("TemporarilyUnavailableError");
+    expect(err.code).toBeUndefined();
+    expect(err.body).toEqual({ message: "Temporarily unavailable" });
+  });
+
+  it("is undefined when the body is not a JSON object", async () => {
+    mockFetch.mockResolvedValueOnce(
+      new Response("<!doctype html><title>HTTP Status 400 - Bad Request</title>", {
+        status: 400,
+        statusText: "Bad Request",
+        headers: { "Content-Type": "text/html" },
+      }),
+    );
+    const html = await thrown(new SentiSense({ apiKey: "ssk_test", maxRetries: 0 }).stocks.list());
+    expect(html.body).toBeUndefined();
+    expect(html.message).toBe("Bad Request");
+
+    mockFetch.mockResolvedValueOnce(jsonResponse(["not", "an", "object"], 500));
+    const array = await thrown(new SentiSense({ apiKey: "ssk_test", maxRetries: 0 }).stocks.list());
+    expect(array.body).toBeUndefined();
+
+    mockFetch.mockRejectedValueOnce(new TypeError("fetch failed"));
+    const network = await thrown(new SentiSense({ apiKey: "ssk_test" }).stocks.list());
+    expect(network.body).toBeUndefined();
+  });
+
+  it("keeps every constructor signature working for errors built by hand", () => {
+    expect(new NotFoundError("gone", "not_found").body).toBeUndefined();
+    expect(new APIError("bad", 400, "invalid").status).toBe(400);
+    expect(new RateLimitError("slow", "rate_limit_exceeded", 5).retryAfter).toBe(5);
+    expect(new AuthenticationError("no", 401).code).toBeUndefined();
+    expect(new SentiSenseError("plain").body).toBeUndefined();
+    expect(new NotFoundError("gone", "not_found", { coverage: { message: "m" } }).body?.coverage?.message).toBe("m");
+  });
+});

@@ -162,6 +162,169 @@ describe("command wiring", () => {
     expect(result.urls.some((candidate) => candidate.includes("/etfs/NVDA/"))).toBe(false);
   });
 
+  // What the stock quote answers a covered fund with today: a plain 200 without the fund's own
+  // fields, pointing at the ETF quote. The keys match a live SPY answer; the values are fixed.
+  const SPY_STOCK_QUOTE = {
+    ticker: "SPY",
+    currentPrice: 762.63,
+    change: -1.57,
+    changePercent: -0.20544360115153756,
+    volume: 62110242,
+    open: 766.45,
+    dayHigh: 769.41,
+    dayLow: 762.18,
+    previousClose: 764.2,
+    week52High: 779.37,
+    week52Low: 629.28,
+    dividendYield: 0.009942851710528042,
+    movingAverage200Day: 700.12,
+    timestamp: 1790841278705,
+    seeInstead: ["/api/v1/etfs/SPY/quote"],
+  };
+
+  it("quote follows a fund's seeInstead to the ETF quote", async () => {
+    const result = await run(["quote", "spy", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/SPY\/quote/, SPY_STOCK_QUOTE],
+        [/\/etfs\/SPY\/quote/, QUOTE_SPY],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.urls).toHaveLength(2);
+    expect(url(result, "/api/v1/stocks/SPY/quote")).toBeDefined();
+    expect(url(result, "/api/v1/etfs/SPY/quote")).toBeDefined();
+    expect(result.stdout).toContain("AUM");
+    expect(result.stdout).toContain("Expense ratio");
+    expect(result.stdout).toContain("NAV");
+    expect(result.stdout).not.toContain("Mkt cap");
+    expect(result.stdout).not.toContain("P/E");
+  });
+
+  it("quote --json for a fund answered with seeInstead is the ETF quote response", async () => {
+    const result = await run(["quote", "SPY", "--json"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/SPY\/quote/, SPY_STOCK_QUOTE],
+        [/\/etfs\/SPY\/quote/, QUOTE_SPY],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual(QUOTE_SPY);
+  });
+
+  it("quote keeps the stock quote, with a note, when the fund quote fails after a 200", async () => {
+    const result = await run(["quote", "SPY", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/SPY\/quote/, SPY_STOCK_QUOTE],
+        [/\/etfs\/SPY\/quote/, errorResponse(500, { error: "internal_error", message: "boom" })],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("762.63");
+    expect(result.stderr).toContain("note: SPY: the fund quote failed (boom)");
+  });
+
+  it("quote follows only a seeInstead that names this symbol's ETF quote", async () => {
+    for (const seeInstead of [["/api/v1/etfs/QQQ/quote"], ["/api/v1/etfs/SPY/holdings"], ["https://example.com/x"]]) {
+      const result = await run(["quote", "SPY", "--plain"], {
+        env: KEYED,
+        fetch: routeFetch([
+          [/\/stocks\/SPY\/quote/, { ...SPY_STOCK_QUOTE, seeInstead }],
+          [/\/etfs\//, QUOTE_SPY],
+        ]),
+      });
+      expect(result.code).toBe(0);
+      expect(result.urls).toHaveLength(1);
+      expect(result.stdout).toContain("Mkt cap");
+    }
+  });
+
+  it("quote with one unknown ticker prints the others and exits 4", async () => {
+    const result = await run(["quote", "NVDA", "ZZZZQ", "AAPL", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
+        [/\/stocks\/AAPL\/quote/, { ...QUOTE_NVDA, ticker: "AAPL", currentPrice: 271.4 }],
+        [
+          /\/stocks\/ZZZZQ\/quote/,
+          errorResponse(404, { error: "not_found", message: "No quote data found for ticker: ZZZZQ" }),
+        ],
+      ]),
+    });
+    expect(result.code).toBe(4);
+    expect(result.stdout).toContain("NVDA");
+    expect(result.stdout).toContain("AAPL");
+    expect(result.stdout).toContain("271.40");
+    expect(result.stdout).not.toContain("ZZZZQ");
+    expect(result.stderr).toContain("error: ZZZZQ: not found: No quote data found for ticker: ZZZZQ");
+    expect(result.stderr).toContain("next: check the symbol.");
+  });
+
+  it("quote --json with one unknown ticker leaves it out of the keyed object", async () => {
+    const result = await run(["quote", "NVDA", "ZZZZQ", "--json"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
+        [/\/stocks\/ZZZZQ\/quote/, errorResponse(404, { error: "not_found", message: "nope" })],
+      ]),
+    });
+    expect(result.code).toBe(4);
+    // Still keyed by ticker, because two were asked for, even though one answered.
+    expect(JSON.parse(result.stdout)).toEqual({ NVDA: QUOTE_NVDA });
+    expect(result.stderr).toContain("error: ZZZZQ:");
+  });
+
+  it("quote exits with the first failure's code and prints nothing when every ticker fails", async () => {
+    const result = await run(["quote", "ZZZZQ", "YYYYQ", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([]),
+    });
+    expect(result.code).toBe(4);
+    expect(result.stdout).toBe("");
+  });
+
+  it("quote reports a non-404 failure in a batch with its own exit code", async () => {
+    const result = await run(["quote", "NVDA", "AAPL", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
+        [
+          /\/stocks\/AAPL\/quote/,
+          errorResponse(429, { error: "rate_limit_exceeded", message: "Rate limit exceeded" }, { "Retry-After": "30" }),
+        ],
+      ]),
+    });
+    expect(result.code).toBe(5);
+    expect(result.stdout).toContain("NVDA");
+    expect(result.stderr).toContain("error: AAPL: rate limited");
+  });
+
+  it("help says where --json combines two responses, and only there", async () => {
+    const sentiment = await run(["help", "sentiment"]);
+    expect(sentiment.stdout).toContain('{"sentiment": <sentiment response>, "series": <Score history>}');
+    expect(sentiment.stdout).toContain(".sentiment.data.sentisenseScore");
+    expect(sentiment.stdout).not.toContain("exact API response");
+
+    const analysts = await run(["help", "analysts"]);
+    expect(analysts.stdout).toContain('{"consensus": ..., "actions": ...}');
+    expect(analysts.stdout).not.toContain("exact API response");
+
+    const analyst = await run(["help", "analyst"]);
+    expect(analyst.stdout).toContain('{"profile": ..., "calls": ...}');
+    expect(analyst.stdout).not.toContain("exact API response");
+
+    const quote = await run(["help", "quote"]);
+    expect(quote.stdout).toContain("an object keyed by ticker");
+    expect(quote.stdout).toContain("the others print");
+
+    const mood = await run(["help", "mood"]);
+    expect(mood.stdout).toContain("--json");
+    expect(mood.stdout).toContain("Print the exact API response as JSON");
+  });
+
   it("quote does not retry a stock refusal with any other code", async () => {
     const result = await run(["quote", "NVDA", "--plain"], {
       env: KEYED,
@@ -1352,6 +1515,19 @@ describe("unknown ticker verification on an empty result", () => {
       fetch: routeFetch([
         [/stocks\/SPY\/options\/summary/, { isPreview: false, previewReason: null, data: null }],
         [/\/stocks\/SPY\/quote/, ETF_REFUSAL],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.urls.some((candidate) => candidate.includes("/etfs/"))).toBe(false);
+  });
+
+  it("counts a fund's 200 stock quote as a verified symbol without following seeInstead", async () => {
+    const result = await run(["options", "SPY", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/stocks\/SPY\/options\/summary/, { isPreview: false, previewReason: null, data: null }],
+        [/\/stocks\/SPY\/quote/, { ticker: "SPY", currentPrice: 762.63, seeInstead: ["/api/v1/etfs/SPY/quote"] }],
       ]),
     });
     expect(result.code).toBe(0);

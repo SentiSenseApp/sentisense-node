@@ -1,6 +1,6 @@
 import type { StockProfile } from "../../types.js";
-import type { CommandDef } from "../command.js";
-import { CliUsageError } from "../errors.js";
+import type { CommandDef, CommandResult } from "../command.js";
+import { CliUsageError, describeError } from "../errors.js";
 import { quoteAnyTicker, type AnyQuote } from "../ticker.js";
 import { cell, doc, field, fields, type Block } from "../render/doc.js";
 import {
@@ -197,7 +197,11 @@ export const quoteCommand: CommandDef = {
     "JSON is the exact quote response for one ticker, and an object keyed by ticker for more.",
     "An ETF symbol answers with the ETF quote: AUM, expense ratio and NAV in place of market",
     "cap, P/E and EPS. That costs one extra request per ETF symbol.",
+    "With several tickers, one that fails does not lose the rest: the others print, each failed",
+    "symbol is named on stderr, and the exit code is that failure's (4 for an unknown symbol).",
+    "Under --json a failed symbol is left out of the object rather than given a null.",
   ],
+  jsonShape: "Print the quote response as JSON; for several tickers, an object keyed by ticker",
   flags: {},
   async run({ args, client, full, mode }) {
     const tickers = args.positionals.map((t) => t.toUpperCase());
@@ -211,8 +215,9 @@ export const quoteCommand: CommandDef = {
     // per-ticker cost is the difference between 15 symbols and 30.
     const wantName = mode === "pretty";
 
-    const rows: Row[] = await Promise.all(
-      tickers.map(async (ticker) => {
+    // Settled one by one, so a single bad symbol cannot throw away quotes already paid for.
+    const settled = await Promise.allSettled(
+      tickers.map(async (ticker): Promise<Row> => {
         const [answer, profile] = await Promise.all([
           quoteAnyTicker(api, ticker),
           // A name is a nicety, not the answer. A ticker with no profile still gets a quote.
@@ -222,12 +227,50 @@ export const quoteCommand: CommandDef = {
       }),
     );
 
-    if (rows.length === 1) {
-      return { json: rows[0].quote, doc: doc(...single(rows[0], full)) };
+    const rows: Row[] = [];
+    const failed: Array<{ ticker: string; error: unknown }> = [];
+    settled.forEach((outcome, index) => {
+      if (outcome.status === "fulfilled") rows.push(outcome.value);
+      else failed.push({ ticker: tickers[index], error: outcome.reason });
+    });
+
+    // Nothing came back: the first symbol's error is the command's error, as it always was.
+    if (rows.length === 0) throw failed[0].error;
+
+    const notes = rows.flatMap((row) => (row.note ? [row.note] : []));
+
+    // The shape follows how many tickers were asked for, not how many answered, so a parser
+    // never sees a keyed object turn into a bare quote because one symbol failed.
+    if (tickers.length === 1) {
+      return { json: rows[0].quote, doc: doc(...single(rows[0], full)), notes };
     }
 
     const json: Record<string, AnyQuote["quote"]> = {};
     for (const row of rows) json[row.ticker] = row.quote;
-    return { json, doc: doc(table(rows, full)) };
+    const result: CommandResult = { json, doc: doc(table(rows, full)), notes };
+    if (failed.length > 0) Object.assign(result, partialFailure(failed, args.flags.debug === true));
+    return result;
   },
 };
+
+/**
+ * Stderr lines and the exit code for the symbols that failed in a batch: one `error:` line per
+ * symbol, naming it, then each distinct `next:` line once. The exit code is the first failed
+ * symbol's, so one unknown symbol exits 4 exactly as it did when it sank the whole batch.
+ */
+function partialFailure(
+  failed: Array<{ ticker: string; error: unknown }>,
+  debug: boolean,
+): Pick<CommandResult, "errors" | "exitCode"> {
+  const errors: string[] = [];
+  const advice = new Set<string>();
+  let exitCode: number | undefined;
+  for (const { ticker, error } of failed) {
+    const report = describeError(error, debug, "quote");
+    if (exitCode === undefined) exitCode = report.exitCode;
+    const [first, ...rest] = report.lines;
+    errors.push(first.replace(/^error: /, `error: ${ticker}: `));
+    for (const line of rest) advice.add(line);
+  }
+  return { errors: [...errors, ...advice], exitCode };
+}

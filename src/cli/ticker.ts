@@ -67,10 +67,11 @@ export async function verifyTickerOnEmpty(
   ticker: string,
 ): Promise<string | undefined> {
   try {
+    // Any answer proves the symbol exists, a fund's `200` with `seeInstead` included.
     await api.stocks.getQuote(ticker);
     return undefined;
   } catch (error) {
-    // An ETF is refused by the stock quote with this code, which is itself proof the symbol
+    // Older API builds refused a fund with this code, which is equally proof the symbol
     // exists, so no second request is spent.
     if (isEtfRedirect(error)) return undefined;
     if (error instanceof NotFoundError) throw new UnknownTickerError(ticker);
@@ -78,29 +79,77 @@ export async function verifyTickerOnEmpty(
   }
 }
 
-/** True for the error the stock quote answers an ETF symbol with. */
+/** True for the error older API builds answered an ETF symbol's stock quote with. */
 export function isEtfRedirect(error: unknown): boolean {
   return error instanceof APIError && error.code === "ticker_is_etf";
 }
 
-/** A quote for either kind of symbol, tagged with the endpoint that answered it. */
+const ETF_QUOTE_PATH = /^\/api\/v1\/etfs\/([^/?#]+)\/quote$/i;
+
+/**
+ * The fund symbol a stock quote's `seeInstead` sends to the ETF quote, or undefined when it
+ * sends nowhere.
+ *
+ * Only the ETF quote's own path shape is recognised, and only for the symbol asked about (or
+ * the canonical spelling the quote answered with), because the value comes from the server:
+ * it decides which `etfs.quote()` call is made, never which URL is requested.
+ */
+export function etfQuoteSymbol(quote: StockQuote, ticker: string): string | undefined {
+  if (!Array.isArray(quote.seeInstead)) return undefined;
+  const own = new Set([ticker.toUpperCase()]);
+  if (typeof quote.ticker === "string") own.add(quote.ticker.toUpperCase());
+  for (const path of quote.seeInstead) {
+    if (typeof path !== "string") continue;
+    const match = ETF_QUOTE_PATH.exec(path);
+    if (!match) continue;
+    let symbol: string;
+    try {
+      symbol = decodeURIComponent(match[1]);
+    } catch {
+      continue;
+    }
+    if (own.has(symbol.toUpperCase())) return symbol;
+  }
+  return undefined;
+}
+
+/**
+ * A quote for either kind of symbol, tagged with the endpoint that answered it. `note` is set
+ * when a fund's own quote could not be fetched and the stock quote stands in for it.
+ */
 export type AnyQuote =
-  | { kind: "stock"; quote: StockQuote }
-  | { kind: "etf"; quote: EtfQuote };
+  | { kind: "stock"; quote: StockQuote; note?: string }
+  | { kind: "etf"; quote: EtfQuote; note?: string };
 
 /**
  * The quote for a stock or an ETF.
  *
- * The stock quote refuses an ETF symbol with `ticker_is_etf` rather than answering it, so
- * that one error is retried against the ETF quote. Every other outcome is the stock
- * quote's own, which keeps a stock symbol at exactly one request.
+ * The stock quote answers a fund with a normal `200` that lacks the fund's own fields and
+ * carries `seeInstead` pointing at the ETF quote, so that answer is followed with one more
+ * request. If that request fails, the stock quote is still a correct answer, so it stands, with
+ * a note saying the fund fields are missing. Older API builds refused a fund with
+ * `ticker_is_etf` instead, and that error is followed the same way, as before. Every other
+ * outcome is the stock quote's own, which keeps a stock symbol at exactly one request.
  */
 export async function quoteAnyTicker(api: SentiSense, ticker: string): Promise<AnyQuote> {
+  let quote: StockQuote;
   try {
-    return { kind: "stock", quote: await api.stocks.getQuote(ticker) };
+    quote = await api.stocks.getQuote(ticker);
   } catch (error) {
     if (!isEtfRedirect(error)) throw error;
     return { kind: "etf", quote: await api.etfs.quote(ticker) };
+  }
+  const fund = etfQuoteSymbol(quote, ticker);
+  if (fund === undefined) return { kind: "stock", quote };
+  try {
+    return { kind: "etf", quote: await api.etfs.quote(fund) };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return {
+      kind: "stock",
+      quote,
+      note: `${ticker}: the fund quote failed (${reason}), so AUM, expense ratio and NAV are missing`,
+    };
   }
 }
 

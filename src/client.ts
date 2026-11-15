@@ -6,6 +6,7 @@ import {
   RateLimitError,
   SentiSenseError,
   TemporarilyUnavailableError,
+  type ErrorBody,
 } from "./errors.js";
 import { Analyst } from "./resources/analyst.js";
 import { Calendar } from "./resources/calendar.js";
@@ -89,6 +90,21 @@ function retryAfterSeconds(
   maxWaitS: number,
 ): number {
   return clampRetryAfter(raw, maxWaitS) ?? defaultS;
+}
+
+/**
+ * The response body as an object, or `undefined` when it is not JSON or not a JSON object
+ * (an HTML error page from a proxy, an empty body). Consumes the body.
+ */
+async function readErrorBody(response: Response): Promise<ErrorBody | undefined> {
+  try {
+    const parsed: unknown = await response.json();
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as ErrorBody)
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -257,11 +273,13 @@ export class SentiSense implements APIClient {
               if (requestedS > MAX_RATE_LIMIT_WAIT_S) {
                 // Retrying early would spend another request against a server that just told
                 // us it is not ready. Hand the caller the figure so it can resume later.
-                try { await response.body?.cancel(); } catch { /* ignore */ }
+                const body = await readErrorBody(response);
                 throw new TemporarilyUnavailableError(
                   `Server asked for a ${Math.round(requestedS)}s wait, longer than this ` +
                     `client's ${MAX_RATE_LIMIT_WAIT_S}s budget`,
                   requestedS,
+                  undefined,
+                  body,
                 );
               }
               delayMs = requestedS * 1000;
@@ -351,15 +369,12 @@ export class SentiSense implements APIClient {
   }
 
   private async handleErrorResponse(response: Response): Promise<never> {
-    let body: { error?: string; message?: string } = {};
-    try {
-      body = await response.json();
-    } catch {
-      // Response may not be JSON
-    }
+    // Kept whole on the error as `body`, so a 404's coverage block or a 429's upgrade block
+    // stays readable. Undefined when the response was not a JSON object.
+    const body = await readErrorBody(response);
 
-    const message = body.message ?? response.statusText ?? "API request failed";
-    const code = body.error;
+    const message = (body?.message as string | undefined) ?? response.statusText ?? "API request failed";
+    const code = body?.error as string | undefined;
 
     switch (response.status) {
       case 401:
@@ -368,9 +383,10 @@ export class SentiSense implements APIClient {
           this.apiKey ? message : `${message} ${MISSING_KEY_HINT}`,
           response.status,
           code,
+          body,
         );
       case 404:
-        throw new NotFoundError(message, code);
+        throw new NotFoundError(message, code, body);
       case 429: {
         // Same clamp the retry loop uses, so a caller running its own backoff off
         // `error.retryAfter` gets a number it can pass to setTimeout, or nothing at all.
@@ -378,10 +394,10 @@ export class SentiSense implements APIClient {
           response.headers.get("Retry-After"),
           MAX_RATE_LIMIT_WAIT_S,
         );
-        throw new RateLimitError(message, code, retryAfter);
+        throw new RateLimitError(message, code, retryAfter, body);
       }
       default:
-        throw new APIError(message, response.status, code);
+        throw new APIError(message, response.status, code, body);
     }
   }
 }

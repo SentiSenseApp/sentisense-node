@@ -98,6 +98,7 @@ export {
   TemporarilyUnavailableError,
   APIError,
 } from "./errors.js";
+export type { ErrorBody } from "./errors.js";
 
 export type {
   SentiSenseOptions,
@@ -203,6 +204,9 @@ export type {
   TtmFundamentals,
   FundamentalsPeriod,
   FundamentalsPeriodsResponse,
+  FundamentalsHistory,
+  FundamentalsLineSource,
+  GetFundamentalsHistoryOptions,
   ShortInterest,
   ShortInterestDataPoint,
   GetShortInterestOptions,

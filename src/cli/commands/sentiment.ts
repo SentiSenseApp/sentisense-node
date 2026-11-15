@@ -39,7 +39,11 @@ export const sentimentCommand: CommandDef = {
     "Tone per source is the separate polarity reading, always between -1 and 1, and it is",
     "reported per source rather than blended into one number.",
     "--days sets the Score history window used for the sparkline. Default is 30.",
+    "--json prints one object combining two responses: \"sentiment\" is the sentiment response,",
+    "envelope included, and \"series\" the Score history points (null if that call failed). So",
+    "the Score is at .sentiment.data.sentisenseScore, not .data.sentisenseScore.",
   ],
+  jsonShape: 'Print {"sentiment": <sentiment response>, "series": <Score history>} as JSON',
   flags: {
     days: { type: "number", placeholder: "N", describe: `Days of Score history (default ${DEFAULT_DAYS})` },
   },

@@ -37,12 +37,12 @@ function pad(text: string, width: number): string {
   return text.length >= width ? text : text + " ".repeat(width - text.length);
 }
 
-function flagLines(specs: FlagSpecs): string[] {
+function flagLines(specs: FlagSpecs, overrides: Record<string, string> = {}): string[] {
   const entries = Object.entries(specs);
   if (entries.length === 0) return [];
   const rendered = entries.map(([name, spec]) => ({
     left: spec.type === "boolean" ? `--${name}` : `--${name} <${spec.placeholder ?? "value"}>`,
-    describe: spec.describe,
+    describe: overrides[name] ?? spec.describe,
   }));
   const width = Math.max(...rendered.map((entry) => entry.left.length));
   return rendered.map((entry) => `  ${pad(entry.left, width)}  ${entry.describe}`);
@@ -62,7 +62,8 @@ export function mainHelp(): string {
     ),
     "",
     "Output:",
-    "  Pretty in a terminal, plain text when piped, exact API JSON with --json.",
+    "  Pretty in a terminal, plain text when piped, the API's JSON with --json. Where a command",
+    "  combines two responses into one object, its help names the keys.",
     "  --full widens a command, --plain and --no-color force text, --debug shows stack traces.",
     "",
     "Setup:",
@@ -98,7 +99,11 @@ export function commandHelp(command: CommandDef): string {
   const own = flagLines(command.flags);
   if (own.length > 0) lines.push("", "Flags:", ...own);
 
-  lines.push("", "Common flags:", ...flagLines(GLOBAL_FLAGS));
+  lines.push(
+    "",
+    "Common flags:",
+    ...flagLines(GLOBAL_FLAGS, command.jsonShape ? { json: command.jsonShape } : {}),
+  );
   lines.push("", "Examples:", ...command.examples.map((example) => `  ${example}`));
   lines.push(
     "",

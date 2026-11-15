@@ -120,6 +120,10 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
       io.stdout(renderPlain(result.doc));
     }
 
+    // A partial failure: stdout already holds what came back, and the exit code says the rest
+    // did not.
+    for (const line of result.errors ?? []) io.stderr(`${line}\n`);
+
     return result.exitCode ?? EXIT.OK;
   } catch (error) {
     const debug = argv.includes("--debug");

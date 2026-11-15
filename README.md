@@ -86,7 +86,7 @@ npx -y sentisense@latest health          # checks your key and the connection
 
 **A key with no signup.** `npx -y sentisense@latest init` prints `SENTISENSE_API_KEY=<key>` and a command to try it with. The key is temporary and rate-limited. To keep it, open the link it prints and sign in or create a free account; the same key then stays yours. `init` writes nothing into your project, and if a key is already configured it says so instead of making a new one. To tell apart machines that share a network, `init` sends a random id and stores it as `install-id` in the CLI's config directory (`~/.config/sentisense`). It is not derived from you or your machine.
 
-**Output.** Commands print a readable layout in a terminal and plain text when piped. `--json` prints the API's JSON, under one key per call when a command makes several, so `isPreview` and `totalCount` are still there for `jq`. `--full` shows every column.
+**Output.** Commands print a readable layout in a terminal and plain text when piped. `--json` prints the API's JSON, under one key per call when a command makes several, so `isPreview` and `totalCount` are still there for `jq`. `--full` shows every column. In `quote NVDA ZZZZQ AAPL`, a ticker that fails is named on stderr and the rest still print, with that ticker's exit code.
 
 Exit codes:
 
@@ -171,6 +171,7 @@ client.stocks.getGraph("AAPL", { depth: 1 })               // people, products a
 client.stocks.getEntities("AAPL")                          // entities linked to the stock
 client.stocks.getAISummary("AAPL", { depth: "deep" })      // our research report
 client.stocks.getFundamentals("AAPL")                      // statements, as filed
+client.stocks.getFundamentalsHistory("AAPL", { timeframe: "annual" })  // up to 40 quarters or 20 years
 client.stocks.getCurrentFundamentals("AAPL")               // the latest snapshot
 client.stocks.getShortInterest("GME", { limit: 12 })       // short interest by settlement date
 client.stocks.getShortVolume("GME")                        // daily short volume
@@ -179,7 +180,7 @@ client.stocks.getImages(["AAPL"])                          // logos
 client.stocks.getDescriptions(["AAPL"])                    // short company descriptions
 ```
 
-For a fund, use `etfs.quote()`. `getQuote` accepts a fund ticker but leaves out AUM, NAV and expense ratio. Only the `10Y` and `MAX` charts are dividend-adjusted. Statement figures are in the company's own currency (`reportedCurrency`). [Stocks API docs](https://sentisense.ai/docs/api/stocks/)
+For a fund, use `etfs.quote()`. `getQuote` accepts a fund ticker but leaves out AUM, NAV and expense ratio, and its `seeInstead` points at the fund quote. Only the `10Y` and `MAX` charts are dividend-adjusted. Statement figures are in the company's own currency (`reportedCurrency`); a period served from an SEC-backed record says which lines came from the filing in `source` and `lineSources`. [Stocks API docs](https://sentisense.ai/docs/api/stocks/)
 
 ### Documents & news
 
@@ -433,7 +434,7 @@ try {
 | `TemporarilyUnavailableError` | 503 | The server asked for a longer wait than the client allows |
 | `APIError` | other | Anything else |
 
-All of them extend `SentiSenseError` and carry `status`, `code` and `message`. The client already retried what it could before throwing.
+All of them extend `SentiSenseError` and carry `status`, `code`, `message` and `body`, the parsed error response: a 404's `suggestions` and `coverage` block, a free key's 429 `upgrade` block. The client already retried what it could before throwing.
 
 ## Links
 

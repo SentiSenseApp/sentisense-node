@@ -46,17 +46,22 @@ export class EntityMetrics {
    *
    * @param symbol     Ticker symbol (e.g. "AAPL") or entity urlSlug.
    * @param metricType The metric to break down (e.g. "mentions" or "sentiment").
-   * @param options    Optional dimension parameter.
+   * @param options    Optional dimension, and an optional window as `startTime` / `endTime` in
+   *                   epoch milliseconds. Without a window the API uses the last 7 days.
    */
   async getDistribution(
     symbol: string,
     metricType: MetricType,
     options: MetricDistributionOptions = {},
   ): Promise<MetricDistribution> {
-    const { dimension = "source" } = options;
+    const { dimension = "source", startTime, endTime } = options;
     return this.client.get(
       `/api/v2/metrics/entity/${encodeURIComponent(symbol)}/distribution/${encodeURIComponent(metricType)}`,
-      { dimension },
+      {
+        dimension,
+        ...(startTime !== undefined && { startTime }),
+        ...(endTime !== undefined && { endTime }),
+      },
     );
   }
 }

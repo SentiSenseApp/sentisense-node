@@ -7,12 +7,14 @@ import type {
   EtfMembership,
   FloatInfo,
   Fundamentals,
+  FundamentalsHistory,
   FundamentalsPeriodsResponse,
   TtmFundamentals,
   GetAISummaryOptions,
   GetChartOptions,
   GetDescriptionsOptions,
   GetFundamentalsOptions,
+  GetFundamentalsHistoryOptions,
   GetImagesOptions,
   GetMetricsBreakdownOptions,
   GetProfileOptions,
@@ -93,6 +95,9 @@ export class Stocks {
    * Get aggregate quote snapshot: live price, today OHLC, 52-week range,
    * market cap, P/E, EPS TTM, and dividend yield in a single call.
    * All fields except `ticker` may be null when upstream data is unavailable.
+   *
+   * A fund ticker gets a normal quote without AUM or NAV, plus `seeInstead` pointing at the
+   * fund quote when that covers it: call `etfs.quote()` for those fields.
    */
   async getQuote(ticker: string): Promise<StockQuote> {
     return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/quote`);
@@ -244,6 +249,22 @@ export class Stocks {
    */
   async getFundamentals(ticker: string, options?: GetFundamentalsOptions): Promise<Fundamentals> {
     return this.client.get("/api/v1/stocks/fundamentals", { ticker, ...options });
+  }
+
+  /**
+   * Get up to 40 quarters or 20 years of full financial statements, newest first: the same
+   * period object as `getFundamentals()`, with the trailing-twelve-month, price-ratio and market
+   * fields null on every row. A ticker with no statements resolves with an empty `periods` and a
+   * `reason` rather than throwing.
+   *
+   * Periods served from an SEC-backed record carry the optional provenance fields `source`,
+   * `sourceRef`, `secFiled` and `lineSources`; see {@link Fundamentals}.
+   */
+  async getFundamentalsHistory(
+    ticker: string,
+    options?: GetFundamentalsHistoryOptions,
+  ): Promise<FundamentalsHistory> {
+    return this.client.get("/api/v1/stocks/fundamentals/history", { ticker, ...options });
   }
 
   /** Get available fiscal periods. The periods are in `periods`. */

@@ -135,6 +135,13 @@ export interface StockQuote {
   priceAsOf?: number;
   /** Extended-hours view (pre-market or after-hours). Null/absent during RTH, overnight, and weekends. */
   extendedHours?: ExtendedHoursInfo | null;
+  /**
+   * Present when the symbol is a fund covered by the ETF quote: API paths that answer it with
+   * the fund's own fields (AUM, expense ratio, NAV, inception date), such as
+   * `["/api/v1/etfs/SPY/quote"]`. Call `etfs.quote()` for those. Absent for stocks and for
+   * funds the ETF quote does not cover.
+   */
+  seeInstead?: string[];
 }
 
 export interface StockSocialDominance {
@@ -406,6 +413,17 @@ export interface StockSentiment {
   sentisenseScore?: number;
   /** 30-day average Score, the stable regime figure. */
   sentisenseScoreAvg30d?: number;
+  /**
+   * True when today's scored bucket has fewer than 10 directional mentions (bullish plus
+   * bearish), false at 10 or more. The Score is still served. Absent when the reading or its
+   * sample metadata is unavailable.
+   */
+  sentisenseScoreThinSample?: boolean;
+  /**
+   * True when the rows behind the 30-day average hold fewer than 20 directional mentions,
+   * false at 20 or more. Absent when sample metadata is unavailable.
+   */
+  sentisenseScoreAvg30dThinSample?: boolean;
   sentisenseScoreDelta30d?: number;
   /** Seven-band label of the 30-day average. */
   scoreLabel?: string;
@@ -590,7 +608,70 @@ export interface Fundamentals {
    * carried no value, nor the market-capitalisation-derived estimate on the latest snapshot.
    */
   sharesOutstanding?: number | null;
+  /**
+   * Where the period's statement lines came from: `"SEC"` when at least one line comes from the
+   * company's own SEC filing, `"PROVIDER"` when every line comes from the data provider,
+   * `"CURATED"` when a reviewed correction set the row.
+   *
+   * This and the three fields below are present only on a period served from an SEC-backed
+   * record, and absent (not null) on every other period. A period that carries them today may
+   * not tomorrow. When they are absent the row does not say which source served it.
+   */
+  source?: "SEC" | "PROVIDER" | "CURATED" | (string & {});
+  /**
+   * SEC accession number (`0000000000-00-000000`) of the newest filing behind the period's
+   * SEC-sourced lines. Present only when `lineSources` is.
+   */
+  sourceRef?: string;
+  /** ISO date `"YYYY-MM-DD"` the `sourceRef` filing was filed. Present only when `lineSources` is. */
+  secFiled?: string;
+  /**
+   * The statement lines read from the company's SEC filing, keyed by field name, for example
+   * `lineSources.revenue`. A line not listed came from the data provider. Absent when no line
+   * on the period is SEC-sourced. Where two sources disagree on a line, prefer the SEC-sourced
+   * one. Lines read from the filing are served as filed, in whole units.
+   */
+  lineSources?: Record<string, FundamentalsLineSource>;
   [key: string]: unknown;
+}
+
+/** One statement line read from the company's SEC filing, as listed in {@link Fundamentals.lineSources}. */
+export interface FundamentalsLineSource {
+  /** Always `"SEC"`: only SEC-sourced lines are listed. */
+  source: string;
+  /** SEC accession number of the filing, `0000000000-00-000000`. */
+  accession: string;
+  /** ISO date `"YYYY-MM-DD"` the filing was filed. */
+  filed: string;
+}
+
+/**
+ * What `stocks.getFundamentalsHistory()` returns: up to 40 quarters or 20 years of periods,
+ * newest first by `periodEndDate`.
+ *
+ * Each period is the object {@link Fundamentals} describes, with the trailing-twelve-month,
+ * price-ratio and market fields (`revenueTTM`, `netIncomeTTM`, `epsTTM`, `quartersIncluded`,
+ * `peRatio`, `pbRatio`, `psRatio`, `marketCap`, `currentPrice`) null on every row; those are
+ * filled only by `getFundamentals()`.
+ */
+export interface FundamentalsHistory {
+  /**
+   * The canonical spelling of the security answered for: `BRK-A` and `BRKA` both return
+   * `"BRK.A"`, and a recognised former ticker returns the current one.
+   */
+  ticker: string;
+  /** `"quarterly"` or `"annual"`, as requested. */
+  timeframe: string;
+  /** Number of periods returned, below `limit` when fewer exist. */
+  count: number;
+  /**
+   * A fixed explanation when `periods` is empty: a ticker with no statements (an unknown
+   * symbol, an ETF, a very recent listing) resolves with `count: 0`, an empty `periods` and this
+   * reason, not a `NotFoundError`. Read it only when `periods` is empty.
+   */
+  reason: string | null;
+  /** Newest first. Two rows can share a `periodEndDate` when the provider republished a period. */
+  periods: Fundamentals[];
 }
 
 /**
@@ -777,6 +858,17 @@ export interface GetFundamentalsOptions {
   timeframe?: "quarterly" | "annual";
   fiscalPeriod?: string;
   fiscalYear?: number;
+}
+
+/** Options for `stocks.getFundamentalsHistory()`. */
+export interface GetFundamentalsHistoryOptions {
+  /** `"quarterly"` (the API's default) or `"annual"`. */
+  timeframe?: "quarterly" | "annual";
+  /**
+   * Periods to return. The API defaults to 12 quarters or 10 years and clamps anything above
+   * 40 quarters or 20 years to that cap.
+   */
+  limit?: number;
 }
 
 // ── Options Intelligence ────────────────────────────────────
@@ -1494,6 +1586,14 @@ export interface RatingBase {
   flags: RatingFlag[];
   /** The standard financial disclaimer. Display it alongside the grade. */
   disclaimer: string;
+  /** The company the ticker resolved to. Absent when the knowledge base holds no name for it. */
+  companyName?: string;
+  /**
+   * Present while the Rating is in Beta: the response shape is stable, but a stock's score can
+   * shift between `methodologyVersion` values. The field disappears when the Beta ends, so
+   * treat it as optional.
+   */
+  betaNotice?: string;
 }
 
 /**
@@ -1677,6 +1777,10 @@ export interface StoryTimelineEntry {
 }
 
 export interface Story {
+  /** Story cluster id, the same value as `cluster.id`. Pass it to `documents.getStoryDetail()`. */
+  id: string;
+  /** The same value as `id`, under the name the story detail path uses. */
+  clusterId: string;
   cluster: StoryCluster;
   /** Human-formatted labels for display, e.g. `"Apple Inc (AAPL)"`. For display only; do not parse symbols out of these. Use `tickers` programmatically. */
   displayTickers: string[];
@@ -2735,6 +2839,15 @@ export interface CalendarMeta {
 export interface EarningsCalendarResponse {
   earnings: EarningsEvent[];
   metadata: CalendarMeta;
+  /**
+   * On a request with `ticker` only: the most recent qualifying report for that ticker on or
+   * before today (US Eastern business date), independent of `earnings` and of the `week`,
+   * `from`, `to`, `confirmed` and `time` filters. A row dated today qualifies only once
+   * `actualEps` or `actualRevenue` is in. Free and PRO get the same row. Absent when no row
+   * qualifies, when the lookup is briefly unavailable, and on market-wide requests. Reports stay
+   * available while they remain in the calendar snapshot, about 90 days.
+   */
+  latestReported?: EarningsEvent;
 }
 
 export interface GetEarningsCalendarOptions {
@@ -2970,8 +3083,18 @@ export interface RankedReportedEarnings {
   hasTranscriptSummary?: boolean;
   estimateEps?: number;
   actualEps?: number;
-  /** Signed percent. */
+  /**
+   * Signed percent. Omitted when either EPS figure is missing, the estimate is zero, or
+   * `surpriseFlag` is present.
+   */
   surprisePct?: number;
+  /**
+   * Why `surprisePct` is withheld: `"SIGN_FLIP"` when the estimate and the reported EPS sit on
+   * opposite sides of zero, `"OUTSIZED"` when the surprise exceeds 100% of the absolute estimate
+   * or the estimate is zero. Both nearly always mean the two figures are not on one basis.
+   * `estimateEps`, `actualEps` and `outcome` are still served. Absent otherwise.
+   */
+  surpriseFlag?: "SIGN_FLIP" | "OUTSIZED" | (string & {});
   outcome: "BEAT" | "MISS" | "INLINE" | "UNCLASSIFIED";
   /** Signed percent of the reacting session. */
   movePct?: number;
@@ -3180,6 +3303,10 @@ export interface MetricsOptions {
 export interface MetricDistributionOptions {
   /** Dimension to break the metric down by. Defaults to `"source"`. */
   dimension?: string;
+  /** Start of the window (epoch milliseconds). Omit both for the API's default, the last 7 days. */
+  startTime?: number;
+  /** End of the window (epoch milliseconds). Defaults to now. */
+  endTime?: number;
 }
 
 /** A single data point returned by the v2 time-series metrics endpoint. */
@@ -3905,6 +4032,14 @@ export interface ScreenerRow {
   sentiSenseScore7D: number | null;
   /** 1-month average SentiSense Score. */
   sentiSenseScore1M: number | null;
+  /**
+   * True when the 7-day Score window holds fewer than 10 directional mentions (bullish plus
+   * bearish). It does not change the Score and is not filterable. Absent when sample metadata
+   * is unavailable.
+   */
+  sentiSenseScore7DThinSample?: boolean;
+  /** Same as `sentiSenseScore7DThinSample` for the 30-day Score, at fewer than 20 directional mentions. */
+  sentiSenseScore1MThinSample?: boolean;
   /** 7-day Score minus the 1-month baseline; positive means strengthening. */
   scoreChange7D: number | null;
   /** Side of the neutral band the 7-day Score sits on: `1` / `0` / `-1`. */

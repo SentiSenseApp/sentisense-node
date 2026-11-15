@@ -87,7 +87,12 @@ export const analystsCommand: CommandDef = {
     "none, and blank on a free key outside the sample companies.",
     "--limit trims the rows printed under --coverage; the API returns the whole book either",
     "way, and --full prints all of it.",
+    "--json prints one object combining two responses: \"consensus\" and \"actions\", each the API",
+    "response with its envelope (\"actions\" is null if that call failed). With --coverage it is",
+    "the coverage response alone.",
   ],
+  jsonShape:
+    'Print {"consensus": ..., "actions": ...} as JSON; with --coverage, the coverage response',
   flags: {
     coverage: { type: "boolean", describe: "Show who covers the ticker, one row per firm" },
     days: { type: "number", placeholder: "N", describe: "Days of rating history (default 90)" },

@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.78.0
+
+### Added
+
+- `stocks.getFundamentalsHistory(ticker, { timeframe, limit })`: up to 40 quarters or 20 years of
+  full statements, newest first, as `FundamentalsHistory` (`ticker`, `timeframe`, `count`,
+  `reason`, `periods`). Each period is the `Fundamentals` object, with the trailing-twelve-month,
+  price-ratio and market fields null. A ticker with no statements resolves with an empty
+  `periods` and a `reason`.
+- `Fundamentals` gains four optional provenance fields, present only on a period served from an
+  SEC-backed record and absent on every other: `source` (`"SEC"`, `"PROVIDER"` or `"CURATED"`),
+  `sourceRef` (the SEC accession number of the newest filing behind the period), `secFiled` (its
+  ISO filing date) and `lineSources`, the lines read from the filing keyed by field name, each a
+  `FundamentalsLineSource` (`source`, `accession`, `filed`). A line not listed came from the data
+  provider.
+- `entityMetrics.getDistribution()` accepts `startTime` and `endTime` (epoch milliseconds) and
+  sends them. Without them the API's 7-day default applies, as before.
+- Errors keep the parsed response body as `error.body` (an `ErrorBody`), so a 404's
+  `suggestions` and `coverage` block (`coverage.didYouMean`, `coverage.coveredTickersUrl`), a
+  free key's 429 `upgrade` block and a fund's `seeInstead` are readable. `undefined` when the body
+  was not a JSON object or there was no response. Every error constructor takes `body` as an
+  optional last argument; existing calls compile and behave as before.
+- Types for documented fields the API already sent: `id` and `clusterId` on `Story` (both the
+  cluster id), `seeInstead` on `StockQuote`, `companyName` and `betaNotice` on ratings,
+  `latestReported` on a ticker-filtered `calendar.getEarnings()`, `surpriseFlag` on ranked
+  reported earnings rows, `sentisenseScoreThinSample` and `sentisenseScoreAvg30dThinSample` on
+  `StockSentiment`, and `sentiSenseScore7DThinSample` and `sentiSenseScore1MThinSample` on
+  `ScreenerRow`. New exported types: `FundamentalsHistory`, `FundamentalsLineSource`,
+  `GetFundamentalsHistoryOptions`, `ErrorBody`.
+
+### Changed
+
+- `sentisense quote` on a fund shows the fund quote again (AUM, expense ratio, NAV) by following
+  the stock quote's `seeInstead`, and `--json` prints the fund quote response. If the fund quote
+  fails, the stock quote is printed with a note on stderr.
+- `sentisense quote A B C` with a ticker that fails prints the others, names the failed one on
+  stderr and exits with its code (4 for an unknown symbol). Under `--json` the failed ticker is
+  left out of the keyed object. A single ticker behaves as before.
+- `sentisense help` for `sentiment`, `analysts`, `analyst` and `quote` names the keys of the
+  object `--json` prints where it combines more than one response. The JSON itself is unchanged.
+
 ## 0.77.0
 
 ### Added

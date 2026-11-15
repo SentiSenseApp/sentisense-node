@@ -45,6 +45,13 @@ export interface CommandResult {
    * exits 0. Degrading in total silence would hide a real outage behind a missing sparkline.
    */
   notes?: string[];
+  /**
+   * Part of the answer failed while the rest came back, such as one unknown symbol in a
+   * multi-ticker quote. Printed to stderr as given, after the output, and the run exits with
+   * `exitCode`, which a command setting this must also set. Stdout still carries what did
+   * come back.
+   */
+  errors?: string[];
 }
 
 export interface CommandDef {
@@ -56,5 +63,10 @@ export interface CommandDef {
   flags: FlagSpecs;
   /** Extra paragraph for `sentisense help <command>`, when behaviour needs a word. */
   notes?: string[];
+  /**
+   * Replaces the `--json` line in this command's help, for a command whose JSON combines more
+   * than one API response. Without it the line says the output is the exact API response.
+   */
+  jsonShape?: string;
   run(input: CommandInput): Promise<CommandResult>;
 }
