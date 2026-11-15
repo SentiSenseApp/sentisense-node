@@ -84,7 +84,7 @@ npx -y sentisense@latest health          # checks your key and the connection
 
 `sentisense help <command>` shows the flags and examples for each one.
 
-**A key with no signup.** `npx -y sentisense@latest init` prints `SENTISENSE_API_KEY=<key>` and a command to try it with. The key is temporary and rate-limited. To keep it, open the link it prints and sign in or create a free account; the same key then stays yours. `init` writes nothing into your project, and if a key is already configured it says so instead of making a new one.
+**A key with no signup.** `npx -y sentisense@latest init` prints `SENTISENSE_API_KEY=<key>` and a command to try it with. The key is temporary and rate-limited. To keep it, open the link it prints and sign in or create a free account; the same key then stays yours. `init` writes nothing into your project, and if a key is already configured it says so instead of making a new one. To tell apart machines that share a network, `init` sends a random id and stores it as `install-id` in the CLI's config directory (`~/.config/sentisense`). It is not derived from you or your machine.
 
 **Output.** Commands print a readable layout in a terminal and plain text when piped. `--json` prints the API's JSON, under one key per call when a command makes several, so `isPreview` and `totalCount` are still there for `jq`. `--full` shows every column.
 
@@ -287,6 +287,7 @@ client.institutional.getActivists("2026-06-30")                       // activis
 ```
 
 The newest quarter is often incomplete, so pick one by its `pending` flag rather than taking the first. A widely held stock has thousands of holders, so pass `limit`; `offset`, `sortBy` and `sortDir` only work alongside it.
+`getInstitutionDetail` returns `unknown`, so cast it to `PreviewResponse<InstitutionDetail>`; its sort and filter options also need `limit`.
 
 ```typescript
 const quarter = (await client.institutional.getQuarters()).find((q) => !q.pending)?.reportDate;
