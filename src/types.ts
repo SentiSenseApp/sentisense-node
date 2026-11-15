@@ -1777,10 +1777,6 @@ export interface StoryTimelineEntry {
 }
 
 export interface Story {
-  /** Story cluster id, the same value as `cluster.id`. Pass it to `documents.getStoryDetail()`. */
-  id: string;
-  /** The same value as `id`, under the name the story detail path uses. */
-  clusterId: string;
   cluster: StoryCluster;
   /** Human-formatted labels for display, e.g. `"Apple Inc (AAPL)"`. For display only; do not parse symbols out of these. Use `tickers` programmatically. */
   displayTickers: string[];

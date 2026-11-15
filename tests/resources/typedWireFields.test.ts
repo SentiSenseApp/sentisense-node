@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
-import SentiSense, { type EarningsEvent } from "../../src/index.js";
+import SentiSense, { type EarningsEvent, type Story } from "../../src/index.js";
 
 /**
  * Documented fields the wire already carried but the types did not declare. Each test reads
@@ -45,17 +45,17 @@ const STORY = {
 };
 
 describe("typed wire fields", () => {
-  it("Story carries id and clusterId, both the cluster id", async () => {
+  it("Story types the story id once, at cluster.id", async () => {
     respond([STORY]);
     const [story] = await client.documents.getStories({ limit: 1 });
-    expectTypeOf(story.id).toEqualTypeOf<string>();
-    expectTypeOf(story.clusterId).toEqualTypeOf<string>();
-    expect(story.id).toBe(story.cluster.id);
-    expect(story.clusterId).toBe(story.cluster.id);
+    expectTypeOf(story.cluster.id).toEqualTypeOf<string>();
+    // One value, one typed name: the Story type declares no second name for the story id.
+    expectTypeOf<Story>().not.toHaveProperty("id");
+    expectTypeOf<Story>().not.toHaveProperty("clusterId");
 
-    // The id goes straight to the detail call, which is what the docs tell callers to do.
+    // cluster.id goes straight to the detail call.
     respond({ id: "c-123" });
-    await client.documents.getStoryDetail(story.id);
+    await client.documents.getStoryDetail(story.cluster.id);
     expect(String(mockFetch.mock.calls[1][0])).toContain("/api/v1/documents/stories/c-123");
   });
 

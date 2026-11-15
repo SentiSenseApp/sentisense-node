@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.78.1
+
+### Removed
+
+- `id` and `clusterId` on the `Story` type, added in 0.78.0. A story's id is typed once, at
+  `story.cluster.id`, as in 0.77.0 and earlier; pass it to `documents.getStoryDetail()`. Types
+  only: no call, response or CLI output changes.
+
 ## 0.78.0
 
 ### Added
