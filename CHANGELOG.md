@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.79.0
+
+### Added
+
+- `afterHoursReactionPct` on ranked reported earnings rows (`RankedReportedEarnings`): the
+  extended-hours move in signed percent against the report day's regular close, present on the
+  night of an after-the-close report while the row carries neither `movePct` nor
+  `liveReactionPct`. A type for a documented field the API already sent: no call, response or CLI
+  output changes.
+
+### Changed
+
+- `companyName` and `earningsTime` on ranked upcoming earnings rows (`RankedUpcomingEarnings`) are
+  typed optional, as the API docs describe them: the API leaves out a field it has no value for.
+  Code that reads them without a check now gets a type error where it could get `undefined` at
+  runtime before.
+- `Fundamentals.timeframe` is typed optional and marked deprecated: a statement period never
+  carried it. `FundamentalsHistory.timeframe` is unchanged.
+
 ## 0.78.1
 
 ### Removed

@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
-import SentiSense, { type EarningsEvent, type Story } from "../../src/index.js";
+import SentiSense, {
+  type EarningsEvent,
+  type Fundamentals,
+  type RankedUpcomingEarnings,
+  type Story,
+} from "../../src/index.js";
 
 /**
  * Documented fields the wire already carried but the types did not declare. Each test reads
@@ -159,6 +164,48 @@ describe("typed wire fields", () => {
     const reported = ranked.data.reported.rows[0];
     expect(reported.surpriseFlag).toBe("SIGN_FLIP");
     expect(reported.surprisePct).toBeUndefined();
+  });
+
+  it("fields the API may leave out are typed optional", () => {
+    // The API omits a field it has no value for, so these read as possibly undefined.
+    expectTypeOf<RankedUpcomingEarnings["companyName"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<RankedUpcomingEarnings["earningsTime"]>().toEqualTypeOf<
+      "before_open" | "after_close" | "during_market" | "unknown" | undefined
+    >();
+    // A statement period carries no timeframe; the history envelope does.
+    expectTypeOf<Fundamentals["timeframe"]>().toEqualTypeOf<string | undefined>();
+  });
+
+  it("a ranked reported row carries afterHoursReactionPct on the report night", async () => {
+    const row = {
+      ticker: "EXMP",
+      reportDate: "2026-11-13",
+      estimateEps: 0.38,
+      actualEps: 0.51,
+      surprisePct: 34.21,
+      outcome: "BEAT",
+      reactionPending: true,
+      afterHoursReactionPct: 4.13,
+      importance: 0.7,
+    };
+    respond({
+      isPreview: false,
+      previewReason: null,
+      data: {
+        asOf: 1794600000,
+        rankingVersion: "v1",
+        reported: { windowStart: "2026-11-01", windowEnd: "2026-11-14", totalInWindow: 1, rows: [row] },
+        upcoming: { windowStart: "2026-11-14", windowEnd: "2026-11-21", totalInWindow: 0, rows: [] },
+      },
+    });
+    const ranked = await client.earnings.getRanked();
+    const reported = ranked.data.reported.rows[0];
+    expectTypeOf(reported.afterHoursReactionPct).toEqualTypeOf<number | undefined>();
+    expect(reported.afterHoursReactionPct).toBe(4.13);
+    expect(reported.reactionPending).toBe(true);
+    // A row carries at most one of the three reaction readings.
+    expect(reported.movePct).toBeUndefined();
+    expect(reported.liveReactionPct).toBeUndefined();
   });
 
   it("a screener stock row carries the two thin-sample flags", async () => {

@@ -518,7 +518,12 @@ export interface EpsBasisRepair {
  */
 export interface Fundamentals {
   ticker: string;
-  timeframe: string;
+  /**
+   * @deprecated Not sent on a statement period. Read the period's `fiscalPeriod`, or
+   * `FundamentalsHistory.timeframe` for the timeframe a history was requested in. Kept optional
+   * so existing code keeps compiling.
+   */
+  timeframe?: string;
   /**
    * The currency the filer reports in ("USD", "KRW", "EUR", ...). Statement figures are as
    * reported in this currency and are never converted to US dollars: foreign companies listed
@@ -3097,6 +3102,16 @@ export interface RankedReportedEarnings {
   reactionPending?: boolean;
   /** Signed percent, present only while the reacting session is trading. */
   liveReactionPct?: number;
+  /**
+   * The extended-hours move in signed percent, against the report day's regular close. Present
+   * from 16:00 ET on the report date until the reacting session opens at 09:30 ET (across the
+   * weekend for a Friday report), for a company whose calendar entry says it reports after the
+   * close, and only while `movePct` and `liveReactionPct` are both absent; `reactionPending` stays
+   * true alongside it. Once pre-market trading has begun on the reacting morning it can carry the
+   * pre-market move, against the same close. Omitted otherwise. Read it as the extended-hours move,
+   * not as the reaction: `movePct`, which replaces it, covers a different interval.
+   */
+  afterHoursReactionPct?: number;
   awaitingConsensus?: boolean;
   /** US dollars. */
   marketCap?: number;
@@ -3111,10 +3126,15 @@ export interface RankedReportedEarnings {
 /** One upcoming company in the earnings ranking. */
 export interface RankedUpcomingEarnings {
   ticker: string;
-  companyName: string;
+  /** Omitted when the calendar entry carries no company name. */
+  companyName?: string;
   /** ISO calendar day `"YYYY-MM-DD"`. */
   earningsDate: string;
-  earningsTime: "before_open" | "after_close" | "during_market" | "unknown";
+  /**
+   * Omitted when no timing value is available, which is different from the explicit
+   * `"unknown"`.
+   */
+  earningsTime?: "before_open" | "after_close" | "during_market" | "unknown";
   confirmed: boolean;
   estimatedEps?: number;
   /** US dollars. */
