@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.80.0
+
+### Added
+
+- Earnings calendar rows carry the conference call time and webcast link: `callTime` (an ISO 8601
+  date-time with the UTC offset, not epoch seconds; it can fall on the day after `earningsDate`) and
+  `webcastUrl` on `EarningsEvent`. Both are `null` unless the company has confirmed the date and
+  announced them. This includes the `latestReported` row.
+
 ## 0.79.0
 
 ### Added

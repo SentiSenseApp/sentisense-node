@@ -140,6 +140,36 @@ describe("typed wire fields", () => {
     expect(calendar.data.latestReported).toEqual(latest);
   });
 
+  it("earnings rows carry callTime and webcastUrl, set or null", async () => {
+    const base: EarningsEvent = {
+      ticker: "EXMP",
+      companyName: "Example Inc.",
+      earningsDate: "2026-11-19",
+      earningsTime: "after_close",
+      fiscalQuarter: "Q3 2026",
+      confirmed: true,
+      estimatedEps: 1.6,
+    };
+    const set: EarningsEvent = {
+      ...base,
+      callTime: "2026-11-20T08:30:00-05:00",
+      webcastUrl: "https://example.com/webcast",
+    };
+    const unset: EarningsEvent = { ...base, ticker: "NONE", callTime: null, webcastUrl: null };
+    respond({
+      isPreview: false,
+      previewReason: null,
+      data: { earnings: [set, unset], metadata: { generatedAt: null, windowStart: null, windowEnd: null, count: 2, source: "sentisense" } },
+    });
+    const calendar = await client.calendar.getEarnings();
+    expectTypeOf(calendar.data.earnings[0].callTime).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(calendar.data.earnings[0].webcastUrl).toEqualTypeOf<string | null | undefined>();
+    expect(calendar.data.earnings[0].callTime).toBe("2026-11-20T08:30:00-05:00");
+    expect(calendar.data.earnings[0].webcastUrl).toBe("https://example.com/webcast");
+    expect(calendar.data.earnings[1].callTime).toBeNull();
+    expect(calendar.data.earnings[1].webcastUrl).toBeNull();
+  });
+
   it("a ranked reported row carries surpriseFlag in place of surprisePct", async () => {
     const row = {
       ticker: "EXMP",
