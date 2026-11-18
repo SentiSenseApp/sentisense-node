@@ -869,7 +869,9 @@ describe("command wiring", () => {
     expect(result.stdout).toContain("09:45 ET");
     expect(result.stdout).toContain("10:45 ET");
     expect(result.stdout).toContain("0.4415");
-    expect(result.stdout).toContain("Cycle 3 was published but could not be read");
+    // A missing cycle is one with no stored history: no board was published, or it was lost.
+    expect(result.stdout).toContain("Cycle 3 has no stored history (no board was published, or its history was lost)");
+    expect(result.stdout).not.toContain("was published but could not be read");
   });
 
   it("options --session implies --intraday and sends the date", async () => {

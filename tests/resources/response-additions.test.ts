@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "v
 import SentiSense, {
   type AnalystAction,
   type AnalystEarningsSurprise,
+  type DossierAllowance,
   type GraphNode,
   type InstitutionDetail,
   type OptionsSummary,
@@ -39,6 +40,33 @@ describe("optional response fields", () => {
     expect(result.data?.context?.ivRank1y).toBe(0);
     expect(Object.prototype.hasOwnProperty.call(result.data, "listingStatus")).toBe(status !== undefined);
     expect(Object.prototype.hasOwnProperty.call(result.data, "delistedDate")).toBe(date !== undefined);
+  });
+
+  it.each([
+    ["optionsAllowanceFull", false, 7, 1796101200],
+    ["optionsAllowancePreview", true, 0, 1793505600],
+    ["optionsAllowanceSample", false, 4, 1796101200],
+  ] as const)("reads the free dossier allowance off the %s envelope", async (fixture, preview, remaining, resetsAt) => {
+    respond(payloads[fixture]);
+    const result = await client.stocks.getOptionsSummary("NVDA");
+    expectTypeOf(result.dossierAllowance).toEqualTypeOf<DossierAllowance | undefined>();
+    expectTypeOf(result.dossierAllowance!.resetsAt).toEqualTypeOf<number>();
+    expect(result.isPreview).toBe(preview);
+    expect(result.dossierAllowance).toEqual({ limit: 10, remaining, resetsAt });
+    // An envelope key, beside `data`, never inside it.
+    expect(Object.prototype.hasOwnProperty.call(result.data, "dossierAllowance")).toBe(false);
+  });
+
+  it("leaves the allowance undefined on a PRO, delisted or empty summary", async () => {
+    for (const payload of [
+      payloads.optionsListed,
+      payloads.optionsDelisted,
+      { isPreview: false, previewReason: null, data: null },
+    ]) {
+      respond(payload);
+      const result = await client.stocks.getOptionsSummary("NVDA");
+      expect(result.dossierAllowance).toBeUndefined();
+    }
   });
 
   it("keeps true percentages, legacy fractions and null surprises unchanged", async () => {
@@ -99,6 +127,9 @@ describe("optional response fields", () => {
   it("keeps optional declarations and the opaque detail signature compatible", () => {
     const detail: InstitutionDetail = {};
     const summary: OptionsSummary = {};
+    // An envelope built before the allowance existed still type-checks.
+    const envelope: PreviewResponse<OptionsSummary> = { isPreview: false, previewReason: null, data: summary };
+    expect(envelope.dossierAllowance).toBeUndefined();
     const node: GraphNode = { slug: "phone", displayName: "Phone", type: "PRODUCT_OR_SERVICE" };
     const surprise: AnalystEarningsSurprise = {
       periodLabel: null, reportDate: null, estimateEps: null, actualEps: null, surprisePercent: null,

@@ -16,6 +16,17 @@ export function fixed(value: unknown, decimals = 2): string {
   return isNum(value) ? value.toFixed(decimals) : ABSENT;
 }
 
+/**
+ * An option strike, or a max pain strike: 230, 227.5, 12.5, 0.5.
+ *
+ * A whole strike prints with no decimals. A fractional one prints its real value, up to the
+ * three decimals an option symbol carries, with trailing zeros trimmed. Rounding it to a whole
+ * number would print a different strike: 227.5 read as 228.
+ */
+export function strike(value: unknown): string {
+  return isNum(value) ? trim(value.toFixed(3)) : ABSENT;
+}
+
 /** Compact magnitude: 1.24B, 4.2k, 812. Keeps the sign. */
 export function humanize(value: unknown, decimals = 2): string {
   if (!isNum(value)) return ABSENT;

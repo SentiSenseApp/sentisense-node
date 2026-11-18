@@ -7,7 +7,7 @@ import {
   routeFetch,
   run,
 } from "./harness.js";
-import { percent, ratioPercent, sparkline } from "../../src/cli/render/num.js";
+import { percent, ratioPercent, sparkline, strike } from "../../src/cli/render/num.js";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -323,6 +323,31 @@ describe("ratioPercent", () => {
     expect(ratioPercent(null)).toBe("n/a");
     expect(ratioPercent(undefined)).toBe("n/a");
     expect(ratioPercent(Number.NaN)).toBe("n/a");
+  });
+});
+
+describe("strike", () => {
+  it("prints a whole strike with no decimals, as before", () => {
+    expect(strike(230)).toBe("230");
+    expect(strike(205.0)).toBe("205");
+    expect(strike(0)).toBe("0");
+  });
+
+  it("prints a fractional strike as itself rather than rounding it into another one", () => {
+    expect(strike(227.5)).toBe("227.5");
+    expect(strike(12.5)).toBe("12.5");
+    expect(strike(0.5)).toBe("0.5");
+    expect(strike(41.667)).toBe("41.667");
+  });
+
+  it("drops floating-point noise past the three decimals an option symbol carries", () => {
+    expect(strike(227.49999999)).toBe("227.5");
+    expect(strike(230.0000001)).toBe("230");
+  });
+
+  it("reports an absent strike as absent", () => {
+    expect(strike(undefined)).toBe("n/a");
+    expect(strike(null)).toBe("n/a");
   });
 });
 

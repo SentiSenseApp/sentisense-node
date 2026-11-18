@@ -908,22 +908,36 @@ export interface OptionsAggregate {
   date?: string;
   callVol?: number;
   putVol?: number;
+  /** Call open interest going into this session, counted at the previous close. */
   callOi?: number;
+  /** Put open interest going into this session, counted at the previous close. */
   putOi?: number;
   /** Put/call volume ratio. */
   pcVol?: number;
-  /** Put/call open-interest ratio. */
+  /**
+   * Put/call open-interest ratio, from the same open interest as `callOi` and `putOi`: going
+   * into this session, counted at the previous close.
+   */
   pcOi?: number;
   /** Volume-weighted implied volatility. */
   vwIv?: number;
-  /** At-the-money implied volatility. */
+  /**
+   * At-the-money implied volatility, read on the listed expiry closest to 30 calendar days
+   * out, with no interpolation to a constant 30-day maturity.
+   */
   atmIv?: number;
-  /** `iv25p - iv25c`: positive means puts are bid up relative to calls. */
+  /**
+   * `iv25p - iv25c`: positive means puts are bid up relative to calls. Read on the same listed
+   * expiry as `atmIv`, the one closest to 30 calendar days out, with no interpolation.
+   */
   skew25d?: number;
   /** Roughly 60-day and 90-day at-the-money implied volatility: the term structure. */
   atmIv60?: number;
   atmIv90?: number;
-  /** Raw 25-delta call and put implied volatilities. */
+  /**
+   * Raw 25-delta call and put implied volatilities, read on the listed expiry closest to 30
+   * calendar days out, with no interpolation.
+   */
   iv25c?: number;
   iv25p?: number;
   /**
@@ -947,9 +961,19 @@ export interface OptionsAggregate {
   /** One-sigma expected move over 20 trading sessions. */
   expectedMove1s20d?: number;
   netDelta?: number;
+  /**
+   * Estimated premium activity: session volume times the closing mark times 100, summed in
+   * USD. A valuation at the mark, not observed spending. A session completed from a secondary
+   * feed is valued at each contract's last trade instead, and keeps those values unless a
+   * complete primary chain arrives within the next four trading sessions.
+   */
   notionalVol?: number;
   contracts?: number;
-  /** Largest unusual-contract premium this session; zero when none qualified. */
+  /**
+   * Largest unusual-contract premium this session; zero when none qualified. Valued at the
+   * closing mark like `notionalVol`, so an estimate rather than money paid, and at the last
+   * trade on a session completed from a secondary feed.
+   */
   maxUnusualPremium?: number;
   /**
    * Premium of the session's highlight contract: the largest qualifying premium with an
@@ -1032,6 +1056,10 @@ export interface OptionsUnusualContract {
   volume?: number;
   oi?: number;
   volOiRatio?: number;
+  /**
+   * Volume times the closing mark times 100: an estimate at the mark, not money paid. On a
+   * session completed from a secondary feed it is valued at the contract's last trade instead.
+   */
   premium?: number;
   oiPrior?: number;
   oiNext?: number;
@@ -1243,8 +1271,10 @@ export interface OptionsIntradayPoint {
    */
   maxPremiumPctl1y?: number;
   /**
-   * At-the-money implied volatility as a fraction (`0.42` is 42%), by the same rule as the
-   * end-of-day `atmIv`. Absent when that expiry has no usable contract.
+   * At-the-money implied volatility as a fraction (`0.42` is 42%), read on the listed expiry
+   * closest to 30 calendar days out. Closely related to the end-of-day `atmIv`, but the two
+   * can differ on the same chain, so do not treat them as interchangeable. Absent when that
+   * expiry has no usable contract.
    */
   atmIv?: number;
 }
@@ -1255,7 +1285,8 @@ export interface OptionsIntradayPoint {
  *
  * The board is rebuilt every 15 minutes from 15-minute delayed chains, from 09:45 to 16:15 ET,
  * so a full session holds 27 cycles. A ticker appears only on the cycles where it was on the
- * board, so `cycles` can be below that and the gaps show in each point's `cycle` and `asOf`.
+ * board, so `series` can be shorter than `cycles` and the gaps show in each point's `cycle`
+ * and `asOf`.
  *
  * **No data is an empty `series`, not a null payload.** A weekend, a holiday, a session from
  * before the history was kept, a ticker outside the board and an unknown symbol all answer
@@ -1274,12 +1305,15 @@ export interface OptionsIntradayHistory {
   live: boolean;
   /** How far the chain data behind each point trails the market, in minutes. */
   delayMinutes: number;
-  /** Number of points in `series`. */
+  /**
+   * Number of stored cycles in the session. `series` has fewer points when the ticker was not
+   * on the intraday board for some of them.
+   */
   cycles: number;
   /**
-   * Cycles of the session whose board was published but whose stored point could not be
-   * found, ascending: this ticker's numbers at those cycles are unknown, not absent. Omitted
-   * when there are none.
+   * Cycles of the session with no stored history, ascending: a cycle that published no board,
+   * or one whose history was lost. This ticker's numbers at those cycles are unknown, not
+   * zero. Omitted when there are none.
    */
   missingCycles?: number[];
   /** One point per cycle that carried this ticker, oldest first. */
@@ -1317,15 +1351,25 @@ export interface OptionsOverviewRow {
   pcVol?: number;
   /** Percentile (0-100) of `pcVol` within this ticker's own trailing year. */
   pcVolPctl1y?: number;
-  /** At-the-money implied volatility as a fraction, so `0.42` is 42%. */
+  /**
+   * At-the-money implied volatility as a fraction, so `0.42` is 42%, read on the listed expiry
+   * closest to 30 calendar days out, with no interpolation to a constant 30-day maturity.
+   */
   atmIv?: number;
   /** Where `atmIv` sits in this ticker's own trailing-year range, 0-100. */
   ivRank1y?: number;
-  /** `iv25p - iv25c`, on the same scale as the IVs: `0.03` is three IV points. */
+  /**
+   * `iv25p - iv25c`, on the same scale as the IVs: `0.03` is three IV points. Read on the same
+   * listed expiry as `atmIv`, the one closest to 30 calendar days out, with no interpolation.
+   */
   skew25d?: number;
   /** Percentile (0-100) of `skew25d` within this ticker's own trailing year. */
   skewPctl1y?: number;
-  /** Premium traded this session: volume times mark times 100. */
+  /**
+   * Estimated premium activity this session: volume times the closing mark times 100, summed
+   * in USD. A valuation at the mark, not observed spending; a session completed from a
+   * secondary feed is valued at each contract's last trade instead.
+   */
   notionalVol?: number;
   /** Signed change of `atmIv` against its ~20-session mean. Rank "biggest IV moves" by absolute value. */
   ivMove20?: number;
@@ -1347,7 +1391,10 @@ export interface OptionsOverviewRow {
   unusualCount?: number;
   /** Largest volume/open-interest multiple among them. Absent when `unusualCount` is 0. */
   maxVolOiRatio?: number;
-  /** Largest premium among them. Absent when `unusualCount` is 0. */
+  /**
+   * Largest premium among them, valued at the closing mark like `notionalVol` (at the last
+   * trade on a session completed from a secondary feed). Absent when `unusualCount` is 0.
+   */
   maxUnusualPremium?: number;
   /** Side of the single heaviest open-interest wall, `"call"` or `"put"`. */
   wallSide?: string;
@@ -1368,6 +1415,10 @@ export interface OptionsHighlight {
   volume?: number;
   oi?: number;
   volOiRatio?: number;
+  /**
+   * Volume times the closing mark times 100: an estimate at the mark, not money paid. On a
+   * session completed from a secondary feed it is valued at the contract's last trade instead.
+   */
   premium?: number;
   /** Percentile against this ticker's trailing-year largest daily unusual premiums, 0-100. */
   premiumPctl1y?: number;
@@ -1418,7 +1469,10 @@ export interface OptionsOverview {
   coverageCount?: number;
   /** The stock board, ranked. FREE keys receive the top 25; the envelope's `totalCount` carries the full size. */
   rows?: OptionsOverviewRow[];
-  /** The ETF board, ranked independently. Omitted entirely when a build has no ETF rows. */
+  /**
+   * The ETF board, ranked independently. FREE keys receive the top 25; `etfTotalCount` carries
+   * the full size. Omitted entirely when a build has no ETF rows.
+   */
   etfRows?: OptionsOverviewRow[];
   /** Stock session highlights, up to 3 for FREE keys and 10 for PRO. Omitted when empty. */
   highlights?: OptionsHighlight[];
@@ -3252,6 +3306,29 @@ export interface UpgradeHint {
   sampleTickers?: string[];
 }
 
+/**
+ * A free key's monthly allowance of full options dossiers, as reported on the options summary
+ * envelope by `stocks.getOptionsSummary()`.
+ *
+ * The allowance belongs to the account, so every key on it draws from one count, and another
+ * request can spend it between two of your calls. Branch on `isPreview` for what a response
+ * is; read this for how many full dossiers are left.
+ */
+export interface DossierAllowance {
+  /** Full dossiers the account receives per calendar month. */
+  limit: number;
+  /**
+   * Full dossiers left after this call, never negative: `0` on the last full dossier and on
+   * every headline preview. A sample company's dossier leaves it unchanged.
+   */
+  remaining: number;
+  /**
+   * When the allowance next resets, as Unix epoch seconds: the start of the first day of next
+   * month, Eastern time.
+   */
+  resetsAt: number;
+}
+
 export interface PreviewResponse<T> {
   isPreview: boolean;
   previewReason: "PRO_REQUIRED" | null;
@@ -3277,6 +3354,15 @@ export interface PreviewResponse<T> {
    * "ask `data` for the count", never "zero results".
    */
   totalCount?: number;
+  /**
+   * Sent, when available, only on options summary responses (`stocks.getOptionsSummary()`)
+   * for a free key: how many full dossiers the account has left this calendar month, and when
+   * that count resets. It can ride full dossiers, headline previews and sample-company
+   * dossiers alike, but a dossier can also arrive without it, so treat it as optional on every
+   * response. Absent on a PRO key, on a delisted ticker and on a summary with no snapshot
+   * (`data: null`).
+   */
+  dossierAllowance?: DossierAllowance;
   data: T;
 }
 

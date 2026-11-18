@@ -375,7 +375,9 @@ export class Stocks {
    * ten calls each calendar month and a headline-only preview after that, with `isPreview`
    * true; calls that return a null `data` never spend that allowance. The headline preview has
    * no nested objects: its readings arrive flat as `data.ivRank1y`, `data.atmIv`,
-   * `data.expectedMove1d`, `data.pcVol`, `data.pcVolPctl1y` and `data.maxPain`.
+   * `data.expectedMove1d`, `data.pcVol`, `data.pcVolPctl1y` and `data.maxPain`. On a FREE key
+   * the envelope's `dossierAllowance`, when available, says how many full dossiers are left
+   * this calendar month and when the count resets.
    */
   async getOptionsSummary(ticker: string): Promise<PreviewResponse<OptionsSummary | null>> {
     return this.client.get(
@@ -426,8 +428,10 @@ export class Stocks {
    *
    * **No data is an empty `series`, not a null payload.** A weekend, a holiday, a session from
    * before the history was kept, a ticker outside the board and an unknown symbol all answer
-   * with `data.series` empty. `data.missingCycles` lists cycles whose stored point could not be
-   * read, which are unknown rather than absent. A malformed or future `session` rejects with
+   * with `data.series` empty. `data.missingCycles` lists cycles with no stored history (a cycle
+   * that published no board, or one whose history was lost), where the ticker's numbers are
+   * unknown rather than zero. `data.cycles` counts the session's stored cycles, so `series` can
+   * be shorter. A malformed or future `session` rejects with
    * an `APIError` (status 400, code `invalid_session`). A 503 means the stored series could
    * not be read; it is retried like any other 503 and never answered with a partial series.
    */

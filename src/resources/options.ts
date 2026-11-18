@@ -27,9 +27,10 @@ export class Options {
    * `data` is `null` before the first nightly build populates it, which is a cold-start
    * state rather than an error.
    *
-   * Tiering: a PRO key receives every row. A FREE key receives the top 25 stock rows plus
-   * all the aggregates, with `isPreview` true and the envelope's `totalCount` reporting the
-   * full stock board; `data.etfTotalCount` does the same for the ETF board.
+   * Tiering: a PRO key receives every row. A FREE key receives the top 25 rows of each board
+   * and the top 3 session highlights of each board, plus every aggregate for both boards, with
+   * `isPreview` true and the envelope's `totalCount` reporting the full stock board;
+   * `data.etfTotalCount` does the same for the ETF board.
    *
    * Drill into any row with `client.stocks.getOptionsSummary(ticker)` for its full dossier,
    * or `client.stocks.getOptionsHistory(ticker)` to chart how a reading has trended.

@@ -78,7 +78,7 @@ npx -y sentisense@latest health          # checks your key and the connection
 | `congress [ticker]` | Trades disclosed by members of Congress |
 | `news [ticker]` | Stories with impact and tone |
 | `flows [ticker]` | 13F flows, or one stock's holders |
-| `options <ticker>` | End-of-day options positioning. `--intraday` for the latest session's 15-minute series (PRO) |
+| `options [ticker]` | The options Radar with no ticker (`--etfs` for the ETF board), or one ticker's end-of-day positioning. `--history` for its daily sessions, `--intraday` for the latest session's 15-minute series (PRO) |
 | `screen --filter ...` | Screen stocks on Score, analysts, technicals, price and options |
 | `search <name>` | Turn a name into a ticker and entity slug |
 

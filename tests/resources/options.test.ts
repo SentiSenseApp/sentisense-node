@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import SentiSense, { APIError } from "../../src/index.js";
 import type {
+  DossierAllowance,
   OptionsAggregate,
   OptionsCapabilities,
   OptionsHighlight,
@@ -13,6 +14,7 @@ import type {
   OptionsOiFollowUp,
   OptionsOverview,
   OptionsSummary,
+  PreviewResponse,
 } from "../../src/index.js";
 
 /**
@@ -286,6 +288,47 @@ const FOLLOW_UP_KEYS = {
   oiObservedAt: true, oiVintage: true,
 } satisfies Record<keyof OptionsOiFollowUp, true>;
 
+const ENVELOPE_KEYS = {
+  isPreview: true, previewReason: true, upgrade: true, sampleCompany: true, totalCount: true,
+  dossierAllowance: true, data: true,
+} satisfies Record<keyof PreviewResponse<unknown>, true>;
+
+const ALLOWANCE_KEYS = {
+  limit: true, remaining: true, resetsAt: true,
+} satisfies Record<keyof DossierAllowance, true>;
+
+describe("options summary envelope", () => {
+  // The free key's allowance rides the envelope, beside `data`, on full dossiers and headline
+  // previews alike. The published example in the API reference, as served.
+  const FREE_PREVIEW = {
+    isPreview: true,
+    previewReason: "PRO_REQUIRED",
+    upgrade: { plan: "PRO", url: "https://app.sentisense.ai/pricing" },
+    dossierAllowance: { limit: 10, remaining: 0, resetsAt: 1793505600 },
+    data: { asOf: "2026-09-28", sentiment: 0.2, ivRank1y: 45, atmIv: 0.4, pcVol: 0.7, maxPain: 150 },
+  };
+
+  it("declares every envelope key a free summary sends", async () => {
+    expect(undeclared(FREE_PREVIEW, ENVELOPE_KEYS)).toEqual([]);
+    expect(undeclared(FREE_PREVIEW.dossierAllowance, ALLOWANCE_KEYS)).toEqual([]);
+    expect(undeclared(FREE_PREVIEW.data, SUMMARY_KEYS)).toEqual([]);
+
+    mockFetch.mockResolvedValueOnce(jsonResponse(FREE_PREVIEW));
+    const summary = await client.stocks.getOptionsSummary("NVDA");
+    const allowance: DossierAllowance | undefined = summary.dossierAllowance;
+    expect(allowance?.limit).toBe(10);
+    expect(allowance?.remaining).toBe(0);
+    // Epoch seconds, not milliseconds: the first of the month, Eastern time.
+    expect(new Date(allowance!.resetsAt * 1000).toISOString()).toBe("2026-11-01T04:00:00.000Z");
+  });
+
+  it("declares every envelope key the live dossier and radar send", () => {
+    for (const name of ["options_summary_live.json", "options_overview_live.json", "options_history_live.json"]) {
+      expect(undeclared(fixture(name), ENVELOPE_KEYS)).toEqual([]);
+    }
+  });
+});
+
 describe("options intraday session fields", () => {
   it("declares every field the live dossier sends", async () => {
     const payload = fixture("options_summary_live.json");
@@ -458,7 +501,10 @@ describe("stocks.getOptionsIntradayHistory", () => {
     expect(day.session).toBe("2026-10-14");
     expect(day.live).toBe(true);
     expect(day.delayMinutes).toBe(15);
-    expect(day.cycles).toBe(day.series.length);
+    // `cycles` counts the session's stored cycles; `series` holds only those that carried
+    // this ticker, so it can be shorter, never longer.
+    expect(day.cycles).toBe(4);
+    expect(day.series.length).toBeLessThanOrEqual(day.cycles);
     expect(day.series.map((p) => p.cycle)).toEqual([1, 2, 4, 5]);
     expect(day.missingCycles).toEqual([3]);
     const [first, , , last] = day.series;

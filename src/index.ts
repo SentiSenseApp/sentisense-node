@@ -148,6 +148,7 @@ export type {
   GetRankedEarningsOptions,
   GetRecentEarningsOptions,
   PreviewResponse,
+  DossierAllowance,
   StockPrice,
   StockQuote,
   ExtendedHoursInfo,

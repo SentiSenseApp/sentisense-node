@@ -1,4 +1,70 @@
 {
+  "optionsAllowanceFull": {
+    "isPreview": false,
+    "previewReason": null,
+    "dossierAllowance": {
+      "limit": 10,
+      "remaining": 7,
+      "resetsAt": 1796101200
+    },
+    "data": {
+      "asOf": "2026-11-17",
+      "sentiment": 0.11,
+      "latest": {
+        "date": "2026-11-17",
+        "atmIv": 0.3124,
+        "pcVol": 0.51
+      },
+      "context": {
+        "ivRank1y": 5.9
+      },
+      "oiWalls": {
+        "expiry": "2026-11-20",
+        "maxPain": 205.0
+      }
+    }
+  },
+  "optionsAllowancePreview": {
+    "isPreview": true,
+    "previewReason": "PRO_REQUIRED",
+    "upgrade": {
+      "plan": "PRO",
+      "url": "https://app.sentisense.ai/pricing"
+    },
+    "dossierAllowance": {
+      "limit": 10,
+      "remaining": 0,
+      "resetsAt": 1793505600
+    },
+    "data": {
+      "asOf": "2026-09-28",
+      "sentiment": 0.2,
+      "ivRank1y": 45,
+      "atmIv": 0.4,
+      "expectedMove1d": 0.0373,
+      "pcVol": 0.7,
+      "pcVolPctl1y": 60,
+      "maxPain": 150
+    }
+  },
+  "optionsAllowanceSample": {
+    "isPreview": false,
+    "previewReason": null,
+    "sampleCompany": true,
+    "dossierAllowance": {
+      "limit": 10,
+      "remaining": 4,
+      "resetsAt": 1796101200
+    },
+    "data": {
+      "asOf": "2026-11-17",
+      "sentiment": -0.05,
+      "latest": {
+        "date": "2026-11-17",
+        "atmIv": 0.52
+      }
+    }
+  },
   "optionsDelisted": {
     "isPreview": false,
     "previewReason": null,

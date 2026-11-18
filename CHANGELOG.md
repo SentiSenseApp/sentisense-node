@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.81.0
+
+### Added
+
+- `dossierAllowance` on the preview envelope (`PreviewResponse`), typed as the new
+  `DossierAllowance` (`limit`, `remaining`, `resetsAt`, the last in Unix epoch seconds). When
+  available, the options summary sends it to a free key, on full dossiers, headline previews and
+  sample-company dossiers alike: how many full dossiers the account has left this calendar
+  month, and when the count resets. A dossier can arrive without it, so it is optional. It is
+  absent on a PRO key, a delisted ticker and a summary with no snapshot. The SDK already passed
+  it through; this declares it.
+- CLI: `sentisense options` with no ticker prints the options Radar: the session's aggregates,
+  the ranked stock board and the session highlights. `--etfs` shows the ETF board instead, and
+  `--limit N` sets the rows printed (default 15). A free key's cut is said, with both counts. An
+  empty ticker argument, such as an unset `"$TICKER"`, is still a usage error.
+- CLI: `sentisense options <ticker> --history [--window 1y|2y|5y]` prints the ticker's daily
+  sessions, newest first (default 20, `--limit` changes it), and names the window it was served.
+  `--window` implies `--history`.
+- CLI: `sentisense options <ticker> --full` also prints the open interest follow-up on the
+  unusual contracts, the expiry's open interest totals and the open interest at max pain, three
+  more percentiles, and the 5 and 20 session expected moves. Every dossier now marks a delisted
+  ticker, dated by its own `asOf`, and on a free key prints the allowance line when the API sends
+  one. `--json` is unchanged.
+
+### Fixed
+
+- CLI: fractional strikes now print in full in `sentisense options`, in the unusual contracts,
+  the walls and max pain: a 227.5 strike printed as 228 before. Whole strikes print as they did.
+
+### Changed
+
+- Several descriptions were corrected to match the API reference: the open interest timing on
+  `callOi`, `putOi` and `pcOi`; the expiry the volatility and skew readings use; how `premium`,
+  `notionalVol` and `maxUnusualPremium` are valued; `cycles` and `missingCycles` on the intraday
+  history; and the free cut of the options overview. The CLI's sentence for a missing intraday
+  cycle changed with them. No type changes.
+
 ## 0.80.0
 
 ### Added
