@@ -1,0 +1,42 @@
+{
+  "isPreview": false,
+  "previewReason": null,
+  "data": [
+    {
+      "baseTicker": "EXMP",
+      "companyName": "Example Inc",
+      "positionCount": 24,
+      "totalValue": 850000000,
+      "netSharesChange": 5200000,
+      "bondTickers": "EXMP 0 03/15/26, EXMP 0.5 06/15/27",
+      "hedgeFundCount": 18
+    },
+    {
+      "baseTicker": "SMPL",
+      "companyName": "Sample Corp",
+      "positionCount": 31,
+      "totalValue": 720000000,
+      "netSharesChange": -1500000,
+      "bondTickers": "SMPL 0.25 04/01/30",
+      "hedgeFundCount": 22
+    },
+    {
+      "baseTicker": "DEMO",
+      "companyName": "Demo Holdings Inc",
+      "positionCount": 40,
+      "totalValue": 640000000,
+      "netSharesChange": 0,
+      "bondTickers": "DEMO 0 03/01/30, DEMO 0.625 03/15/30, DEMO 1.5 09/01/31",
+      "hedgeFundCount": 27
+    },
+    {
+      "baseTicker": "TSTX",
+      "companyName": "Test Labs Inc",
+      "positionCount": 12,
+      "totalValue": 210000000,
+      "netSharesChange": 900000,
+      "bondTickers": "TSTX 4.625 03/15/29",
+      "hedgeFundCount": 9
+    }
+  ]
+}

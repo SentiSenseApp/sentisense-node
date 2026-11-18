@@ -132,7 +132,7 @@ Most methods resolve to the data itself. Two kinds of response wrap it, and the 
 | `etfs` | `analystAggregate` `insiderAggregate` `sentimentAggregate` |
 | `insider` | `getActivity` `getTrades` `getClusterBuys` |
 | `insights` | `stock` `stockRange` `market` `latest` `user` |
-| `institutional` | `getFlows` `getHolders` `getHoldersHistory` `getInstitutionHistory` `getActivists` |
+| `institutional` | `getFlows` `getHolders` `getHoldersHistory` `getInstitutionHistory` `getActivists` `getBondFlows` `getOptionFlows` |
 | `options` | `getOverview` |
 | `politicians` | `getActivity` `getFilings` `getMembers` `getMember` |
 | `stocks` | `getSentiment` `getKpis` `getOptionsSummary` `getOptionsHistory` `getOptionsIntradayHistory` |
@@ -203,6 +203,7 @@ client.entityMetrics.getMetrics("AAPL", { metricType: "sentiment" })          //
 client.entityMetrics.getMetrics("AAPL", { metricType: "mentions", startTime: Date.now() - 7 * 86400000 })
 client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })  // share of mentions by source, valueType "SHARE_PERCENT"
 client.entityMetrics.getDistribution("AAPL", "sentiment")                       // mean sentiment by source, valueType "MEAN"
+client.entityMetrics.getSlices("AAPL", "mentions")                              // the dimensions and values a metric breaks down by
 client.stocks.getSentiment("AAPL")                                             // Score, mentions, tone by source
 ```
 
@@ -285,10 +286,13 @@ client.institutional.listInstitutions()                               // find fu
 client.institutional.getInstitutionDetail("Berkshire-Hathaway", { limit: 10, sortBy: "estimatedFlowUsd" })
 client.institutional.getInstitutionHistory("Renaissance-Technologies", { quarters: 8, tickers: ["NVDA"] })
 client.institutional.getActivists("2026-06-30")                       // activist positions for a quarter
+client.institutional.getBondFlows("2026-06-30")                       // convertible bonds institutions hold, by issuer
+client.institutional.getOptionFlows("2026-06-30")                     // calls and puts institutions report, by stock
 ```
 
 The newest quarter is often incomplete, so pick one by its `pending` flag rather than taking the first. A widely held stock has thousands of holders, so pass `limit`; `offset`, `sortBy` and `sortDir` only work alongside it.
 `getInstitutionDetail` returns `unknown`, so cast it to `PreviewResponse<InstitutionDetail>`; its sort and filter options also need `limit`.
+`getOptionFlows` is the option positions institutions file on Form 13F, not options trading; for that, see [Options](#options). A bond row's `bondTickers` is one comma-separated string.
 
 ```typescript
 const quarter = (await client.institutional.getQuarters()).find((q) => !q.pending)?.reportDate;
@@ -320,6 +324,7 @@ client.analyst.calls("gil-luria", { limit: 25 })          // their price target 
 
 ```typescript
 client.calendar.getEarnings()                                       // upcoming report dates and estimates
+client.calendar.list()                                              // which calendars exist (no quota cost)
 client.earnings.getSummaries("AAPL", { limit: 4 })                  // each quarter written up: headline, KPIs, guidance, call summary
 client.earnings.getRecent({ days: 7 })                              // who reported recently
 client.earnings.getReactions("AAPL")                                // how the stock moved after its last reports
@@ -386,9 +391,11 @@ for (const row of res.results) console.log(row.ticker, row.sentiSenseScore7D, ro
 ### Market mood
 
 ```typescript
-client.marketMood.get({ days: 30 })   // Market Mood, from fear to greed, with its history
-client.indexes.list()                 // our indexes
-client.indexes.history("ai-sentiment") // one index over time
+client.marketMood.get({ days: 30 })            // Market Mood, from fear to greed, with its history
+client.marketMood.getSentimentSectors()        // each sector's tone against the market's own
+client.marketMood.getSentimentBreadth()        // the share of stocks leaning bullish, neutral, bearish, by day
+client.indexes.list()                          // our indexes
+client.indexes.history("ai-sentiment")         // one index over time
 ```
 
 [Market Mood API docs](https://sentisense.ai/docs/api/market-mood/)

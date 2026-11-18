@@ -2123,6 +2123,14 @@ export interface HolderNotableChanges {
  * alongside ticker-level totals like `holderCount`.
  */
 export interface TickerHolders {
+  /**
+   * The security this roster is for, per share class, in SentiSense's spelling. 13F filings
+   * report each share class under its own CUSIP, so `GOOG` is Alphabet's Class C roster and
+   * `GOOGL` its Class A roster. It can differ from the ticker you requested: `BRKB` gives
+   * `BRK.B`, and a recognized former ticker gives the company's current one. It is not the raw
+   * 13F key the filings are recorded under. The rosters of two share classes are separate and must not be
+   * added together as the issuer's holders.
+   */
   ticker: string;
   companyName: string;
   /** The quarter actually served (ISO date). */
@@ -2216,6 +2224,58 @@ export type InstitutionalFlowsResponse = InstitutionalFlows;
 
 export interface GetFlowsOptions {
   limit?: number;
+}
+
+/**
+ * One issuer's convertible bonds as institutions reported them on Form 13F for a quarter: a row
+ * of `institutional.getBondFlows()`. Positions are grouped by the issuer's equity ticker.
+ */
+export interface InstitutionalBondFlow {
+  /** The equity ticker the issuer's bonds are grouped under, e.g. `"ABNB"`. */
+  baseTicker: string;
+  /** Company name; `null` when no name is on record for the issuer. */
+  companyName: string | null;
+  /** Institutional positions in this issuer's bonds. */
+  positionCount: number;
+  /** Total value of those positions, in US dollars. */
+  totalValue: number;
+  /** Net change in shares or units held, summed across the positions. */
+  netSharesChange: number;
+  /**
+   * The bond notations held, as ONE comma-separated string on the wire, not an array: for
+   * example `"ABNB 0 03/15/26, ABNB 0.5 06/15/27"`. Split it on `", "` for a list.
+   */
+  bondTickers: string;
+  /** Hedge funds holding this issuer's bonds. */
+  hedgeFundCount: number;
+}
+
+/**
+ * One stock's call and put positions as institutions reported them on Form 13F for a quarter: a
+ * row of `institutional.getOptionFlows()`.
+ *
+ * These are quarter-end 13F holdings, not options market activity: for options volume, open
+ * interest and implied volatility, use `client.options` and `stocks.getOptionsSummary()`.
+ */
+export interface InstitutionalOptionFlow {
+  /** Ticker of the stock the options are on. */
+  ticker: string;
+  /** Company name; `null` when no name is on record for the company. */
+  companyName: string | null;
+  /** Total value of the call option positions, in US dollars. */
+  callValue: number;
+  /** Total value of the put option positions, in US dollars. */
+  putValue: number;
+  /** Call option positions reported. */
+  callPositions: number;
+  /** Put option positions reported. */
+  putPositions: number;
+  /** Net change in call option shares, summed across the positions. */
+  callNetChange: number;
+  /** Net change in put option shares, summed across the positions. */
+  putNetChange: number;
+  /** Hedge funds holding options on this ticker. */
+  hedgeFundCount: number;
 }
 
 /**
@@ -2328,7 +2388,14 @@ export interface HoldersHistoryQuarter {
  * no 13F coverage.
  */
 export interface HoldersHistory {
-  /** The security answered for, in SentiSense's spelling (`BRK.B`, `GOOG`). */
+  /**
+   * The security answered for, per share class, in SentiSense's spelling (`BRK.B`, `GOOG`).
+   * 13F filings report each share class under its own CUSIP, so `GOOG` is Alphabet's Class C
+   * and `GOOGL` its Class A. It can differ from the ticker you requested: `BRKB` gives `BRK.B`,
+   * and a recognized former ticker gives the company's current one. It is not the raw 13F key the
+   * filings are recorded under. The histories of two share classes are separate and must not be added
+   * together as the issuer's holders.
+   */
   ticker: string;
   quarters: HoldersHistoryQuarter[];
 }
@@ -2850,6 +2917,21 @@ export interface GetPoliticianMemberOptions {
 
 /** Generic preview wrapper used by PRO-gated endpoints. */
 // ── Calendar ────────────────────────────────────────────────
+
+/** One calendar on `calendar.list()`. */
+export interface CalendarListing {
+  /** The calendar's type, e.g. `"earnings"`. */
+  type: string;
+  /** Its API path, e.g. `"/api/v1/calendar/earnings"`. */
+  path: string;
+  /** What the calendar holds, in one line. */
+  description: string;
+}
+
+/** The calendars the API serves, returned by `calendar.list()`. */
+export interface CalendarListResponse {
+  calendars: CalendarListing[];
+}
 
 export interface EarningsEvent {
   ticker: string;
@@ -3476,6 +3558,18 @@ export interface MetricDistribution {
   [key: string]: unknown;
 }
 
+/** One dimension a metric can be broken down by, as listed by `entityMetrics.getSlices()`. */
+export interface MetricSlice {
+  /** The metric the slice applies to. */
+  metricType: string;
+  /** Dimension key, e.g. `"source"`. */
+  dimension: string;
+  /** The dimension's values present in the data. */
+  values: string[];
+  /** Human-readable label for the dimension. */
+  displayName: string;
+}
+
 // ── Market Mood & Market Summary ─────────────────────────────
 
 export interface MarketMood {
@@ -3486,6 +3580,146 @@ export interface MarketMood {
 export interface MarketMoodOptions {
   /** Days of history to return. Omit to get the API's default of 180. */
   days?: number;
+}
+
+/** A stock named on a {@link SentimentSectorRow}. */
+export interface SentimentStockRef {
+  /** Member stock ticker. */
+  ticker?: string;
+  /** That stock's sentiment polarity, from -1 (bearish) to 1 (bullish). */
+  value?: number;
+}
+
+/**
+ * One GICS sector on `marketMood.getSentimentSectors()`, read against the market's own
+ * news-and-social tone. Compare sectors on `consensusVsMarket`: financial news reads positive as
+ * a genre, so `meanSentiment` is bullish for most sectors on most days.
+ *
+ * The API omits a field rather than sending `null`, so every field is optional.
+ */
+export interface SentimentSectorRow {
+  /** GICS level-1 sector name, e.g. `"Information Technology"`. */
+  sector?: string;
+  /** Mean sentiment polarity across the sector's covered stocks, from -1 to 1. */
+  meanSentiment?: number;
+  /** Tone label for `meanSentiment`. */
+  label?: "Bullish" | "Neutral" | "Bearish" | (string & {});
+  /** Mean SentiSense Score across the sector's covered stocks: signed, conviction-weighted, with no fixed range. */
+  meanScore?: number;
+  /** Band label for `meanScore`. */
+  scoreLabel?: string;
+  /**
+   * The sector's directional-consensus ratio over its stocks' summed bullish and bearish
+   * mentions, between -1 and 1. A tone ratio on its own scale, not a SentiSense Score.
+   */
+  consensusRatio?: number;
+  /**
+   * `consensusRatio` minus the snapshot's `marketConsensusRatio`. Positive means the sector runs
+   * hotter than the market over the same window; negative means cooler than the market, which
+   * is not the same as bearish.
+   */
+  consensusVsMarket?: number;
+  /** Band label for `consensusVsMarket`. */
+  consensusLabel?: "Hotter than market" | "In line with market" | "Cooler than market" | (string & {});
+  /** Summed bullish mentions of the sector's stocks over the window. */
+  bullMentions?: number;
+  /** Summed bearish mentions of the sector's stocks over the window. */
+  bearMentions?: number;
+  /** Member stocks that had a sentiment reading. */
+  stockCount?: number;
+  /** Summed mention volume across those stocks. */
+  totalMentions?: number;
+  /** The sector's most bullish member stock. */
+  topStock?: SentimentStockRef;
+  /** The sector's most bearish member stock. */
+  bottomStock?: SentimentStockRef;
+}
+
+/**
+ * The per-sector sentiment rollup returned by `marketMood.getSentimentSectors()`, a daily
+ * precomputed snapshot. Before the first snapshot is built, `sectors` is empty and the other
+ * fields are absent.
+ */
+export interface SentimentSectors {
+  /** Snapshot schema version, e.g. `"1.0"`. */
+  schemaVersion?: string;
+  /** When the rollup was computed, epoch seconds. */
+  generatedAt?: number;
+  /** New York calendar day the snapshot represents, ISO `YYYY-MM-DD`. */
+  asOf?: string;
+  /** One-line summary: the most and least bullish sector, and the covered stock count. */
+  narrative?: string;
+  /**
+   * The whole covered universe's directional-consensus ratio for the window, between -1 and 1:
+   * the market reading each row's `consensusVsMarket` is measured against.
+   */
+  marketConsensusRatio?: number;
+  /** One row per GICS sector. */
+  sectors: SentimentSectorRow[];
+}
+
+/**
+ * One day of sentiment breadth: how the covered stocks split between bullish, neutral and
+ * bearish, each stock casting one vote by its mean sentiment.
+ *
+ * The `*Pct` fields count stocks; the `*MentionPct` fields weight the same votes by each stock's
+ * mention volume. When the two disagree, a few heavily covered names are carrying the tone.
+ * Shares are percentages from 0 to 100 (`51.5` means 51.5%). The API omits a field rather than
+ * sending `null`, so every field is optional.
+ */
+export interface SentimentBreadthBucket {
+  /** New York calendar day of this bucket, ISO `YYYY-MM-DD`. */
+  date?: string;
+  /** Stocks with a reading that cleared the snapshot's `minMentions`: the breadth denominator. */
+  coveredStocks?: number;
+  /** Summed mention volume across those stocks. */
+  totalMentions?: number;
+  /** Covered stocks classified bullish. */
+  bullish?: number;
+  /** Covered stocks classified neutral. */
+  neutral?: number;
+  /** Covered stocks classified bearish. */
+  bearish?: number;
+  /** Bullish share of covered stocks, in percent. */
+  bullishPct?: number;
+  /** Neutral share of covered stocks, in percent. */
+  neutralPct?: number;
+  /** Bearish share of covered stocks, in percent. */
+  bearishPct?: number;
+  /** `bullishPct` minus `bearishPct`, in percentage points, from -100 to 100. */
+  netBreadth?: number;
+  /** Bullish share of mentions rather than of stocks, in percent. */
+  bullishMentionPct?: number;
+  /** Neutral share of mentions, in percent. */
+  neutralMentionPct?: number;
+  /** Bearish share of mentions, in percent. */
+  bearishMentionPct?: number;
+  /**
+   * Population standard deviation of the covered stocks' sentiment polarity (each from -1 to 1):
+   * high when stocks disagree with each other, low when they share one mood. Absent when fewer
+   * than two stocks are covered.
+   */
+  sentimentDispersion?: number;
+}
+
+/**
+ * Market-wide sentiment breadth returned by `marketMood.getSentimentBreadth()`, a daily
+ * precomputed snapshot. Before the first snapshot is built, `series` is empty and the other
+ * fields are absent.
+ */
+export interface SentimentBreadth {
+  /** Snapshot schema version, e.g. `"1.0"`. */
+  schemaVersion?: string;
+  /** When the rollup was computed, epoch seconds. */
+  generatedAt?: number;
+  /** New York calendar day the snapshot represents, ISO `YYYY-MM-DD`. */
+  asOf?: string;
+  /** Minimum mention volume for a stock to count toward breadth. */
+  minMentions?: number;
+  /** The newest entry of `series`, also served on its own here. */
+  latest?: SentimentBreadthBucket;
+  /** Daily buckets, oldest to newest. */
+  series: SentimentBreadthBucket[];
 }
 
 /** AI-generated market summary with headline and analysis. */

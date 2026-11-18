@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.82.0
+
+### Added
+
+- `marketMood.getSentimentSectors()`: the per-sector sentiment rollup, each GICS sector read
+  against the market's own tone (`SentimentSectors`, `SentimentSectorRow`, `SentimentStockRef`).
+- `marketMood.getSentimentBreadth()`: each day's share of covered stocks leaning bullish, neutral
+  or bearish; `latest` is the newest entry of `series` (`SentimentBreadth`,
+  `SentimentBreadthBucket`).
+- `calendar.list()`: the calendars the API serves and their paths (`CalendarListResponse`,
+  `CalendarListing`). It does not count against the monthly quota.
+- `institutional.getBondFlows(reportDate)`: convertible bond positions from 13F filings for a
+  quarter, grouped by issuer, in the preview envelope (`InstitutionalBondFlow`). `bondTickers` is
+  one comma-separated string; `companyName` is `null` when no name is on record.
+- `institutional.getOptionFlows(reportDate)`: the call and put positions institutions report on
+  13F for a quarter, by stock, in the preview envelope (`InstitutionalOptionFlow`). These are 13F
+  holdings, not the options analytics under `options` and `stocks.getOptions*`. `companyName` is
+  `null` when no name is on record.
+- `entityMetrics.getSlices(symbol, metricType)`: the dimensions and values a metric breaks down by
+  (`MetricSlice`).
+
+### Changed
+
+- `TickerHolders.ticker` and `HoldersHistory.ticker` now describe what they hold: the security
+  answered for, per share class, in SentiSense's spelling, which can differ from the ticker
+  requested (a recognized former ticker gives the company's current one). Descriptions only, no
+  type changes.
+
 ## 0.81.0
 
 ### Added

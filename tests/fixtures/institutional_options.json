@@ -1,0 +1,50 @@
+{
+  "isPreview": false,
+  "previewReason": null,
+  "data": [
+    {
+      "ticker": "EXMP",
+      "companyName": "Example Inc",
+      "callValue": 2400000000,
+      "putValue": 1800000000,
+      "callPositions": 156,
+      "putPositions": 98,
+      "callNetChange": 12000000,
+      "putNetChange": 8000000,
+      "hedgeFundCount": 45
+    },
+    {
+      "ticker": "SMPL",
+      "companyName": "Sample Corp",
+      "callValue": 1100000000,
+      "putValue": 1300000000,
+      "callPositions": 87,
+      "putPositions": 91,
+      "callNetChange": -2500000,
+      "putNetChange": 4100000,
+      "hedgeFundCount": 38
+    },
+    {
+      "ticker": "DEMO",
+      "companyName": "Demo Holdings Inc",
+      "callValue": 900000000,
+      "putValue": 0,
+      "callPositions": 40,
+      "putPositions": 0,
+      "callNetChange": 300000,
+      "putNetChange": 0,
+      "hedgeFundCount": 12
+    },
+    {
+      "ticker": "TSTX",
+      "companyName": "Test Labs Inc",
+      "callValue": 150000000,
+      "putValue": 420000000,
+      "callPositions": 9,
+      "putPositions": 21,
+      "callNetChange": 0,
+      "putNetChange": -700000,
+      "hedgeFundCount": 6
+    }
+  ]
+}

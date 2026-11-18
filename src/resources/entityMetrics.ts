@@ -1,11 +1,27 @@
 import type { APIClient } from "../client.js";
+import { SentiSenseError } from "../errors.js";
 import type {
   MetricType,
   MetricsOptions,
   MetricDistributionOptions,
   ServingMetric,
   MetricDistribution,
+  MetricSlice,
 } from "../types.js";
+
+/**
+ * A path argument must fill its own segment. An empty value leaves the segment blank, and a
+ * standalone "." or ".." is removed by URL normalization, which sends the request to a
+ * different route. Reject those before any request is made.
+ */
+function requirePathSegment(method: string, name: string, value: unknown): string {
+  if (typeof value !== "string" || value.trim() === "" || value === "." || value === "..") {
+    throw new SentiSenseError(
+      `${method}: ${name} must not be empty, "." or ".." (got ${JSON.stringify(value)})`,
+    );
+  }
+  return value;
+}
 
 export class EntityMetrics {
   constructor(private client: APIClient) {}
@@ -62,6 +78,26 @@ export class EntityMetrics {
         ...(startTime !== undefined && { startTime }),
         ...(endTime !== undefined && { endTime }),
       },
+    );
+  }
+
+  /**
+   * List the dimensions a metric can be broken down by for one entity, with the values present
+   * in the data, so you can see what exists before calling `getDistribution()`.
+   *
+   * Returns a plain array, empty when the metric has no slices for this entity. Available on
+   * every tier; each call counts against the monthly quota.
+   *
+   * @param symbol     Ticker symbol (e.g. "AAPL") or entity urlSlug (e.g. "Nancy-Pelosi").
+   * @param metricType The metric to look up (e.g. "mentions").
+   * @throws {SentiSenseError} Before any request, when `symbol` or `metricType` is empty,
+   *         whitespace only, `"."` or `".."`.
+   */
+  async getSlices(symbol: string, metricType: MetricType): Promise<MetricSlice[]> {
+    const entity = requirePathSegment("entityMetrics.getSlices", "symbol", symbol);
+    const metric = requirePathSegment("entityMetrics.getSlices", "metricType", metricType);
+    return this.client.get(
+      `/api/v2/metrics/entity/${encodeURIComponent(entity)}/metric/${encodeURIComponent(metric)}/slices`,
     );
   }
 }

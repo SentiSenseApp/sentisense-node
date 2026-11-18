@@ -1,0 +1,14 @@
+[
+  {
+    "metricType": "mentions",
+    "dimension": "source",
+    "values": ["News", "Reddit", "X", "YouTube", "Substack"],
+    "displayName": "Source"
+  },
+  {
+    "metricType": "mentions",
+    "dimension": "publisher",
+    "values": ["Example Daily", "Sample Wire"],
+    "displayName": "Publisher"
+  }
+]

@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": 1791410400,
+  "asOf": "2026-10-07",
+  "minMentions": 5,
+  "latest": {
+    "date": "2026-10-07",
+    "coveredStocks": 500,
+    "totalMentions": 9000,
+    "bullish": 300,
+    "neutral": 50,
+    "bearish": 150,
+    "bullishPct": 60.0,
+    "neutralPct": 10.0,
+    "bearishPct": 30.0,
+    "netBreadth": 30.0,
+    "bullishMentionPct": 58.0,
+    "neutralMentionPct": 12.0,
+    "bearishMentionPct": 30.0,
+    "sentimentDispersion": 0.35
+  },
+  "series": [
+    {
+      "date": "2026-10-05",
+      "coveredStocks": 400,
+      "totalMentions": 8000,
+      "bullish": 240,
+      "neutral": 60,
+      "bearish": 100,
+      "bullishPct": 60.0,
+      "neutralPct": 15.0,
+      "bearishPct": 25.0,
+      "netBreadth": 35.0,
+      "bullishMentionPct": 62.0,
+      "neutralMentionPct": 13.0,
+      "bearishMentionPct": 25.0,
+      "sentimentDispersion": 0.3
+    },
+    {
+      "date": "2026-10-06",
+      "coveredStocks": 500,
+      "totalMentions": 10000,
+      "bullish": 250,
+      "neutral": 100,
+      "bearish": 150,
+      "bullishPct": 50.0,
+      "neutralPct": 20.0,
+      "bearishPct": 30.0,
+      "netBreadth": 20.0,
+      "bullishMentionPct": 55.0,
+      "neutralMentionPct": 15.0,
+      "bearishMentionPct": 30.0,
+      "sentimentDispersion": 0.32
+    },
+    {
+      "date": "2026-10-07",
+      "coveredStocks": 500,
+      "totalMentions": 9000,
+      "bullish": 300,
+      "neutral": 50,
+      "bearish": 150,
+      "bullishPct": 60.0,
+      "neutralPct": 10.0,
+      "bearishPct": 30.0,
+      "netBreadth": 30.0,
+      "bullishMentionPct": 58.0,
+      "neutralMentionPct": 12.0,
+      "bearishMentionPct": 30.0,
+      "sentimentDispersion": 0.35
+    }
+  ]
+}

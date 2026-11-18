@@ -10,7 +10,9 @@ import type {
   InstitutionHistory,
   InstitutionList,
   InstitutionListResponse,
+  InstitutionalBondFlow,
   InstitutionalFlows,
+  InstitutionalOptionFlow,
   ListInstitutionsOptions,
   PreviewResponse,
   Quarter,
@@ -130,6 +132,37 @@ export class Institutional {
    */
   async getActivists(reportDate: string): Promise<PreviewResponse<Holder[]>> {
     return this.client.get("/api/v1/institutional/activist", { reportDate });
+  }
+
+  /**
+   * Get convertible bond positions from 13F filings for one quarter, one row per issuer,
+   * grouped by the issuer's equity ticker.
+   *
+   * `reportDate` is the quarter end as an ISO date (e.g. `"2026-06-30"`); the API requires it,
+   * so take one from `getQuarters()`. Returns the preview envelope, so the rows are `.data`. A
+   * FREE key receives the top three rows with `isPreview: true` and `totalCount` holding the full
+   * row count; a PRO key receives the full list.
+   *
+   * Each row's `bondTickers` is one comma-separated string, not an array.
+   */
+  async getBondFlows(reportDate: string): Promise<PreviewResponse<InstitutionalBondFlow[]>> {
+    return this.client.get("/api/v1/institutional/bonds", { reportDate });
+  }
+
+  /**
+   * Get the call and put positions institutions reported on Form 13F for one quarter, one row
+   * per stock.
+   *
+   * These are quarter-end 13F holdings, not options market activity: for options volume, open
+   * interest and implied volatility, use `client.options` and `stocks.getOptionsSummary()`.
+   *
+   * `reportDate` is the quarter end as an ISO date (e.g. `"2026-06-30"`); the API requires it,
+   * so take one from `getQuarters()`. Returns the preview envelope, so the rows are `.data`. A
+   * FREE key receives the top three rows with `isPreview: true` and `totalCount` holding the full
+   * row count; a PRO key receives the full list.
+   */
+  async getOptionFlows(reportDate: string): Promise<PreviewResponse<InstitutionalOptionFlow[]>> {
+    return this.client.get("/api/v1/institutional/options", { reportDate });
   }
 
   /**

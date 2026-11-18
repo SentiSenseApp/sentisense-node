@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": 1791410400,
+  "asOf": "2026-10-07",
+  "narrative": "Synthetic example narrative: one sector leads and one lags.",
+  "marketConsensusRatio": 0.2,
+  "sectors": [
+    {
+      "sector": "Energy",
+      "meanSentiment": 0.2,
+      "label": "Bullish",
+      "meanScore": 6.0,
+      "scoreLabel": "Slightly Bullish",
+      "consensusRatio": 0.4,
+      "consensusVsMarket": 0.2,
+      "consensusLabel": "Hotter than market",
+      "bullMentions": 1400,
+      "bearMentions": 600,
+      "stockCount": 100,
+      "totalMentions": 4000,
+      "topStock": {
+        "ticker": "EXMP",
+        "value": 0.8
+      },
+      "bottomStock": {
+        "ticker": "SMPL",
+        "value": -0.5
+      }
+    },
+    {
+      "sector": "Consumer Staples",
+      "meanSentiment": 0.03,
+      "label": "Neutral",
+      "meanScore": 3.0,
+      "scoreLabel": "Neutral",
+      "consensusRatio": 0.25,
+      "consensusVsMarket": 0.05,
+      "consensusLabel": "In line with market",
+      "bullMentions": 1000,
+      "bearMentions": 600,
+      "stockCount": 50,
+      "totalMentions": 3000,
+      "topStock": {
+        "ticker": "DEMO",
+        "value": 0.6
+      },
+      "bottomStock": {
+        "ticker": "TSTX",
+        "value": -0.4
+      }
+    }
+  ]
+}

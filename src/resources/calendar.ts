@@ -1,5 +1,6 @@
 import type { APIClient } from "../client.js";
 import type {
+  CalendarListResponse,
   EarningsCalendarResponse,
   GetEarningsCalendarOptions,
   PreviewResponse,
@@ -7,6 +8,17 @@ import type {
 
 export class Calendar {
   constructor(private client: APIClient) {}
+
+  /**
+   * List the calendars the API serves, with the path of each, so a client can find them
+   * without hardcoding paths.
+   *
+   * Every tier receives the same list, and the call does not count against the monthly quota;
+   * the per-minute rate limit still applies.
+   */
+  async list(): Promise<CalendarListResponse> {
+    return this.client.get("/api/v1/calendar");
+  }
 
   /**
    * Upcoming company earnings, sorted by date.
