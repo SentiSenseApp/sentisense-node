@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.84.0
+
+### Changed
+
+- The declared types of eleven response fields now match what the API sends: `null` for today's
+  sentiment reading until it lands, and on a stock quote a key left out when it has no value.
+  Nothing changes at runtime: the API's responses are the same, and the types now describe them.
+  A strict TypeScript caller may need a small change:
+
+| Field | Old type | New type | What a strict TypeScript caller changes |
+|---|---|---|---|
+| `StockSentiment.sentisenseScore` | `?: number` | `?: number \| null` | Check for `null` before arithmetic or formatting, for example `s.sentisenseScore != null ? s.sentisenseScore.toFixed(1) : "n/a"`. Never read `null` as 0. |
+| `StockSentiment.mentions` | `?: number` | `?: number \| null` | Check for `null` before arithmetic, as above. |
+| `StockSentiment.latestDirection` | `?: string` | `?: string \| null` | Check for `null` before using it as a string; `direction` is the fallback. |
+| `StockQuote.marketCap`, `peRatio`, `epsTTM` | `number \| null` | `?: number \| null` | Handle `undefined` too: `quote.marketCap ?? null` where a `number \| null` is expected, or test `!= null` instead of `!== null`. |
+| `StockQuote.volume`, `week52High`, `week52Low`, `dividendYield`, `movingAverage200Day` | `number \| null` | `?: number \| null` | The same as the row above. |
+
 ## 0.83.0
 
 ### Added

@@ -251,8 +251,87 @@ describe("typed wire fields", () => {
   });
 });
 
-/** Fields the wire sends as `null` or leaves out when it has no value for them. */
+/**
+ * Fields the wire sends as an explicit `null` or leaves out, which the types once declared as
+ * always a number. A guard written against the old type compiled clean and then threw.
+ */
 describe("nullable and omitted wire fields", () => {
+  /** Before the day's first reading lands, today's Score and band are explicit nulls. */
+  const BEFORE_FIRST_READING = {
+    isPreview: false,
+    previewReason: null,
+    data: {
+      ticker: "EXMP",
+      asOf: "2026-11-18",
+      sentisenseScore: null,
+      sentisenseScoreAvg30d: 12.4,
+      scoreLabel: "Slightly Bullish",
+      direction: "Bullish",
+      latestDirection: null,
+      mentions: null,
+      mentionsAvg30d: 310,
+    },
+  };
+
+  it("today's Score, its band and mentions are typed as possibly null", async () => {
+    respond(BEFORE_FIRST_READING);
+    const { data } = await client.stocks.getSentiment("EXMP");
+    expectTypeOf(data.sentisenseScore).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(data.latestDirection).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(data.mentions).toEqualTypeOf<number | null | undefined>();
+    expect(data.sentisenseScore).toBeNull();
+    expect(data.latestDirection).toBeNull();
+    expect(data.mentions).toBeNull();
+    // The 30-day fields stay present as the fallback.
+    expect(data.sentisenseScoreAvg30d).toBe(12.4);
+    expect(data.direction).toBe("Bullish");
+  });
+
+  it("a measured Score of 0 passes through as 0, distinct from null", async () => {
+    respond({ ...BEFORE_FIRST_READING, data: { ...BEFORE_FIRST_READING.data, sentisenseScore: 0, latestDirection: "Neutral", mentions: 0 } });
+    const { data } = await client.stocks.getSentiment("EXMP");
+    expect(data.sentisenseScore).toBe(0);
+    expect(data.latestDirection).toBe("Neutral");
+    expect(data.mentions).toBe(0);
+  });
+
+  it("a quote leaves out the fields it has no value for, and the types allow it", async () => {
+    // Synthetic fund-shaped body: no market cap, P/E or EPS, so those keys are absent.
+    respond({
+      ticker: "EXFD",
+      currentPrice: 100,
+      change: 1,
+      changePercent: 1,
+      open: 99,
+      dayHigh: 101,
+      dayLow: 98,
+      previousClose: 99,
+      week52High: 120,
+      week52Low: 80,
+      volume: 1000000,
+      dividendYield: 0.01,
+      movingAverage200Day: 95,
+      timestamp: 1700000000000,
+    });
+    const quote = await client.stocks.getQuote("EXFD");
+    for (const key of ["marketCap", "peRatio", "epsTTM"]) {
+      expect(key in quote, `${key} should be absent from this body`).toBe(false);
+    }
+    expect(quote.dividendYield).toBe(0.01);
+    expectTypeOf(quote.marketCap).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quote.peRatio).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quote.epsTTM).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quote.dividendYield).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quote.movingAverage200Day).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quote.volume).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quote.week52High).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quote.week52Low).toEqualTypeOf<number | null | undefined>();
+    // The fields every quote carries keep their declared type.
+    expectTypeOf(quote.currentPrice).toEqualTypeOf<number | null>();
+    expectTypeOf(quote.timestamp).toEqualTypeOf<number | null>();
+    expect(quote.marketCap ?? null).toBeNull();
+  });
+
   it("a foreign filer's quote serves EPS in its reporting currency and leaves out only P/E", async () => {
     // Synthetic: a home-currency EPS beside a dollar price, labelled by reportedCurrency.
     respond({ ticker: "EXAD", currentPrice: 50, epsTTM: 2500, reportedCurrency: "KRW", timestamp: 1700000000000 });

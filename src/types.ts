@@ -76,8 +76,8 @@ export interface ExtendedHoursInfo {
 /**
  * Aggregate quote snapshot from GET /api/v1/stocks/{ticker}/quote.
  *
- * The API leaves a field with no value out of the body rather than sending `null`, so test a
- * field below with `== null`, which covers both a missing key and `null`.
+ * The API leaves a field with no value out of the body rather than sending `null`, so the
+ * optional fields below are absent, not null, when there is nothing to report.
  */
 export interface StockQuote {
   ticker: string;
@@ -85,39 +85,39 @@ export interface StockQuote {
   currentPrice: number | null;
   change: number | null;
   changePercent: number | null;
-  /** Session volume. The API leaves it out when it has no volume for the symbol. */
-  volume: number | null;
+  /** Session volume. Absent when the API has no volume for the symbol. */
+  volume?: number | null;
   open: number | null;
   dayHigh: number | null;
   dayLow: number | null;
   previousClose: number | null;
-  /** 52-week high. The API leaves it out when unavailable. */
-  week52High: number | null;
-  /** 52-week low. The API leaves it out when unavailable. */
-  week52Low: number | null;
-  /** Market capitalization in US dollars. The API leaves it out when unknown, as on a fund's stock quote. */
-  marketCap: number | null;
+  /** 52-week high. Absent when unavailable. */
+  week52High?: number | null;
+  /** 52-week low. Absent when unavailable. */
+  week52Low?: number | null;
+  /** Market capitalization in US dollars. Absent when unknown, as on a fund's stock quote. */
+  marketCap?: number | null;
   /**
-   * Trailing P/E. The API leaves it out when it is not computed: when trailing EPS is not
-   * positive, or for a foreign filer whose EPS is in a different currency from the price (see
-   * `reportedCurrency`). It is left out whenever it has no value, as on a fund's stock quote.
+   * Trailing P/E. Absent when it is not computed: when trailing EPS is not positive, or for a
+   * foreign filer whose EPS is in a different currency from the price (see `reportedCurrency`).
+   * It is absent whenever it has no value, as on a fund's stock quote.
    */
-  peRatio: number | null;
+  peRatio?: number | null;
   /**
    * Trailing-twelve-month EPS, in the currency `reportedCurrency` names, which is not
    * necessarily US dollars: a foreign filer's EPS is served in its home currency, so do not
-   * compare it with the dollar price without converting. The API leaves it out when unavailable,
-   * as on a fund's stock quote.
+   * compare it with the dollar price without converting. Absent when unavailable, as on a fund's
+   * stock quote.
    */
-  epsTTM: number | null;
+  epsTTM?: number | null;
   /**
    * Trailing dividend yield as a fraction, not as percentage points: 0.031 is a 3.1% yield.
    * This differs from {@link StockQuote.changePercent}, which is already in percentage points.
-   * The API leaves it out for a stock that pays no dividend.
+   * Absent for a stock that pays no dividend.
    */
-  dividendYield: number | null;
-  /** 200-day simple moving average of daily closes. The API leaves it out when fewer than 200 trading days of history exist. */
-  movingAverage200Day: number | null;
+  dividendYield?: number | null;
+  /** 200-day simple moving average of daily closes. Absent when fewer than 200 trading days of history exist. */
+  movingAverage200Day?: number | null;
   /**
    * Currency the issuer reports its financials in ("USD", "TWD", "JPY", ...). Absent when
    * the currency is unknown, which is not the same as implicitly USD. Same field and same
@@ -433,13 +433,12 @@ export interface StockSentiment {
   /**
    * Today's SentiSense Score: a 0-centered composite of sentiment and mentions, unbounded.
    *
-   * The API sends `null` until the day's first reading lands (mid-morning US Eastern, later at
-   * weekends), so guard for `null` as well as `undefined`. A `null` means "no reading yet", never
-   * a Score of zero, since a measured 0 is served as `0`. Do not coerce it to 0. For a figure
-   * that is always present, read the 30-day fields (`sentisenseScoreAvg30d`, `scoreLabel`,
-   * `direction`).
+   * `null` until the day's first reading lands (mid-morning US Eastern, later at weekends): a
+   * timing state meaning "no reading yet", never a Score of zero, since a measured 0 is served
+   * as `0`. Do not coerce it to 0. For a figure that is always present, read the 30-day fields
+   * (`sentisenseScoreAvg30d`, `scoreLabel`, `direction`).
    */
-  sentisenseScore?: number;
+  sentisenseScore?: number | null;
   /** 30-day average Score, the stable regime figure. */
   sentisenseScoreAvg30d?: number;
   /**
@@ -459,21 +458,19 @@ export interface StockSentiment {
   /** "Bullish" | "Neutral" | "Bearish", from the 30-day average. */
   direction?: string;
   /**
-   * Same three bands, from today's read. The API sends `null` whenever it sends `null` for
-   * `sentisenseScore`, so guard for `null` as well as `undefined`; `direction`, from the 30-day
-   * average, is the fallback.
+   * Same three bands, from today's read. `null` whenever `sentisenseScore` is, until the day's
+   * first reading lands; `direction`, from the 30-day average, is the fallback.
    */
-  latestDirection?: string;
+  latestDirection?: string | null;
   /** "UP" | "DOWN" | "FLAT". */
   trend?: string;
   /** Daily Score series. */
   scoreSparkline?: number[];
   /**
    * Mention volume of the latest New York daily bucket with data: today's once it lands,
-   * otherwise an earlier day, which `narrative` and `faq` name. The API sends `null` when there
-   * is none, so guard for `null` as well as `undefined`.
+   * otherwise an earlier day, which `narrative` and `faq` name. `null` when there is none.
    */
-  mentions?: number;
+  mentions?: number | null;
   /** 30-day average mentions per day. */
   mentionsAvg30d?: number;
   /** Latest share of voice, as a fraction (0.021 = 2.1%). Note this is NOT the same unit as `mentionShare`. */
