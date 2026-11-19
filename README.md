@@ -203,7 +203,7 @@ client.entityMetrics.getMetrics("AAPL", { metricType: "sentiment" })          //
 client.entityMetrics.getMetrics("AAPL", { metricType: "mentions", startTime: Date.now() - 7 * 86400000 })
 client.entityMetrics.getDistribution("AAPL", "mentions", { dimension: "source" })  // share of mentions by source, valueType "SHARE_PERCENT"
 client.entityMetrics.getDistribution("AAPL", "sentiment")                       // mean sentiment by source, valueType "MEAN"
-client.entityMetrics.getSlices("AAPL", "mentions")                              // the dimensions and values a metric breaks down by
+client.entityMetrics.getSlices("AAPL", "mentions")                              // today only the entity's type marker; for sources, call getDistribution
 client.stocks.getSentiment("AAPL")                                             // Score, mentions, tone by source
 ```
 

@@ -78,7 +78,7 @@ const TICKER_EXAMPLE: Record<string, string> = {
   "--history": "sentisense options NVDA --history",
   "--window": "sentisense options NVDA --window 2y",
   "--intraday": "sentisense options NVDA --intraday",
-  "--session": "sentisense options NVDA --session 2026-10-14",
+  "--session": "sentisense options NVDA --session 2026-10-15",
 };
 
 type View =
@@ -109,7 +109,7 @@ function pickView(args: ParsedArgs): View {
   const etfs = flags.etfs === true;
 
   if (session !== undefined && !SESSION_PATTERN.test(session)) {
-    throw new CliUsageError("--session must be a date, YYYY-MM-DD.", "for example: --session 2026-10-14");
+    throw new CliUsageError("--session must be a date, YYYY-MM-DD.", "for example: --session 2026-10-15");
   }
   if (rawWindow !== undefined && !isHistoryWindow(rawWindow)) {
     throw new CliUsageError(`--window takes 1y, 2y or 5y, got "${rawWindow}".`, "for example: --window 2y");
@@ -494,6 +494,13 @@ async function intraday(api: SentiSense, ticker: string, session: string | undef
 
 // ── Dossier ────────────────────────────────────────────────
 
+/**
+ * The dossier's readings sit on three scales and print as bare numbers, so one line says which
+ * is which. Each scale is the one the API documents for that field.
+ */
+const DOSSIER_SCALES =
+  "positioning runs -1 to +1; IV rank 0 to 100; ATM IV, expected move and skew are fractions (0.05 is 5%, or 5 IV points for skew).";
+
 async function dossier(api: SentiSense, ticker: string, full: boolean): Promise<CommandResult> {
   const envelope = await api.stocks.getOptionsSummary(ticker);
   const data = envelope.data;
@@ -601,6 +608,8 @@ async function dossier(api: SentiSense, ticker: string, full: boolean): Promise<
     });
   }
 
+  blocks.push({ kind: "text", text: DOSSIER_SCALES, tone: "dim" });
+
   const unusual = data.unusual ?? [];
   if (unusual.length > 0) {
     blocks.push({ kind: "blank" });
@@ -679,7 +688,7 @@ export const optionsCommand: CommandDef = {
     "sentisense options NVDA --history --window 2y",
     "sentisense options NVDA --json",
     "sentisense options NVDA --intraday",
-    "sentisense options SPY --session 2026-10-14",
+    "sentisense options SPY --session 2026-10-15",
   ],
   notes: [
     "End of day, not live: readings describe the latest completed session and refresh the",
@@ -704,6 +713,8 @@ export const optionsCommand: CommandDef = {
     "ratio, unusual-contract count and ATM IV at every 15-minute cycle (PRO keys and sample companies).",
     "--session picks the session and implies --intraday; omitted, the latest one.",
     "--full adds every served row to the Radar and --history, and more readings to a dossier.",
+    "--limit and --etfs choose what the plain view prints; they do not trim --json, which prints",
+    "the whole API response: for the Radar that is both boards and every served row, a large body.",
   ],
   flags: {
     etfs: { type: "boolean", describe: "With no ticker, show the Radar's ETF board instead of the stock board" },

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import SentiSense, {
   type HoldersHistory,
   type HoldersHistoryQuarter,
@@ -206,5 +206,16 @@ describe("institutional.getHoldersHistory", () => {
     expect(result.totalCount).toBeUndefined();
     expect(result.upgrade).toBeUndefined();
     expect(result.data.quarters).toEqual([]);
+  });
+
+  it("carries no ticker-resolution fields: the history envelope does not send them", async () => {
+    // The holders roster's envelope adds requestedTicker, resolution and storedTicker; this
+    // route's does not, so its return type stays the plain envelope.
+    expectTypeOf<Awaited<ReturnType<typeof client.institutional.getHoldersHistory>>>().toEqualTypeOf<
+      PreviewResponse<HoldersHistory>
+    >();
+    for (const key of ["requestedTicker", "resolvedTicker", "resolution", "storedTicker"]) {
+      expect(key in FREE_PREVIEW, `${key} on the live history envelope`).toBe(false);
+    }
   });
 });

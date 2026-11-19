@@ -203,3 +203,26 @@ describe("13F bond and option flows signatures", () => {
     expectTypeOf(client.institutional.getOptionFlows).parameters.toEqualTypeOf<[reportDate: string]>();
   });
 });
+
+/** The JSDoc block directly above `async <method>(` in the institutional resource. */
+function methodDoc(method: string): string {
+  const source = readFileSync(
+    fileURLToPath(new URL("../../src/resources/institutional.ts", import.meta.url)),
+    "utf8",
+  );
+  const match = source.match(new RegExp(`/\\*\\*((?:(?!/\\*\\*)[\\s\\S])*?)\\*/\\s*async ${method}\\(`));
+  expect(match, `no JSDoc found above ${method}`).not.toBeNull();
+  return (match?.[1] ?? "").replace(/\n\s*\*/g, " ").replace(/\s+/g, " ");
+}
+
+describe("13F bond and option flows docs", () => {
+  // The server returns at most the 50 largest rows by value, with no paging, and a free
+  // preview's totalCount counts that capped list. A PRO caller reading "the full list" would
+  // take a cut ranking for the whole quarter.
+  it.each(["getBondFlows", "getOptionFlows"])("%s names the 50-row cap and claims no full list", (method) => {
+    const doc = methodDoc(method);
+    expect(doc).toContain("at most 50 rows");
+    expect(doc).toContain("never exceeds 50");
+    expect(doc).not.toMatch(/full list|every row|full row count/i);
+  });
+});

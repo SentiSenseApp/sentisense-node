@@ -134,3 +134,29 @@ describe("entityMetrics.getSlices", () => {
     }
   });
 });
+
+describe("entityMetrics.getSlices today", () => {
+  /** What the API returns today for every entity and metric: the type marker alone (displayName illustrative). */
+  const TYPE_MARKER = [{ metricType: "mentions", dimension: "type", values: ["root"], displayName: "Type" }];
+
+  it("passes the type marker through untouched", async () => {
+    respond(TYPE_MARKER);
+    const slices = await client.entityMetrics.getSlices("AAPL", "mentions");
+    expect(slices).toEqual(TYPE_MARKER);
+    expect(slices.map((s) => s.dimension)).not.toContain("source");
+  });
+
+  it("documents what it returns today and points at getDistribution for sources", () => {
+    const source = readFileSync(
+      fileURLToPath(new URL("../../src/resources/entityMetrics.ts", import.meta.url)),
+      "utf8",
+    );
+    const match = source.match(/\/\*\*((?:(?!\/\*\*)[\s\S])*?)\*\/\s*async getSlices\(/);
+    expect(match, "no JSDoc found above getSlices").not.toBeNull();
+    const doc = (match?.[1] ?? "").replace(/\n\s*\*/g, " ").replace(/\s+/g, " ");
+    expect(doc).toContain('`[{ dimension: "type", values: ["root"] }]`');
+    expect(doc).toContain('pass `"source"` to `getDistribution()` directly');
+    // The old wording promised discovery the route does not deliver.
+    expect(doc).not.toMatch(/see what exists before calling/i);
+  });
+});

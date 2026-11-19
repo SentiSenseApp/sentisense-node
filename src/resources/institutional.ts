@@ -7,6 +7,7 @@ import type {
   GetHoldersOptions,
   Holder,
   HoldersHistory,
+  HoldersResponse,
   InstitutionHistory,
   InstitutionList,
   InstitutionListResponse,
@@ -81,12 +82,16 @@ export class Institutional {
    * quarter-over-quarter comparison (`comparisonReportDate`, `comparisonStatus`). Each
    * holder row has its own `comparisonStatus`; only `AVAILABLE` on that row supports its
    * change figures.
+   *
+   * Beside `data`, the envelope says how your ticker was resolved: `requestedTicker`,
+   * `resolution` (`share_class` when, for example, `GOOG` is answered with Alphabet's Class C
+   * roster rather than `GOOGL`'s) and `storedTicker`. See {@link HoldersResponse}.
    */
   async getHolders(
     ticker: string,
     reportDate?: string,
     options?: GetHoldersOptions,
-  ): Promise<PreviewResponse<TickerHolders>> {
+  ): Promise<HoldersResponse> {
     return this.client.get(
       `/api/v1/institutional/holders/${encodeURIComponent(ticker)}`,
       { reportDate, ...options },
@@ -139,9 +144,13 @@ export class Institutional {
    * grouped by the issuer's equity ticker.
    *
    * `reportDate` is the quarter end as an ISO date (e.g. `"2026-06-30"`); the API requires it,
-   * so take one from `getQuarters()`. Returns the preview envelope, so the rows are `.data`. A
-   * FREE key receives the top three rows with `isPreview: true` and `totalCount` holding the full
-   * row count; a PRO key receives the full list.
+   * so take one from `getQuarters()`. Returns the preview envelope, so the rows are `.data`.
+   *
+   * The list holds at most 50 rows: the issuers with the largest `totalValue`, largest first,
+   * with no paging, so a quarter with more issuers stops at 50 and one with fewer returns fewer.
+   * A PRO key receives the whole list, up to 50 rows. A FREE key receives the top three with
+   * `isPreview: true` and `totalCount` holding the length of that capped list, so `totalCount`
+   * never exceeds 50.
    *
    * Each row's `bondTickers` is one comma-separated string, not an array.
    */
@@ -157,9 +166,13 @@ export class Institutional {
    * interest and implied volatility, use `client.options` and `stocks.getOptionsSummary()`.
    *
    * `reportDate` is the quarter end as an ISO date (e.g. `"2026-06-30"`); the API requires it,
-   * so take one from `getQuarters()`. Returns the preview envelope, so the rows are `.data`. A
-   * FREE key receives the top three rows with `isPreview: true` and `totalCount` holding the full
-   * row count; a PRO key receives the full list.
+   * so take one from `getQuarters()`. Returns the preview envelope, so the rows are `.data`.
+   *
+   * The list holds at most 50 rows: the stocks with the largest combined call and put value
+   * (`callValue` plus `putValue`), largest first, with no paging, so a quarter with more stocks
+   * stops at 50 and one with fewer returns fewer. A PRO key receives the whole list, up to 50
+   * rows. A FREE key receives the top three with `isPreview: true` and `totalCount` holding the
+   * length of that capped list, so `totalCount` never exceeds 50.
    */
   async getOptionFlows(reportDate: string): Promise<PreviewResponse<InstitutionalOptionFlow[]>> {
     return this.client.get("/api/v1/institutional/options", { reportDate });

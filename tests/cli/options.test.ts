@@ -579,6 +579,88 @@ describe("options dossier additions", () => {
   });
 });
 
+describe("options dossier scale legend", () => {
+  const LEGEND =
+    "positioning runs -1 to +1; IV rank 0 to 100; ATM IV, expected move and skew are fractions (0.05 is 5%, or 5 IV points for skew).";
+
+  /** A synthetic dossier: round illustrative values, one wall per side, one unusual contract. */
+  const DOSSIER = {
+    isPreview: false,
+    previewReason: null,
+    data: {
+      asOf: "2026-01-02",
+      sentiment: 0.25,
+      latest: {
+        date: "2026-01-02",
+        pcVol: 0.5,
+        atmIv: 0.4,
+        expectedMove1d: 0.03,
+        skew25d: 0.02,
+        callVol: 1000,
+        putVol: 500,
+        notionalVol: 1000000,
+        callOi: 4000,
+        putOi: 2000,
+        contracts: 100,
+      },
+      context: { ivRank1y: 50 },
+      oiWalls: { expiry: "2026-01-16", maxPain: 100, callWalls: [{ strike: 110, oi: 900 }], putWalls: [{ strike: 90, oi: 700 }] },
+      unusual: [
+        { contract: "EXMP260116C00110000", type: "call", strike: 110, expiry: "2026-01-16", dte: 14, volume: 500, oi: 50, volOiRatio: 10, premium: 25000 },
+      ],
+    },
+  };
+
+  const route = (payload: unknown) => routeFetch([[/stocks\/EXMP\/options\/summary/, payload]]);
+
+  it("prints one legend line under the readings, before the unusual contracts", async () => {
+    const result = await run(["options", "EXMP", "--plain"], { env: KEYED, fetch: route(DOSSIER) });
+    expect(result.code).toBe(0);
+    expect(result.stdout.split(LEGEND)).toHaveLength(2);
+    const lines = result.stdout.split("\n");
+    const at = lines.indexOf(LEGEND);
+    expect(lines[at - 1]).toMatch(/^put walls:/);
+    expect(lines.slice(at + 1, at + 3)).toEqual(["", expect.stringMatching(/^CONTRACT /)]);
+    // The readings themselves print as they always did: bare numbers, no units added.
+    expect(result.stdout).toContain("positioning:  +0.25\n");
+    expect(result.stdout).toContain("iv rank 1y:   50.0\n");
+    expect(result.stdout).toContain("ATM IV:      0.4000\n");
+    expect(result.stdout).toContain("Exp move 1d: 0.0300\n");
+    expect(result.stdout).toContain("Skew 25d:    +0.0200\n");
+  });
+
+  it("sits under the --full readings too, and beside a headline preview", async () => {
+    const full = await run(["options", "EXMP", "--full", "--plain"], { env: KEYED, fetch: route(DOSSIER) });
+    expect(full.stdout).toMatch(/\nOI at max pain:[^\n]*\npositioning runs -1 to \+1;/);
+    expect(full.stdout.split(LEGEND)).toHaveLength(2);
+
+    const preview = await run(["options", "EXMP", "--plain"], {
+      env: KEYED,
+      fetch: route({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        data: { asOf: "2026-01-02", sentiment: 0.2, ivRank1y: 45, atmIv: 0.4, pcVol: 0.7, maxPain: 150 },
+      }),
+    });
+    expect(preview.stdout).toContain(`put walls:  n/a\n${LEGEND}\n`);
+  });
+
+  it("leaves --json untouched and prints no legend for a ticker with no coverage", async () => {
+    const asJson = await run(["options", "EXMP", "--json"], { env: KEYED, fetch: route(DOSSIER) });
+    expect(JSON.parse(asJson.stdout)).toEqual(DOSSIER);
+    expect(asJson.stdout).not.toContain("positioning runs");
+
+    const empty = await run(["options", "NVDA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [/stocks\/NVDA\/options\/summary/, { isPreview: false, previewReason: null, data: null }],
+        [/\/stocks\/NVDA\/quote/, QUOTE_NVDA],
+      ]),
+    });
+    expect(empty.stdout).not.toContain("positioning runs");
+  });
+});
+
 describe("options flags that do not go together", () => {
   const CASES: Array<[string[], string]> = [
     [["options", "NVDA", "--history", "--intraday"], "--history and --intraday do not go together."],
@@ -633,6 +715,29 @@ describe("options help", () => {
     expect(result.stdout).toContain("--limit <N>");
     expect(result.stdout).toContain("sentisense options --etfs --limit 25");
     expect(result.stdout).toContain("sentisense options NVDA --history --window 2y");
+  });
+
+  it("says --limit and --etfs do not trim --json", async () => {
+    const result = await run(["help", "options"], {});
+    expect(result.stdout).toContain(
+      "--limit and --etfs choose what the plain view prints; they do not trim --json, which prints\n" +
+        "the whole API response: for the Radar that is both boards and every served row, a large body.\n",
+    );
+  });
+
+  it("names a session that has stored intraday history in its examples", async () => {
+    const result = await run(["help", "options"], {});
+    expect(result.stdout).toContain("  sentisense options SPY --session 2026-10-15\n");
+    expect(result.stdout).not.toContain("2026-10-14");
+
+    const missingTicker = await run(["options", "--session", "2026-10-15"], { env: KEYED });
+    expect(missingTicker.code).toBe(2);
+    expect(missingTicker.stderr).toContain("sentisense options NVDA --session 2026-10-15");
+    expect(missingTicker.stderr).not.toContain("2026-10-14");
+
+    const badDate = await run(["options", "NVDA", "--session", "bad"], { env: KEYED });
+    expect(badDate.code).toBe(2);
+    expect(badDate.stderr).toContain("for example: --session 2026-10-15");
   });
 
   it("names the Radar in the command map", async () => {

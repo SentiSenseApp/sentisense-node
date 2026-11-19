@@ -250,3 +250,15 @@ describe("typed wire fields", () => {
     expect(row.sentiSenseScore1MThinSample).toBe(false);
   });
 });
+
+/** Fields the wire sends as `null` or leaves out when it has no value for them. */
+describe("nullable and omitted wire fields", () => {
+  it("a foreign filer's quote serves EPS in its reporting currency and leaves out only P/E", async () => {
+    // Synthetic: a home-currency EPS beside a dollar price, labelled by reportedCurrency.
+    respond({ ticker: "EXAD", currentPrice: 50, epsTTM: 2500, reportedCurrency: "KRW", timestamp: 1700000000000 });
+    const quote = await client.stocks.getQuote("EXAD");
+    expect(quote.epsTTM).toBe(2500);
+    expect(quote.reportedCurrency).toBe("KRW");
+    expect("peRatio" in quote).toBe(false);
+  });
+});

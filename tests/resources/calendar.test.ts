@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
-import SentiSense, { type CalendarListResponse, type CalendarListing } from "../../src/index.js";
+import SentiSense, {
+  type CalendarListResponse,
+  type CalendarListing,
+  type GetEarningsCalendarOptions,
+} from "../../src/index.js";
 
 /** The calendar discovery list. The fixture is a live response. */
 
@@ -52,5 +56,25 @@ describe("calendar.list", () => {
     for (const listing of LIST.calendars) {
       expect(Object.keys(listing).sort()).toEqual(Object.keys(LISTING_KEYS).sort());
     }
+  });
+});
+
+describe("calendar.getEarnings week", () => {
+  const EMPTY = {
+    isPreview: false,
+    previewReason: null,
+    data: { earnings: [], metadata: { generatedAt: null, windowStart: "2026-11-09", windowEnd: "2026-11-15", count: 0, source: "sentisense" } },
+  };
+
+  it("takes the three documented shorthands, last week included", () => {
+    expectTypeOf<GetEarningsCalendarOptions["week"]>().toEqualTypeOf<"this" | "next" | "last" | undefined>();
+  });
+
+  it("sends week=last as given", async () => {
+    respond(EMPTY);
+    await client.calendar.getEarnings({ week: "last" });
+    const url = new URL(String(mockFetch.mock.calls[0][0]));
+    expect(url.pathname).toBe("/api/v1/calendar/earnings");
+    expect(url.searchParams.get("week")).toBe("last");
   });
 });

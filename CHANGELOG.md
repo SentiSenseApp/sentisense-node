@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.83.0
+
+### Added
+
+- `HoldersResponse`, the return type of `institutional.getHolders()`: the preview envelope over
+  `TickerHolders` plus three envelope fields saying how the ticker you passed resolved.
+  `requestedTicker` is that ticker, trimmed and upper-cased; `resolution` is `exact`, `spelling`,
+  `share_class` or `rename`; `storedTicker` is the raw 13F key the quarter's filings are recorded
+  under, a lookup key rather than one for display or joins (read the security answered for at
+  `data.ticker`). `HoldersResponse` extends `PreviewResponse<TickerHolders>`, so code typed
+  against the old return type still compiles. The holders history route does not send these
+  fields, and its type is unchanged.
+- `week: "last"` on `calendar.getEarnings()` (`GetEarningsCalendarOptions`): the seven days before
+  the current week.
+- CLI: `sentisense earnings --week last`.
+
+### Fixed
+
+- `StockSentiment` and `StockQuote` descriptions say what the API sends. On a sentiment reading,
+  `sentisenseScore` and `latestDirection` are `null` until the day's first reading lands,
+  mid-morning US Eastern, and `mentions` is `null` when there is no daily bucket; never read
+  `null` as a Score of 0, and use the 30-day fields (`sentisenseScoreAvg30d`, `scoreLabel`,
+  `direction`) for a figure that is always present. On a stock quote, a field with no value is
+  left out of the body rather than sent as `null`, which is what a fund's stock quote shows for
+  market cap, P/E and EPS. Test these fields with `== null`, which covers both. Descriptions
+  only, no type changes.
+- `StockQuote.epsTTM` and `reportedCurrency` describe a foreign filer correctly: its EPS is served
+  in the currency `reportedCurrency` names, not necessarily US dollars, and only `peRatio` is left
+  out. `reportedCurrency` said both were omitted.
+- `institutional.getBondFlows()` and `getOptionFlows()` describe the list correctly: up to 50
+  rows, largest by value first, with no paging, so a quarter with fewer rows returns fewer and one
+  with more stops at 50. On a free preview `totalCount` is the length of that capped list, so it
+  never exceeds 50. They said a PRO key received the full list.
+- `entityMetrics.getSlices()` says what it returns today: only the entity's type marker,
+  `[{ dimension: "type", values: ["root"] }]`, for every entity and metric. To break a metric down
+  by source, pass `"source"` to `getDistribution()`. The README line changed with it.
+- CLI: `sentisense options` help says that `--limit` and `--etfs` choose what the plain view
+  prints and do not trim `--json`, which prints the whole API response: for the Radar, both boards
+  and every served row. A ticker's dossier prints one line naming the scales of its readings; the
+  readings print as before. The `--session` examples name a session with stored intraday history.
+- CLI: when `sentisense insights` prints only part of the list, the footer names both numbers:
+  "Showing 8 of 18 signals." The footer is unchanged when nothing is cut.
+
 ## 0.82.0
 
 ### Added

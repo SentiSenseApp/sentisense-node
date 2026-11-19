@@ -103,9 +103,13 @@ export const insightsCommand: CommandDef = {
           cell(truncate(insight.insightText, 60)),
         ]),
       });
+      // A cut names both numbers, so eight rows never read as the whole list.
       blocks.push({
         kind: "text",
-        text: "Add --full for the complete text of each signal.",
+        text:
+          shown.length < insights.length
+            ? `Showing ${shown.length} of ${insights.length} signals. Add --full for all of them and their complete text.`
+            : "Add --full for the complete text of each signal.",
         tone: "dim",
       });
     }

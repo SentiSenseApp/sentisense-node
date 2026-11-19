@@ -21,7 +21,7 @@ const TIME_LABEL: Record<string, string> = {
 export const earningsCommand: CommandDef = {
   name: "earnings",
   summary: "Upcoming report dates, or the quarter-by-quarter analysis for one ticker",
-  usage: "sentisense earnings [ticker] [--week this|next] [--limit N]",
+  usage: "sentisense earnings [ticker] [--week this|next|last] [--limit N]",
   examples: [
     "sentisense earnings",
     "sentisense earnings --week next",
@@ -41,7 +41,7 @@ export const earningsCommand: CommandDef = {
     EMPTY_VERIFY_NOTE_2,
   ],
   flags: {
-    week: { type: "string", placeholder: "this|next", describe: "Calendar window shorthand" },
+    week: { type: "string", placeholder: "this|next|last", describe: "Calendar window shorthand" },
     from: { type: "string", placeholder: "YYYY-MM-DD", describe: "Calendar lower bound" },
     to: { type: "string", placeholder: "YYYY-MM-DD", describe: "Calendar upper bound" },
     confirmed: { type: "boolean", describe: "Calendar: only company-confirmed dates" },
@@ -134,14 +134,14 @@ export const earningsCommand: CommandDef = {
     }
 
     const week = typeof args.flags.week === "string" ? args.flags.week : undefined;
-    if (week && week !== "this" && week !== "next") {
+    if (week && week !== "this" && week !== "next" && week !== "last") {
       throw new CliUsageError(
-        `--week takes "this" or "next", got "${week}".`,
+        `--week takes "this", "next" or "last", got "${week}".`,
         "for example: --week next",
       );
     }
     const options: GetEarningsCalendarOptions = {
-      ...(week ? { week: week as "this" | "next" } : {}),
+      ...(week ? { week: week as GetEarningsCalendarOptions["week"] } : {}),
       ...(typeof args.flags.from === "string" ? { from: args.flags.from } : {}),
       ...(typeof args.flags.to === "string" ? { to: args.flags.to } : {}),
       ...(args.flags.confirmed === true ? { confirmed: true } : {}),

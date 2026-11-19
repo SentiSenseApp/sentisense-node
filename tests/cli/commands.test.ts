@@ -476,6 +476,55 @@ describe("command wiring", () => {
     expect(result.stdout).toContain("2026-08-26");
   });
 
+  it("earnings --week last reads the week before this one", async () => {
+    const result = await run(["earnings", "--week", "last", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([
+        [
+          /calendar\/earnings/,
+          preview({
+            earnings: [
+              {
+                ticker: "NVDA",
+                companyName: "NVIDIA Corporation",
+                earningsDate: "2026-08-19",
+                earningsTime: "after_close",
+                fiscalQuarter: "Q2 2027",
+                confirmed: true,
+                estimatedEps: 1.24,
+              },
+            ],
+            metadata: {
+              generatedAt: 1787169600,
+              windowStart: "2026-08-17",
+              windowEnd: "2026-08-23",
+              count: 1,
+              source: "sentisense",
+            },
+          }),
+        ],
+      ]),
+    });
+    expect(result.code).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(url(result, "/api/v1/calendar/earnings")).toContain("week=last");
+    expect(result.stdout).toContain("2026-08-19");
+  });
+
+  it("earnings rejects a week shorthand the API does not take, naming all three", async () => {
+    const fetchMock = routeFetch([]);
+    const result = await run(["earnings", "--week", "previous"], { env: KEYED, fetch: fetchMock });
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain('--week takes "this", "next" or "last", got "previous".');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("earnings help names last week in the usage and the flag", async () => {
+    const result = await run(["help", "earnings"], {});
+    expect(result.stdout).toContain("Usage: sentisense earnings [ticker] [--week this|next|last] [--limit N]\n");
+    expect(result.stdout).toMatch(/--week <this\|next\|last>\s+Calendar window shorthand\n/);
+  });
+
   it("earnings with a ticker reads the per-quarter analysis", async () => {
     const result = await run(["earnings", "NVDA", "--limit", "2", "--plain"], {
       env: KEYED,
@@ -611,6 +660,40 @@ describe("command wiring", () => {
     expect(result.code).toBe(0);
     expect(url(result, "/insights/stock/NVDA")).toContain("urgency=high");
     expect(result.stdout).toContain("insider_buy_signal");
+  });
+
+  it("insights names both numbers when the plain view cuts the list", async () => {
+    const signals = Array.from({ length: 18 }, (_, i) => ({
+      insightType: "insider_buy_signal",
+      insightText: `Signal ${i + 1}.`,
+      confidence: 0.8,
+      urgency: "medium",
+      generatedAt: 1787000000,
+    }));
+    const cut = await run(["insights", "NVDA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/insights\/stock\/NVDA/, preview(signals)]]),
+    });
+    expect(cut.code).toBe(0);
+    expect(cut.stdout).toContain("Showing 8 of 18 signals. Add --full for all of them and their complete text.\n");
+    expect(cut.stdout).not.toContain("Add --full for the complete text of each signal.");
+    expect(cut.stdout).not.toContain("Signal 9.");
+
+    // Nothing cut: the footer stays as it was.
+    const whole = await run(["insights", "NVDA", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/insights\/stock\/NVDA/, preview(signals.slice(0, 8))]]),
+    });
+    expect(whole.stdout).toContain("Add --full for the complete text of each signal.\n");
+    expect(whole.stdout).not.toContain("Showing");
+
+    // --full prints every signal and needs no footer.
+    const full = await run(["insights", "NVDA", "--full", "--plain"], {
+      env: KEYED,
+      fetch: routeFetch([[/insights\/stock\/NVDA/, preview(signals)]]),
+    });
+    expect(full.stdout).toContain("Signal 18.");
+    expect(full.stdout).not.toContain("Showing");
   });
 
   it("insights rejects an urgency the API does not accept", async () => {

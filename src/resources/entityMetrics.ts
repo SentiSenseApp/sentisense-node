@@ -82,11 +82,14 @@ export class EntityMetrics {
   }
 
   /**
-   * List the dimensions a metric can be broken down by for one entity, with the values present
-   * in the data, so you can see what exists before calling `getDistribution()`.
+   * List the slices the API reports for one entity's metric.
    *
-   * Returns a plain array, empty when the metric has no slices for this entity. Available on
-   * every tier; each call counts against the monthly quota.
+   * Today it returns only the entity's own type marker, `[{ dimension: "type", values: ["root"] }]`,
+   * for every entity and metric. It does not list `"source"` or `"publisher"`, which
+   * `getDistribution()` accepts, so it cannot tell you what a metric breaks down by. To break a
+   * metric down by source, pass `"source"` to `getDistribution()` directly.
+   *
+   * Returns a plain array. Available on every tier; each call counts against the monthly quota.
    *
    * @param symbol     Ticker symbol (e.g. "AAPL") or entity urlSlug (e.g. "Nancy-Pelosi").
    * @param metricType The metric to look up (e.g. "mentions").

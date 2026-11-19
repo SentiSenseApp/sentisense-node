@@ -1,5 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import SentiSense from "../../src/index.js";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import SentiSense, {
+  type HoldersResponse,
+  type PreviewResponse,
+  type TickerHolders,
+} from "../../src/index.js";
 
 const mockFetch = vi.fn();
 
@@ -369,6 +373,66 @@ describe("institutional.getHolders", () => {
     expect(result.data.returnedCount).toBeUndefined();
     expect(result.data.offset).toBeUndefined();
     expect(result.data.notableChanges).toBeUndefined();
+  });
+});
+
+describe("institutional.getHolders resolution fields", () => {
+  /**
+   * GOOG is a separately listed class of Alphabet, so it is answered with its own (Class C)
+   * roster. The envelope says how the ticker resolved, beside `data`; `resolvedTicker` is on
+   * the wire too, carrying what `data.ticker` already says, and is deliberately not typed.
+   */
+  const SHARE_CLASS = {
+    isPreview: false,
+    previewReason: null,
+    requestedTicker: "GOOG",
+    resolvedTicker: "GOOG",
+    resolution: "share_class",
+    storedTicker: "GOOG",
+    data: { ticker: "GOOG", companyName: "ALPHABET INC", reportDate: "2026-06-30", holderCount: 1, holders: [] },
+  };
+
+  it("types requestedTicker, resolution and storedTicker on the envelope", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse(SHARE_CLASS));
+    const result = await client.institutional.getHolders("goog", "2026-06-30");
+    expectTypeOf(result).toEqualTypeOf<HoldersResponse>();
+    expectTypeOf(result.requestedTicker).toEqualTypeOf<string | undefined>();
+    expectTypeOf(result.storedTicker).toEqualTypeOf<string | undefined>();
+    expect(result.requestedTicker).toBe("GOOG");
+    expect(result.resolution).toBe("share_class");
+    expect(result.storedTicker).toBe("GOOG");
+    expect(result.data.ticker).toBe("GOOG");
+  });
+
+  it("names the four documented resolutions and keeps a default branch for new ones", () => {
+    expectTypeOf<"exact">().toMatchTypeOf<NonNullable<HoldersResponse["resolution"]>>();
+    expectTypeOf<"spelling">().toMatchTypeOf<NonNullable<HoldersResponse["resolution"]>>();
+    expectTypeOf<"share_class">().toMatchTypeOf<NonNullable<HoldersResponse["resolution"]>>();
+    expectTypeOf<"rename">().toMatchTypeOf<NonNullable<HoldersResponse["resolution"]>>();
+    expectTypeOf<"a_later_value">().toMatchTypeOf<NonNullable<HoldersResponse["resolution"]>>();
+  });
+
+  it("does not type resolvedTicker, which repeats data.ticker", async () => {
+    // One value, one name: the security answered for is typed once, at data.ticker.
+    expectTypeOf<HoldersResponse>().not.toHaveProperty("resolvedTicker");
+    // It still passes through at runtime for a caller who reads it untyped.
+    mockFetch.mockResolvedValueOnce(jsonResponse(SHARE_CLASS));
+    const result = await client.institutional.getHolders("GOOG");
+    expect((result as unknown as Record<string, unknown>).resolvedTicker).toBe("GOOG");
+  });
+
+  it("is still the preview envelope over TickerHolders, so existing callers compile", () => {
+    expectTypeOf<HoldersResponse>().toMatchTypeOf<PreviewResponse<TickerHolders>>();
+    const asBefore: PreviewResponse<TickerHolders> = {} as HoldersResponse;
+    expect(asBefore).toBeDefined();
+  });
+
+  it("leaves the fields undefined on a response that does not carry them", async () => {
+    mockFetch.mockResolvedValueOnce(envelope({ ticker: "AAPL", holderCount: 0, holders: [] }));
+    const result = await client.institutional.getHolders("AAPL");
+    expect(result.requestedTicker).toBeUndefined();
+    expect(result.resolution).toBeUndefined();
+    expect(result.storedTicker).toBeUndefined();
   });
 });
 

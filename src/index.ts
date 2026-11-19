@@ -240,6 +240,7 @@ export type {
   EarlyFilers,
   NotableHolder,
   TickerHolders,
+  HoldersResponse,
   GetHoldersOptions,
   GetHoldersHistoryOptions,
   HoldersHistory,

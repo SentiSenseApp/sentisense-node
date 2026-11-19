@@ -73,30 +73,50 @@ export interface ExtendedHoursInfo {
   changePercent: number;
 }
 
-/** Aggregate quote snapshot from GET /api/v1/stocks/{ticker}/quote. */
+/**
+ * Aggregate quote snapshot from GET /api/v1/stocks/{ticker}/quote.
+ *
+ * The API leaves a field with no value out of the body rather than sending `null`, so test a
+ * field below with `== null`, which covers both a missing key and `null`.
+ */
 export interface StockQuote {
   ticker: string;
   /** Regular-session price, delayed 15 minutes. During RTH: the most recent regular-session value. Otherwise: most recent RTH close. */
   currentPrice: number | null;
   change: number | null;
   changePercent: number | null;
+  /** Session volume. The API leaves it out when it has no volume for the symbol. */
   volume: number | null;
   open: number | null;
   dayHigh: number | null;
   dayLow: number | null;
   previousClose: number | null;
+  /** 52-week high. The API leaves it out when unavailable. */
   week52High: number | null;
+  /** 52-week low. The API leaves it out when unavailable. */
   week52Low: number | null;
+  /** Market capitalization in US dollars. The API leaves it out when unknown, as on a fund's stock quote. */
   marketCap: number | null;
+  /**
+   * Trailing P/E. The API leaves it out when it is not computed: when trailing EPS is not
+   * positive, or for a foreign filer whose EPS is in a different currency from the price (see
+   * `reportedCurrency`). It is left out whenever it has no value, as on a fund's stock quote.
+   */
   peRatio: number | null;
+  /**
+   * Trailing-twelve-month EPS, in the currency `reportedCurrency` names, which is not
+   * necessarily US dollars: a foreign filer's EPS is served in its home currency, so do not
+   * compare it with the dollar price without converting. The API leaves it out when unavailable,
+   * as on a fund's stock quote.
+   */
   epsTTM: number | null;
   /**
    * Trailing dividend yield as a fraction, not as percentage points: 0.031 is a 3.1% yield.
    * This differs from {@link StockQuote.changePercent}, which is already in percentage points.
-   * Null for a stock that pays no dividend.
+   * The API leaves it out for a stock that pays no dividend.
    */
   dividendYield: number | null;
-  /** 200-day simple moving average of daily closes. Null when fewer than 200 trading days of history exist. */
+  /** 200-day simple moving average of daily closes. The API leaves it out when fewer than 200 trading days of history exist. */
   movingAverage200Day: number | null;
   /**
    * Currency the issuer reports its financials in ("USD", "TWD", "JPY", ...). Absent when
@@ -105,8 +125,9 @@ export interface StockQuote {
    *
    * Price fields on this response are always in the listing currency of the quoted symbol,
    * so on an ADR filing in a home currency the price and the per-share statement figures are
-   * in different units. The valuation ratios derived from both (`peRatio`, `epsTTM`) are
-   * omitted rather than computed in that case, so treat them as possibly absent, not zero.
+   * in different units. In that case `peRatio`, which would divide one by the other, is omitted
+   * rather than computed, so treat it as possibly absent, not zero. `epsTTM` is still served, in
+   * the currency named here.
    */
   reportedCurrency?: string;
   /**
@@ -409,7 +430,15 @@ export interface StockSentiment {
   companyName?: string;
   /** ISO date (YYYY-MM-DD) the data is current as of. */
   asOf?: string;
-  /** Latest SentiSense Score: a 0-centered composite of sentiment and mentions, unbounded. */
+  /**
+   * Today's SentiSense Score: a 0-centered composite of sentiment and mentions, unbounded.
+   *
+   * The API sends `null` until the day's first reading lands (mid-morning US Eastern, later at
+   * weekends), so guard for `null` as well as `undefined`. A `null` means "no reading yet", never
+   * a Score of zero, since a measured 0 is served as `0`. Do not coerce it to 0. For a figure
+   * that is always present, read the 30-day fields (`sentisenseScoreAvg30d`, `scoreLabel`,
+   * `direction`).
+   */
   sentisenseScore?: number;
   /** 30-day average Score, the stable regime figure. */
   sentisenseScoreAvg30d?: number;
@@ -429,13 +458,21 @@ export interface StockSentiment {
   scoreLabel?: string;
   /** "Bullish" | "Neutral" | "Bearish", from the 30-day average. */
   direction?: string;
-  /** Same three bands, from today's read. */
+  /**
+   * Same three bands, from today's read. The API sends `null` whenever it sends `null` for
+   * `sentisenseScore`, so guard for `null` as well as `undefined`; `direction`, from the 30-day
+   * average, is the fallback.
+   */
   latestDirection?: string;
   /** "UP" | "DOWN" | "FLAT". */
   trend?: string;
   /** Daily Score series. */
   scoreSparkline?: number[];
-  /** Today's mention volume. */
+  /**
+   * Mention volume of the latest New York daily bucket with data: today's once it lands,
+   * otherwise an earlier day, which `narrative` and `faq` name. The API sends `null` when there
+   * is none, so guard for `null` as well as `undefined`.
+   */
   mentions?: number;
   /** 30-day average mentions per day. */
   mentionsAvg30d?: number;
@@ -2189,6 +2226,27 @@ export interface TickerHolders {
 }
 
 /**
+ * The response of `institutional.getHolders()`: the usual {@link PreviewResponse} envelope over
+ * a {@link TickerHolders} payload, plus envelope fields saying how the ticker you passed was
+ * resolved. Read the security answered for, for display and joins, at `data.ticker`.
+ */
+export interface HoldersResponse extends PreviewResponse<TickerHolders> {
+  /** The ticker as you passed it, trimmed and upper-cased. */
+  requestedTicker?: string;
+  /**
+   * How the ticker you passed resolved: `"exact"`; `"spelling"`, a separator variant (`BRKB`
+   * for `BRK.B`); `"share_class"`, a separately listed class answered with its own roster
+   * (`GOOG`, `BRK.A`); or `"rename"`, a former ticker answered as the company's current one.
+   */
+  resolution?: "exact" | "spelling" | "share_class" | "rename" | (string & {});
+  /**
+   * The raw 13F key: the symbol the quarter's filings are recorded under, such as `BRKB`, or a
+   * renamed company's old ticker. It is a lookup key, not for display or joins.
+   */
+  storedTicker?: string;
+}
+
+/**
  * The flows payload inside the response envelope: `institutional.getFlows()` returns
  * `PreviewResponse<InstitutionalFlows>`, so read the flows as `result.data.inflows`.
  */
@@ -3005,8 +3063,11 @@ export interface EarningsCalendarResponse {
 export interface GetEarningsCalendarOptions {
   /** Filter to a single ticker. */
   ticker?: string;
-  /** Shorthand window: "this" (current Mon-Sun) or "next". */
-  week?: "this" | "next";
+  /**
+   * Shorthand window, by the US Eastern date: "this" (the current Monday-to-Sunday week),
+   * "next" (the seven days after it) or "last" (the seven days before it).
+   */
+  week?: "this" | "next" | "last";
   /** Inclusive lower date bound, ISO "YYYY-MM-DD". Overrides `week`. */
   from?: string;
   /** Inclusive upper date bound, ISO "YYYY-MM-DD". */
