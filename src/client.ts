@@ -357,7 +357,16 @@ export class SentiSense implements APIClient {
   }
 
   private buildUrl(path: string, params?: object): string {
+    // Every endpoint lives under /api/. Anything else (a page path, another host, a value that
+    // is not a string, or `..` segments that resolve out of /api/) is refused here, before a
+    // request or the API key leaves the process.
+    const refuse = () =>
+      new SentiSenseError(
+        `Refusing to request ${JSON.stringify(String(path)).slice(0, 80)}: API paths start with /api/`,
+      );
+    if (typeof path !== "string" || !path.startsWith("/api/")) throw refuse();
     const url = new URL(path, this.baseUrl);
+    if (!url.pathname.startsWith("/api/")) throw refuse();
     if (params) {
       for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
         if (value !== undefined && value !== null) {

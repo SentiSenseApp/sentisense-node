@@ -270,7 +270,7 @@ describe("503 Service Unavailable", () => {
         .mockResolvedValueOnce(unavailable("7"))
         .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
 
-      const pending = c.get("/x");
+      const pending = c.get("/api/v1/x");
       await vi.advanceTimersByTimeAsync(7000);
       await expect(pending).resolves.toMatchObject({ ok: true });
       expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -285,7 +285,7 @@ describe("503 Service Unavailable", () => {
 
     // Unclamped on purpose: the point of the error is to let a batch job keep what it
     // already fetched and resume later, which needs the real number.
-    await expect(c.get("/x")).rejects.toMatchObject({
+    await expect(c.get("/api/v1/x")).rejects.toMatchObject({
       name: "TemporarilyUnavailableError",
       retryAfter: 600,
       status: 503,
