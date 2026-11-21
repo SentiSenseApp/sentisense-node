@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.85.0
+
+### Added
+
+- `AnalystEstimate` declares every field the docs list for a forward estimate row. New:
+  `fiscalQuarter` (such as `"Q3 2026"`, the same label as the earnings calendar's) and
+  `calendarPeriod` (the month the quarter ends, such as `"Jan 2027"`), both set on quarter rows
+  and `null` on year rows; `fiscalPeriodEnd` (`"YYYY-MM-DD"`); and the revenue estimate,
+  `revenueLow`, `revenueMean`, `revenueHigh` and `numberOfAnalystsRevenue` (US dollars, `null`
+  when the row has no revenue estimate). The API already sent them; they are now typed.
+
+### Changed
+
+- The client sends a request only to a path under `/api/`. The `get` and `post` methods, marked
+  internal but reachable, now throw `SentiSenseError` without sending anything when given any
+  other path: a page path, a full URL or another host, a value that is not a string, or a path
+  whose `..` segments resolve outside `/api/`. Before, they sent the request, with your API key,
+  wherever the value pointed. Every method of this package calls an `/api/` path, so no method
+  changes; only code that called `get` or `post` directly with such a path sees the error.
+
 ## 0.84.0
 
 ### Changed

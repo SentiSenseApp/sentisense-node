@@ -158,6 +158,25 @@ export interface AnalystEstimate {
    */
   periodLabel: string | null;
   periodType: AnalystEstimatePeriodType | null;
+  /**
+   * Last day of the fiscal period the row estimates, ISO `"YYYY-MM-DD"`, in the company's
+   * own fiscal calendar. `null` when not known. Absent on older responses.
+   */
+  fiscalPeriodEnd?: string | null;
+  /**
+   * Fiscal quarter the row estimates, in the company's own fiscal calendar, such as
+   * `"Q3 2026"`: the same label as `fiscalQuarter` on the earnings calendar. Quarter rows
+   * only: `null` on the year rows, and `null` when the quarter is not established. Absent
+   * on older responses.
+   */
+  fiscalQuarter?: string | null;
+  /**
+   * Month and year in which the estimated quarter ends, such as `"Jan 2027"`, read from the
+   * row's fiscal period end. A quarter that closes in the first days of a month (a 52/53-week
+   * year) names that month. Quarter rows only: `null` on the year rows, and `null` when not
+   * established. Absent on older responses.
+   */
+  calendarPeriod?: string | null;
   /** Lowest analyst EPS estimate for the period. */
   estimateLow: number | null;
   /** Mean analyst EPS estimate for the period. */
@@ -166,6 +185,21 @@ export interface AnalystEstimate {
   estimateHigh: number | null;
   /** Analysts contributing to the estimate. */
   numberOfAnalysts: number | null;
+  /**
+   * Lowest analyst revenue estimate for the period, in US dollars (absolute, not millions).
+   * `null` when the row carries no revenue estimate, which includes every company that does
+   * not report in US dollars. Absent on older responses.
+   */
+  revenueLow?: number | null;
+  /** Mean analyst revenue estimate, in US dollars. Same `null` rule as `revenueLow`. */
+  revenueMean?: number | null;
+  /** Highest analyst revenue estimate, in US dollars. Same `null` rule as `revenueLow`. */
+  revenueHigh?: number | null;
+  /**
+   * Analysts contributing a revenue estimate, counted separately from `numberOfAnalysts`.
+   * Same `null` rule as `revenueLow`.
+   */
+  numberOfAnalystsRevenue?: number | null;
   [key: string]: unknown;
 }
 

@@ -1,0 +1,37 @@
+{
+  "about": "Field names the public API docs list for each response table, copied from the docs pages named below. A test in this repository fails when a listed field has no declared type, or when a declared field is not listed. When the docs gain a field, copy the new list here and declare the field.",
+  "copied": "2026-11-20",
+  "endpoints": [
+    {
+      "endpoint": "GET /api/v1/analyst/{ticker}/estimates",
+      "page": "https://sentisense.ai/docs/api/analyst-ratings/",
+      "tables": {
+        "data": ["ticker", "estimates", "surprises"],
+        "estimates[]": [
+          "periodLabel",
+          "periodType",
+          "fiscalPeriodEnd",
+          "fiscalQuarter",
+          "calendarPeriod",
+          "estimateLow",
+          "estimateMean",
+          "estimateHigh",
+          "numberOfAnalysts",
+          "revenueLow",
+          "revenueMean",
+          "revenueHigh",
+          "numberOfAnalystsRevenue"
+        ],
+        "surprises[]": [
+          "periodLabel",
+          "reportDate",
+          "estimateEps",
+          "actualEps",
+          "surprisePercent",
+          "surprisePct",
+          "surpriseFlag"
+        ]
+      }
+    }
+  ]
+}

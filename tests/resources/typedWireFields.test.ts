@@ -332,6 +332,42 @@ describe("nullable and omitted wire fields", () => {
     expect(quote.marketCap ?? null).toBeNull();
   });
 
+  it("estimate quarter rows carry fiscalQuarter and calendarPeriod; year rows carry null", async () => {
+    respond({
+      isPreview: false,
+      previewReason: null,
+      data: {
+        ticker: "EXMP",
+        estimates: [
+          { periodLabel: "2026-04-22", periodType: "CURRENT_QUARTER", estimateLow: 0.4, estimateMean: 0.5,
+            estimateHigh: 0.6, numberOfAnalysts: 20, revenueLow: 20000000000, revenueMean: 22500000000,
+            revenueHigh: 25000000000, numberOfAnalystsRevenue: 20, fiscalPeriodEnd: "2026-03-31",
+            fiscalQuarter: "Q1 2026", calendarPeriod: "Mar 2026" },
+          { periodLabel: "0y", periodType: "CURRENT_YEAR", estimateLow: 2.0, estimateMean: 2.2,
+            estimateHigh: 2.4, numberOfAnalysts: 25, fiscalPeriodEnd: "2026-12-31",
+            fiscalQuarter: null, calendarPeriod: null },
+        ],
+        surprises: [],
+      },
+    });
+    const result = await client.analyst.estimates("EXMP");
+    const [quarter, year] = result.data.estimates;
+    expectTypeOf(quarter.fiscalQuarter).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(quarter.calendarPeriod).toEqualTypeOf<string | null | undefined>();
+    expect(quarter.fiscalQuarter).toBe("Q1 2026");
+    expect(quarter.calendarPeriod).toBe("Mar 2026");
+    expect(year.fiscalQuarter).toBeNull();
+    expect(year.calendarPeriod).toBeNull();
+    expectTypeOf(quarter.fiscalPeriodEnd).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(quarter.revenueLow).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quarter.revenueMean).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quarter.revenueHigh).toEqualTypeOf<number | null | undefined>();
+    expectTypeOf(quarter.numberOfAnalystsRevenue).toEqualTypeOf<number | null | undefined>();
+    expect(quarter.fiscalPeriodEnd).toBe("2026-03-31");
+    expect(quarter.revenueMean).toBe(22500000000);
+    expect(quarter.numberOfAnalystsRevenue).toBe(20);
+  });
+
   it("a foreign filer's quote serves EPS in its reporting currency and leaves out only P/E", async () => {
     // Synthetic: a home-currency EPS beside a dollar price, labelled by reportedCurrency.
     respond({ ticker: "EXAD", currentPrice: 50, epsTTM: 2500, reportedCurrency: "KRW", timestamp: 1700000000000 });
