@@ -24,7 +24,7 @@ export class Calendar {
    * Upcoming company earnings, sorted by date.
    *
    * Key-required. A FREE key returns the current week (`isPreview: true`); a PRO
-   * key returns the full forward window (about 30 days). Field richness is
+   * key returns the full forward window (about 60 days). Field richness is
    * identical across tiers: the gate is how far ahead you can see, not which
    * columns you get. On a preview, `totalCount` is the full-window event count.
    */

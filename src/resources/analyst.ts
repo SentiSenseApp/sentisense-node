@@ -23,6 +23,8 @@ export interface AnalystConsensus {
   /** PRO-only; zero in the free preview. */
   strongSell: number;
   updatedAt: string | null;
+  /** As-of instant of the row in epoch seconds. Returned on every tier, free preview included. */
+  updatedAtEpoch: number | null;
 }
 
 /** One daily observation of the analyst consensus, as observed on `snapshotDate`. */

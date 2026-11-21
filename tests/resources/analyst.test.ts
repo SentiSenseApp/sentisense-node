@@ -33,6 +33,73 @@ describe("analyst.consensus", () => {
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/v1/analyst/AAPL/consensus");
   });
+
+  // Shape of a live PRO response; the free preview zeroes the counts and nulls
+  // targetMedian and recommendationMean but keeps both as-of stamps.
+  const consensusWire = {
+    ticker: "AAPL",
+    companyName: "Apple Inc.",
+    currentPrice: 271.49,
+    targetLow: 220,
+    targetMean: 297.53,
+    targetHigh: 350,
+    targetMedian: 300,
+    numberOfAnalysts: 41,
+    upsidePercent: 9.59,
+    consensusLabel: "BUY",
+    recommendationMean: 1.98,
+    strongBuy: 6,
+    buy: 24,
+    hold: 15,
+    sell: 1,
+    strongSell: 1,
+    updatedAt: "2026-11-21T00:26:20Z",
+    updatedAtEpoch: 1795220780,
+  };
+
+  it("reads the as-of stamp in epoch seconds", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ isPreview: false, previewReason: null, data: consensusWire }),
+    );
+    const res = await client.analyst.consensus("AAPL");
+    const epoch: number | null = res.data.updatedAtEpoch;
+    expect(epoch).toBe(1795220780);
+    expect(new Date((epoch as number) * 1000).toISOString()).toBe("2026-11-21T00:26:20.000Z");
+  });
+
+  it("keeps the epoch as-of stamp on a free preview", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: true,
+        previewReason: "PRO_REQUIRED",
+        data: {
+          ...consensusWire,
+          targetMedian: null,
+          recommendationMean: null,
+          strongBuy: 0,
+          buy: 0,
+          hold: 0,
+          sell: 0,
+          strongSell: 0,
+        },
+      }),
+    );
+    const res = await client.analyst.consensus("AAPL");
+    expect(res.isPreview).toBe(true);
+    expect(res.data.updatedAtEpoch).toBe(1795220780);
+  });
+
+  it("passes a null as-of stamp through as null", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        isPreview: false,
+        previewReason: null,
+        data: { ...consensusWire, updatedAt: null, updatedAtEpoch: null },
+      }),
+    );
+    const res = await client.analyst.consensus("AAPL");
+    expect(res.data.updatedAtEpoch).toBeNull();
+  });
 });
 
 describe("analyst.consensusHistory", () => {

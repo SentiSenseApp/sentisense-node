@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.85.1
+
+### Fixed
+
+- `AnalystConsensus` now types `updatedAtEpoch`, the row's as-of instant in epoch seconds
+  (`number | null`, served on every tier including the free preview). The API already sent it.
+- `calendar.getEarnings()` and the `sentisense earnings` preview note now say a PRO key sees about
+  60 days ahead, matching the API. They said about 30 days.
+
 ## 0.85.0
 
 ### Added

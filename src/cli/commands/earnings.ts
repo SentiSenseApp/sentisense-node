@@ -194,7 +194,7 @@ export const earningsCommand: CommandDef = {
     if (envelope.isPreview) {
       blocks.push({
         kind: "text",
-        text: "Preview response: a free key sees the current week, a PRO key sees about 30 days ahead.",
+        text: "Preview response: a free key sees the current week, a PRO key sees about 60 days ahead.",
         tone: "dim",
       });
     }
