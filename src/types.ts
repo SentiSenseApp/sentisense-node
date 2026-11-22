@@ -2799,6 +2799,25 @@ export interface GetInsiderOptions {
   lookbackDays?: number;
 }
 
+/**
+ * Options for `insider.getTrades`, which can cap its rows on top of the shared lookback window.
+ *
+ * Rows come newest first. Omitting `limit` returns every row in the window, exactly as before.
+ */
+export interface GetInsiderTradesOptions extends GetInsiderOptions {
+  /**
+   * Rows to return, newest first, from the same `lookbackDays` window. With it, `totalCount`
+   * on the envelope is the number of rows in the whole window, on every tier including PRO.
+   * Must be >= 1; the server rejects 0 or negative with HTTP 400 (`invalid_limit`) and caps
+   * anything above 1000 at 1000. A free preview still shows at most 5 rows. Omit for every
+   * row in the window.
+   *
+   * Needs the server release of the week of 2026-11-23; an older server ignores it and
+   * returns every row.
+   */
+  limit?: number;
+}
+
 // ── Politicians Trading ─────────────────────────────────────
 
 /**

@@ -111,6 +111,7 @@ export type {
   InsiderTrade,
   ClusterBuy,
   GetInsiderOptions,
+  GetInsiderTradesOptions,
   AssetMetadata,
   CongressTrade,
   PoliticianSummary,

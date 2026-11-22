@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.86.0
+
+### Added
+
+- `insider.getTrades()` takes an optional `limit` in a new `GetInsiderTradesOptions` type
+  (which extends `GetInsiderOptions`, so `getActivity` and `getClusterBuys` are unchanged): the
+  newest `limit` rows of the same window, with `totalCount` on the envelope holding the number
+  of rows in the whole window on every tier. The server caps it at 1000 and rejects a value
+  below 1. Omitting it returns every row, as before, and sends exactly the request earlier
+  versions sent. It needs the server release of the week of 2026-11-23; an older server
+  ignores it and returns every row.
+
 ## 0.85.1
 
 ### Fixed

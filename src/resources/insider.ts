@@ -4,6 +4,7 @@ import type {
   InsiderTrade,
   ClusterBuy,
   GetInsiderOptions,
+  GetInsiderTradesOptions,
   PreviewResponse,
 } from "../types.js";
 
@@ -21,11 +22,19 @@ export class Insider {
   }
 
   /**
-   * Get individual insider transactions for a specific stock.
+   * Get individual insider transactions for a specific stock, newest first.
    *
    * PRO-gated. Free users receive a preview of the top 5 transactions.
+   *
+   * Pass `limit` for only the newest rows of the window: `totalCount` on the envelope then
+   * holds the number of rows in the whole window, on every tier. The server caps `limit` at
+   * 1000. Omit it for every row in the window.
+   *
+   * @example
+   * const latest = await client.insider.getTrades("NVDA", { limit: 10 });
+   * console.log(latest.data.length, "of", latest.totalCount);
    */
-  async getTrades(ticker: string, options?: GetInsiderOptions): Promise<PreviewResponse<InsiderTrade[]>> {
+  async getTrades(ticker: string, options?: GetInsiderTradesOptions): Promise<PreviewResponse<InsiderTrade[]>> {
     return this.client.get(
       `/api/v1/insider/trades/${encodeURIComponent(ticker.toUpperCase())}`,
       options,
