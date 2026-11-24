@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   TrackerFilter,
   TrackerGetParams,
@@ -42,7 +43,7 @@ export class Trackers {
    *   `filters`. A bad `filter` throws `APIError` with `code: "invalid_filter"`.
    */
   async get(trackerId: string, params?: TrackerGetParams): Promise<TrackerSnapshotResponse> {
-    return this.client.get(`/api/v1/trackers/${trackerId}`, serializeTrackerParams(params));
+    return this.client.get(`/api/v1/trackers/${pathSegment("trackers.get", "trackerId", trackerId)}`, serializeTrackerParams(params));
   }
 }
 

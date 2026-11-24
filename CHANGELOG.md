@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `indexes.get()`, `indexes.history()` and `trackers.get()` now percent-encode the id, like every
+  other method, so an id holding `/`, `?` or `#` stays inside its own path segment and the request
+  stays on the method's route.
+- Every method that puts an argument into the request path now refuses an empty or
+  whitespace-only value, `"."` and `".."` with a `SentiSenseError` naming the method and the
+  argument, before any request is sent. Only `entityMetrics.getSlices()` did this before; the
+  others sent the request, and URL normalization could move it to a different route. Ordinary
+  values send exactly the request earlier versions sent. The error's `code` is
+  `"invalid_argument"` and its `status` is undefined, and the CLI exits 2 (bad usage) on it, not
+  6 (network failure).
+
 ## 0.86.0
 
 ### Added

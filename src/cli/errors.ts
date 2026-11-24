@@ -4,6 +4,7 @@ import {
   RateLimitError,
   SentiSenseError,
 } from "../errors.js";
+import { INVALID_ARGUMENT } from "../pathSegment.js";
 
 /**
  * Exit codes.
@@ -248,6 +249,15 @@ function classify(error: unknown, command?: string): ErrorReport {
         `error: rate limited: ${error.message}`,
         `next: wait ${wait} seconds and run it again. The CLI does not retry for you.`,
       ],
+    };
+  }
+
+  if (error instanceof SentiSenseError && error.code === INVALID_ARGUMENT && error.status === undefined) {
+    // A path argument the SDK refused before sending anything ("", ".", ".."): a usage error,
+    // never a network one, so a script that retries network failures does not retry a typo.
+    return {
+      exitCode: EXIT.USAGE,
+      lines: [`error: ${error.message}`, "next: check the value you passed; it cannot be empty, \".\" or \"..\"."],
     };
   }
 

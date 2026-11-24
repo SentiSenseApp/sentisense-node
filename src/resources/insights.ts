@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   Insight,
   GetInsightsOptions,
@@ -37,7 +38,7 @@ export class Insights {
     options?: GetInsightsOptions,
   ): Promise<PreviewResponse<Insight[]>> {
     return this.client.get(
-      `/api/v1/insights/stock/${encodeURIComponent(ticker.toUpperCase())}`,
+      `/api/v1/insights/stock/${pathSegment("insights.stock", "ticker", ticker.toUpperCase())}`,
       options,
     );
   }
@@ -54,7 +55,7 @@ export class Insights {
     options: GetStockInsightsRangeOptions,
   ): Promise<PreviewResponse<Insight[]>> {
     return this.client.get(
-      `/api/v1/insights/stock/${encodeURIComponent(ticker.toUpperCase())}/range`,
+      `/api/v1/insights/stock/${pathSegment("insights.stockRange", "ticker", ticker.toUpperCase())}/range`,
       options,
     );
   }
@@ -103,7 +104,7 @@ export class Insights {
    */
   async types(ticker: string): Promise<string[]> {
     return this.client.get(
-      `/api/v1/insights/stock/${encodeURIComponent(ticker.toUpperCase())}/types`,
+      `/api/v1/insights/stock/${pathSegment("insights.types", "ticker", ticker.toUpperCase())}/types`,
     );
   }
 }

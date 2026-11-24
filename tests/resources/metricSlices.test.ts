@@ -82,7 +82,7 @@ describe("entityMetrics.getSlices", () => {
       await expect(call).rejects.toThrow(
         `entityMetrics.getSlices: symbol must not be empty, "." or ".." (got ${JSON.stringify(bad)})`,
       );
-      await expect(call).rejects.toMatchObject({ status: undefined, code: undefined });
+      await expect(call).rejects.toMatchObject({ status: undefined, code: "invalid_argument" });
       expect(mockFetch).not.toHaveBeenCalled();
     },
   );

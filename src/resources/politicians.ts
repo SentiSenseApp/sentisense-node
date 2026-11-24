@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   CongressTrade,
   PoliticianSummary,
@@ -50,7 +51,7 @@ export class Politicians {
     options?: GetPoliticiansOptions,
   ): Promise<PreviewResponse<CongressTrade[]>> {
     return this.client.get(
-      `/api/v1/politicians/filings/${encodeURIComponent(ticker.toUpperCase())}`,
+      `/api/v1/politicians/filings/${pathSegment("politicians.getFilings", "ticker", ticker.toUpperCase())}`,
       options,
     );
   }
@@ -115,7 +116,7 @@ export class Politicians {
     options?: GetPoliticianMemberOptions,
   ): Promise<PreviewResponse<PoliticianDetail>> {
     return this.client.get(
-      `/api/v1/politicians/member/${encodeURIComponent(slug)}`,
+      `/api/v1/politicians/member/${pathSegment("politicians.getMember", "slug", slug)}`,
       options,
     );
   }

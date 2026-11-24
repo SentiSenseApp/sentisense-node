@@ -74,10 +74,19 @@ describe("request paths", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("a method's unencoded id cannot climb out of /api/", async () => {
+  it("a method's id cannot climb out of its route", async () => {
     mockFetch.mockImplementation(async () => okResponse());
-    await expect(client.trackers.get("../../../connect")).rejects.toBeInstanceOf(SentiSenseError);
-    await expect(client.indexes.get("../../../connect")).rejects.toBeInstanceOf(SentiSenseError);
+    // The id is encoded into one segment, so the request stays on the method's own route.
+    await client.trackers.get("../../../connect");
+    await client.indexes.get("../../../connect");
+    expect(mockFetch.mock.calls.map((c) => new URL(String(c[0])).pathname)).toEqual([
+      "/api/v1/trackers/..%2F..%2F..%2Fconnect",
+      "/api/v1/indexes/..%2F..%2F..%2Fconnect",
+    ]);
+    // A bare ".." cannot fill a segment, so it is refused before any request.
+    mockFetch.mockClear();
+    await expect(client.trackers.get("..")).rejects.toBeInstanceOf(SentiSenseError);
+    await expect(client.indexes.get("..")).rejects.toBeInstanceOf(SentiSenseError);
     expect(mockFetch).not.toHaveBeenCalled();
   });
 

@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   AISummary,
   ChartData,
@@ -100,7 +101,7 @@ export class Stocks {
    * fund quote when that covers it: call `etfs.quote()` for those fields.
    */
   async getQuote(ticker: string): Promise<StockQuote> {
-    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/quote`);
+    return this.client.get(`/api/v1/stocks/${pathSegment("stocks.getQuote", "ticker", ticker)}/quote`);
   }
 
   /** Get real-time prices for multiple tickers. */
@@ -134,7 +135,7 @@ export class Stocks {
 
   /** Get peer/similar stocks. */
   async getSimilar(ticker: string, options?: GetSimilarOptions): Promise<SimilarStock[]> {
-    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/similar`, options);
+    return this.client.get(`/api/v1/stocks/${pathSegment("stocks.getSimilar", "ticker", ticker)}/similar`, options);
   }
 
   /**
@@ -148,12 +149,12 @@ export class Stocks {
    * quota like other data endpoints.
    */
   async getEtfs(ticker: string, options?: GetStockEtfsOptions): Promise<EtfMembership[]> {
-    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/etfs`, options);
+    return this.client.get(`/api/v1/stocks/${pathSegment("stocks.getEtfs", "ticker", ticker)}/etfs`, options);
   }
 
   /** Get company profile (CEO, sector, industry, market data). */
   async getProfile(ticker: string, options?: GetProfileOptions): Promise<StockProfile> {
-    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/profile`, options);
+    return this.client.get(`/api/v1/stocks/${pathSegment("stocks.getProfile", "ticker", ticker)}/profile`, options);
   }
 
   /**
@@ -169,13 +170,13 @@ export class Stocks {
    */
   async getSentiment(ticker: string): Promise<PreviewResponse<StockSentiment>> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker)}/sentiment`,
+      `/api/v1/stocks/${pathSegment("stocks.getSentiment", "ticker", ticker)}/sentiment`,
     );
   }
 
   /** Get related KB entities (people, products, partners). */
   async getEntities(ticker: string): Promise<StockEntity[]> {
-    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/entities`);
+    return this.client.get(`/api/v1/stocks/${pathSegment("stocks.getEntities", "ticker", ticker)}/entities`);
   }
 
   /**
@@ -190,7 +191,7 @@ export class Stocks {
    */
   async getGraph(ticker: string, options?: GetStockGraphOptions): Promise<StockGraph> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/graph`,
+      `/api/v1/stocks/${pathSegment("stocks.getGraph", "ticker", ticker.toUpperCase())}/graph`,
       options,
     );
   }
@@ -205,7 +206,7 @@ export class Stocks {
    */
   async getAISummary(ticker: string, options?: GetAISummaryOptions): Promise<AISummary> {
     const { forceRefresh: _forceRefresh, ...params } = options ?? {};
-    return this.client.get(`/api/v1/stocks/${encodeURIComponent(ticker)}/ai-summary`, params);
+    return this.client.get(`/api/v1/stocks/${pathSegment("stocks.getAISummary", "ticker", ticker)}/ai-summary`, params);
   }
 
   /** Get sentiment/mention metrics breakdown by entity. */
@@ -215,7 +216,7 @@ export class Stocks {
     options?: GetMetricsBreakdownOptions,
   ): Promise<MetricsBreakdown> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker)}/metrics/${encodeURIComponent(metricType)}/breakdown`,
+      `/api/v1/stocks/${pathSegment("stocks.getMetricsBreakdown", "ticker", ticker)}/metrics/${pathSegment("stocks.getMetricsBreakdown", "metricType", metricType)}/breakdown`,
       options,
     );
   }
@@ -325,7 +326,7 @@ export class Stocks {
    */
   async getKpis(ticker: string): Promise<PreviewResponse<CompanyKpisData>> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/kpis`,
+      `/api/v1/stocks/${pathSegment("stocks.getKpis", "ticker", ticker.toUpperCase())}/kpis`,
     );
   }
 
@@ -350,7 +351,7 @@ export class Stocks {
    */
   async getKpiTypes(ticker: string): Promise<KpiTypeEntry[]> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/kpis/types`,
+      `/api/v1/stocks/${pathSegment("stocks.getKpiTypes", "ticker", ticker.toUpperCase())}/kpis/types`,
     );
   }
 
@@ -381,7 +382,7 @@ export class Stocks {
    */
   async getOptionsSummary(ticker: string): Promise<PreviewResponse<OptionsSummary | null>> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/options/summary`,
+      `/api/v1/stocks/${pathSegment("stocks.getOptionsSummary", "ticker", ticker.toUpperCase())}/options/summary`,
     );
   }
 
@@ -407,7 +408,7 @@ export class Stocks {
     options?: GetOptionsHistoryOptions,
   ): Promise<PreviewResponse<OptionsHistory>> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/options/history`,
+      `/api/v1/stocks/${pathSegment("stocks.getOptionsHistory", "ticker", ticker.toUpperCase())}/options/history`,
       options,
     );
   }
@@ -440,7 +441,7 @@ export class Stocks {
     options?: GetOptionsIntradayHistoryOptions,
   ): Promise<PreviewResponse<OptionsIntradayHistory | null>> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/options/intraday-history`,
+      `/api/v1/stocks/${pathSegment("stocks.getOptionsIntradayHistory", "ticker", ticker.toUpperCase())}/options/intraday-history`,
       options,
     );
   }
@@ -486,6 +487,6 @@ export class Stocks {
    * the `sentisense_rating` metric.
    */
   async getRating(ticker: string): Promise<StockRatingResponse> {
-    return this.client.get(`/api/v1/rating/${encodeURIComponent(ticker.toUpperCase())}`);
+    return this.client.get(`/api/v1/rating/${pathSegment("stocks.getRating", "ticker", ticker.toUpperCase())}`);
   }
 }

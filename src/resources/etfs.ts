@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type { ExtendedHoursInfo, PreviewResponse } from "../types.js";
 
 export interface EtfInfo {
@@ -229,7 +230,7 @@ export class Etfs {
    */
   async quote(ticker: string): Promise<EtfQuote> {
     return this.client.get(
-      `/api/v1/etfs/${encodeURIComponent(ticker.toUpperCase())}/quote`,
+      `/api/v1/etfs/${pathSegment("etfs.quote", "ticker", ticker.toUpperCase())}/quote`,
     );
   }
 
@@ -239,7 +240,7 @@ export class Etfs {
    */
   async holdings(ticker: string): Promise<EtfHoldings> {
     return this.client.get(
-      `/api/v1/etfs/${encodeURIComponent(ticker.toUpperCase())}/holdings`,
+      `/api/v1/etfs/${pathSegment("etfs.holdings", "ticker", ticker.toUpperCase())}/holdings`,
     );
   }
 
@@ -251,7 +252,7 @@ export class Etfs {
     ticker: string,
   ): Promise<PreviewResponse<EtfAnalystAggregate>> {
     return this.client.get(
-      `/api/v1/etfs/${encodeURIComponent(ticker.toUpperCase())}/aggregates/analyst`,
+      `/api/v1/etfs/${pathSegment("etfs.analystAggregate", "ticker", ticker.toUpperCase())}/aggregates/analyst`,
     );
   }
 
@@ -265,7 +266,7 @@ export class Etfs {
     options?: GetEtfInsiderAggregateOptions,
   ): Promise<PreviewResponse<EtfInsiderAggregate>> {
     return this.client.get(
-      `/api/v1/etfs/${encodeURIComponent(ticker.toUpperCase())}/aggregates/insider`,
+      `/api/v1/etfs/${pathSegment("etfs.insiderAggregate", "ticker", ticker.toUpperCase())}/aggregates/insider`,
       options,
     );
   }
@@ -280,7 +281,7 @@ export class Etfs {
     ticker: string,
   ): Promise<PreviewResponse<EtfSentimentAggregate>> {
     return this.client.get(
-      `/api/v1/etfs/${encodeURIComponent(ticker.toUpperCase())}/aggregates/sentiment`,
+      `/api/v1/etfs/${pathSegment("etfs.sentimentAggregate", "ticker", ticker.toUpperCase())}/aggregates/sentiment`,
     );
   }
 }

@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   DocumentSearchResponse,
   DocumentSource,
@@ -18,13 +19,13 @@ export class Documents {
 
   /** Get document metrics for a stock. The rows are in `documents`. */
   async getByTicker(ticker: string, options?: GetByTickerOptions): Promise<DocumentSearchResponse> {
-    return this.client.get(`/api/v1/documents/ticker/${encodeURIComponent(ticker)}`, options);
+    return this.client.get(`/api/v1/documents/ticker/${pathSegment("documents.getByTicker", "ticker", ticker)}`, options);
   }
 
   /** Get document metrics for a stock within a date range. The rows are in `documents`. */
   async getByTickerRange(ticker: string, options: GetByTickerRangeOptions): Promise<DocumentSearchResponse> {
     return this.client.get(
-      `/api/v1/documents/ticker/${encodeURIComponent(ticker)}/range`,
+      `/api/v1/documents/ticker/${pathSegment("documents.getByTickerRange", "ticker", ticker)}/range`,
       options,
     );
   }
@@ -32,7 +33,7 @@ export class Documents {
   /** Get document metrics for a KB entity. The rows are in `documents`. */
   async getByEntity(entityId: string, options?: GetByEntityOptions): Promise<DocumentSearchResponse> {
     return this.client.get(
-      `/api/v1/documents/entity/${encodeURIComponent(entityId)}`,
+      `/api/v1/documents/entity/${pathSegment("documents.getByEntity", "entityId", entityId)}`,
       options,
     );
   }
@@ -45,7 +46,7 @@ export class Documents {
   /** Get latest document metrics from a source type. The rows are in `documents`. */
   async getBySource(source: DocumentSource, options?: GetBySourceOptions): Promise<DocumentSearchResponse> {
     return this.client.get(
-      `/api/v1/documents/source/${encodeURIComponent(source)}`,
+      `/api/v1/documents/source/${pathSegment("documents.getBySource", "source", source)}`,
       options,
     );
   }
@@ -64,7 +65,7 @@ export class Documents {
    * exported for that array.
    */
   async getStoryDetail(clusterId: string): Promise<unknown> {
-    return this.client.get(`/api/v1/documents/stories/${encodeURIComponent(clusterId)}`);
+    return this.client.get(`/api/v1/documents/stories/${pathSegment("documents.getStoryDetail", "clusterId", clusterId)}`);
   }
 
   /**
@@ -85,7 +86,7 @@ export class Documents {
     options?: GetStoriesByTickerOptions,
   ): Promise<Story[]> {
     return this.client.get(
-      `/api/v1/documents/stories/ticker/${encodeURIComponent(ticker)}`,
+      `/api/v1/documents/stories/ticker/${pathSegment("documents.getStoriesByTicker", "ticker", ticker)}`,
       options,
     );
   }

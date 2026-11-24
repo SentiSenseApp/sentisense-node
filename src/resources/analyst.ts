@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type { PreviewResponse } from "../types.js";
 
 export interface AnalystConsensus {
@@ -463,7 +464,7 @@ export class Analyst {
     ticker: string,
   ): Promise<PreviewResponse<AnalystConsensus>> {
     return this.client.get(
-      `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/consensus`,
+      `/api/v1/analyst/${pathSegment("analyst.consensus", "ticker", ticker.toUpperCase())}/consensus`,
     );
   }
 
@@ -482,7 +483,7 @@ export class Analyst {
     options?: GetAnalystConsensusHistoryOptions,
   ): Promise<PreviewResponse<AnalystConsensusHistory>> {
     return this.client.get(
-      `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/consensus/history`,
+      `/api/v1/analyst/${pathSegment("analyst.consensusHistory", "ticker", ticker.toUpperCase())}/consensus/history`,
       options,
     );
   }
@@ -502,7 +503,7 @@ export class Analyst {
     options?: GetAnalystCalledItOptions,
   ): Promise<PreviewResponse<{ ticker: string; count: number; moves: AnalystCalledItMove[] }>> {
     return this.client.get(
-      `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/called-it`,
+      `/api/v1/analyst/${pathSegment("analyst.calledIt", "ticker", ticker.toUpperCase())}/called-it`,
       options,
     );
   }
@@ -520,7 +521,7 @@ export class Analyst {
     options?: GetAnalystActionsOptions,
   ): Promise<PreviewResponse<AnalystAction[]>> {
     return this.client.get(
-      `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/actions`,
+      `/api/v1/analyst/${pathSegment("analyst.actions", "ticker", ticker.toUpperCase())}/actions`,
       options,
     );
   }
@@ -533,7 +534,7 @@ export class Analyst {
     ticker: string,
   ): Promise<PreviewResponse<AnalystEstimatesResponse>> {
     return this.client.get(
-      `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/estimates`,
+      `/api/v1/analyst/${pathSegment("analyst.estimates", "ticker", ticker.toUpperCase())}/estimates`,
     );
   }
 
@@ -583,7 +584,7 @@ export class Analyst {
     options?: GetAnalystCoverageOptions,
   ): Promise<PreviewResponse<AnalystCoverage>> {
     return this.client.get(
-      `/api/v1/analyst/${encodeURIComponent(ticker.toUpperCase())}/coverage`,
+      `/api/v1/analyst/${pathSegment("analyst.coverage", "ticker", ticker.toUpperCase())}/coverage`,
       options,
     );
   }
@@ -610,7 +611,7 @@ export class Analyst {
    */
   async profile(slug: string): Promise<PreviewResponse<AnalystProfile>> {
     return this.client.get(
-      `/api/v1/analyst/people/${encodeURIComponent(slug)}`,
+      `/api/v1/analyst/people/${pathSegment("analyst.profile", "slug", slug)}`,
     );
   }
 
@@ -638,7 +639,7 @@ export class Analyst {
     options?: GetAnalystCallsOptions,
   ): Promise<PreviewResponse<AnalystCall[]>> {
     return this.client.get(
-      `/api/v1/analyst/people/${encodeURIComponent(slug)}/calls`,
+      `/api/v1/analyst/people/${pathSegment("analyst.calls", "slug", slug)}/calls`,
       options,
     );
   }

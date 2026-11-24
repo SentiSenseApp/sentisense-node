@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   EarningsReactionsResponse,
   EarningsStatistics,
@@ -59,7 +60,7 @@ export class Earnings {
     options?: GetEarningsSummariesOptions,
   ): Promise<EarningsSummariesResponse> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/earnings-summaries`,
+      `/api/v1/stocks/${pathSegment("earnings.getSummaries", "ticker", ticker.toUpperCase())}/earnings-summaries`,
       options,
     );
   }
@@ -94,7 +95,7 @@ export class Earnings {
    */
   async getReactions(ticker: string): Promise<EarningsReactionsResponse> {
     return this.client.get(
-      `/api/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/earnings/reactions`,
+      `/api/v1/stocks/${pathSegment("earnings.getReactions", "ticker", ticker.toUpperCase())}/earnings/reactions`,
     );
   }
 

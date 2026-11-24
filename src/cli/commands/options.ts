@@ -479,7 +479,7 @@ async function intraday(api: SentiSense, ticker: string, session: string | undef
   if (missing.length > 0) {
     blocks.push({
       kind: "text",
-      text: `${missing.length === 1 ? "Cycle" : "Cycles"} ${missing.join(", ")} ${missing.length === 1 ? "has" : "have"} no stored history (no board was published, or its history was lost), so ${ticker}'s numbers there are unknown.`,
+      text: `${missing.length === 1 ? "Cycle" : "Cycles"} ${missing.join(", ")} ${missing.length === 1 ? "has" : "have"} no stored history (no board was published, or its history is not stored; a gap in the current session can clear on a later read), so ${ticker}'s numbers there are unknown.`,
       tone: "dim",
     });
   }

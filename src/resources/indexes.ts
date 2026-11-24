@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   IndexConstituent,
   IndexHistoryPoint,
@@ -47,7 +48,7 @@ export class Indexes {
    * @param indexId slug from {@link list}, e.g. `"fed-sentiment"`.
    */
   async get(indexId: string): Promise<IndexSnapshot> {
-    return this.client.get(`/api/v1/indexes/${indexId}`);
+    return this.client.get(`/api/v1/indexes/${pathSegment("indexes.get", "indexId", indexId)}`);
   }
 
   /**
@@ -61,7 +62,7 @@ export class Indexes {
    */
   async history(indexId: string, days?: number): Promise<IndexHistoryResponse> {
     return this.client.get(
-      `/api/v1/indexes/${indexId}/history`,
+      `/api/v1/indexes/${pathSegment("indexes.history", "indexId", indexId)}/history`,
       days === undefined ? undefined : { days },
     );
   }

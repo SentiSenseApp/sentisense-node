@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   GetFlowsOptions,
   GetInstitutionDetailOptions,
@@ -93,7 +94,7 @@ export class Institutional {
     options?: GetHoldersOptions,
   ): Promise<HoldersResponse> {
     return this.client.get(
-      `/api/v1/institutional/holders/${encodeURIComponent(ticker)}`,
+      `/api/v1/institutional/holders/${pathSegment("institutional.getHolders", "ticker", ticker)}`,
       { reportDate, ...options },
     );
   }
@@ -125,7 +126,7 @@ export class Institutional {
     options?: GetHoldersHistoryOptions,
   ): Promise<PreviewResponse<HoldersHistory>> {
     return this.client.get(
-      `/api/v1/institutional/holders/${encodeURIComponent(ticker)}/history`,
+      `/api/v1/institutional/holders/${pathSegment("institutional.getHoldersHistory", "ticker", ticker)}/history`,
       { ...options },
     );
   }
@@ -233,7 +234,7 @@ export class Institutional {
   ): Promise<unknown> {
     const { changeType, ...rest } = options ?? {};
     return this.client.get(
-      `/api/v1/institutional/institution/${encodeURIComponent(slugOrCik)}`,
+      `/api/v1/institutional/institution/${pathSegment("institutional.getInstitutionDetail", "slugOrCik", slugOrCik)}`,
       {
         ...rest,
         changeType: typeof changeType === "string" ? changeType : changeType?.join(",") || undefined,
@@ -275,7 +276,7 @@ export class Institutional {
   ): Promise<PreviewResponse<InstitutionHistory>> {
     const { tickers, ...rest } = options ?? {};
     return this.client.get(
-      `/api/v1/institutional/institution/${encodeURIComponent(slugOrCik)}/history`,
+      `/api/v1/institutional/institution/${pathSegment("institutional.getInstitutionHistory", "slugOrCik", slugOrCik)}/history`,
       {
         ...rest,
         tickers: typeof tickers === "string" ? tickers : tickers?.join(",") || undefined,

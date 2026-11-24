@@ -1,5 +1,5 @@
 import type { APIClient } from "../client.js";
-import { SentiSenseError } from "../errors.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   MetricType,
   MetricsOptions,
@@ -8,20 +8,6 @@ import type {
   MetricDistribution,
   MetricSlice,
 } from "../types.js";
-
-/**
- * A path argument must fill its own segment. An empty value leaves the segment blank, and a
- * standalone "." or ".." is removed by URL normalization, which sends the request to a
- * different route. Reject those before any request is made.
- */
-function requirePathSegment(method: string, name: string, value: unknown): string {
-  if (typeof value !== "string" || value.trim() === "" || value === "." || value === "..") {
-    throw new SentiSenseError(
-      `${method}: ${name} must not be empty, "." or ".." (got ${JSON.stringify(value)})`,
-    );
-  }
-  return value;
-}
 
 export class EntityMetrics {
   constructor(private client: APIClient) {}
@@ -42,7 +28,7 @@ export class EntityMetrics {
   ): Promise<ServingMetric[]> {
     const { metricType = "sentiment", startTime, endTime, maxDataPoints } = options;
     return this.client.get(
-      `/api/v2/metrics/entity/${encodeURIComponent(symbol)}/metric/${encodeURIComponent(metricType)}`,
+      `/api/v2/metrics/entity/${pathSegment("entityMetrics.getMetrics", "symbol", symbol)}/metric/${pathSegment("entityMetrics.getMetrics", "options.metricType", metricType)}`,
       {
         ...(startTime !== undefined && { startTime }),
         ...(endTime !== undefined && { endTime }),
@@ -72,7 +58,7 @@ export class EntityMetrics {
   ): Promise<MetricDistribution> {
     const { dimension = "source", startTime, endTime } = options;
     return this.client.get(
-      `/api/v2/metrics/entity/${encodeURIComponent(symbol)}/distribution/${encodeURIComponent(metricType)}`,
+      `/api/v2/metrics/entity/${pathSegment("entityMetrics.getDistribution", "symbol", symbol)}/distribution/${pathSegment("entityMetrics.getDistribution", "metricType", metricType)}`,
       {
         dimension,
         ...(startTime !== undefined && { startTime }),
@@ -97,10 +83,8 @@ export class EntityMetrics {
    *         whitespace only, `"."` or `".."`.
    */
   async getSlices(symbol: string, metricType: MetricType): Promise<MetricSlice[]> {
-    const entity = requirePathSegment("entityMetrics.getSlices", "symbol", symbol);
-    const metric = requirePathSegment("entityMetrics.getSlices", "metricType", metricType);
     return this.client.get(
-      `/api/v2/metrics/entity/${encodeURIComponent(entity)}/metric/${encodeURIComponent(metric)}/slices`,
+      `/api/v2/metrics/entity/${pathSegment("entityMetrics.getSlices", "symbol", symbol)}/metric/${pathSegment("entityMetrics.getSlices", "metricType", metricType)}/slices`,
     );
   }
 }

@@ -62,6 +62,15 @@ function url(result: { urls: string[] }, fragment: string): string {
 }
 
 describe("command wiring", () => {
+  it.each([".", "..", " "])("a path argument the SDK refuses (%j) is bad usage, not a network failure", async (bad) => {
+    const result = await run(["sentiment", bad], { env: KEYED, fetch: routeFetch([]) });
+    expect(result.code).toBe(2);
+    expect(result.urls).toHaveLength(0);
+    expect(result.stderr).toContain('error: stocks.getSentiment: ticker must not be empty, "." or ".."');
+    expect(result.stderr).toContain("next: check the value you passed");
+    expect(result.stderr).not.toContain("could not reach the API");
+  });
+
   it("quote spends one request per ticker when nobody is reading the name", async () => {
     // A pipe and a parser do not need the display name, and a free key at 30 requests a
     // minute should not pay double for it.
@@ -952,8 +961,12 @@ describe("command wiring", () => {
     expect(result.stdout).toContain("09:45 ET");
     expect(result.stdout).toContain("10:45 ET");
     expect(result.stdout).toContain("0.4415");
-    // A missing cycle is one with no stored history: no board was published, or it was lost.
-    expect(result.stdout).toContain("Cycle 3 has no stored history (no board was published, or its history was lost)");
+    // A missing cycle is one with no stored history: no board was published, or its history is
+    // not stored. A fresh gap can be a write still being retried, so it is not called lost.
+    expect(result.stdout).toContain(
+      "Cycle 3 has no stored history (no board was published, or its history is not stored; a gap in the current session can clear on a later read)",
+    );
+    expect(result.stdout).not.toContain("was lost");
     expect(result.stdout).not.toContain("was published but could not be read");
   });
 

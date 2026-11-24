@@ -1,4 +1,5 @@
 import type { APIClient } from "../client.js";
+import { pathSegment } from "../pathSegment.js";
 import type {
   InsiderActivityResponse,
   InsiderTrade,
@@ -36,7 +37,7 @@ export class Insider {
    */
   async getTrades(ticker: string, options?: GetInsiderTradesOptions): Promise<PreviewResponse<InsiderTrade[]>> {
     return this.client.get(
-      `/api/v1/insider/trades/${encodeURIComponent(ticker.toUpperCase())}`,
+      `/api/v1/insider/trades/${pathSegment("insider.getTrades", "ticker", ticker.toUpperCase())}`,
       options,
     );
   }
