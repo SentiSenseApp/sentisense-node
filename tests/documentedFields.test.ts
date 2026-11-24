@@ -32,6 +32,18 @@ const TYPE_FOR_TABLE: Record<string, Record<string, string>> = {
     "estimates[]": "AnalystEstimate",
     "surprises[]": "AnalystEarningsSurprise",
   },
+  "GET /api/v2/metrics/entity/{entityId}/event-counts": {
+    data: "EventCounts",
+    "categories[]": "EventCategory",
+    "days[]": "EventCountsDay",
+  },
+  "GET /api/v2/metrics/entity/{entityId}/headline-scores": {
+    data: "HeadlineScores",
+    "scores[]": "HeadlineScore",
+    "levels[]": "HeadlineScoreLevel",
+    "days[]": "HeadlineScoresDay",
+    "days[].scores.<key>": "HeadlineScoreCounts",
+  },
 };
 
 /**

@@ -3647,6 +3647,160 @@ export interface MetricSlice {
   displayName: string;
 }
 
+// ── News event counts and headline scores ────────────────────
+
+/**
+ * The window for `entityMetrics.getEventCounts()`, `getHeadlineScores()` and their market forms:
+ * either `days`, or `from` and `to` together. Omit all three for the API's default, the last 30
+ * closed days.
+ */
+export interface NewsCountsOptions {
+  /** Closed days ending with yesterday (New York), 1 to 90. Not combined with `from` and `to`. */
+  days?: number;
+  /** First day, `"YYYY-MM-DD"` (US Eastern), 2026-10-07 or later. Give it with `to`. */
+  from?: string;
+  /**
+   * Last day, `"YYYY-MM-DD"`, on or after `from`. A later day than yesterday is served as
+   * yesterday, and the window holds at most 366 days.
+   */
+  to?: string;
+}
+
+/** One category of an event-counts response, in display order. */
+export interface EventCategory {
+  /** Category key, as used in each day's `categories`, e.g. `"RESULTS"`. */
+  key: string;
+  /** Display name, e.g. `"Results and outlook"`. */
+  name: string;
+  /** The story event types this category groups, the same values as a story's `eventTypes`. */
+  eventTypes: string[];
+}
+
+/** One closed US Eastern day of an event-counts response. */
+export interface EventCountsDay {
+  /** The day, `"YYYY-MM-DD"` (US Eastern). */
+  date: string;
+  /** News headlines tagged to the entity that day; on the market route, every news headline of the day. */
+  headlines: number;
+  /** Headlines the events model placed in a category or in no event. */
+  classified: number;
+  /** Classified headlines that report no event. */
+  noEvent: number;
+  /** `classified - noEvent`, which is also the sum of `categories`. */
+  withEvent: number;
+  /** Headlines per category key, every key present, zero included. */
+  categories: Record<string, number>;
+}
+
+/**
+ * Daily news event counts, from `entityMetrics.getEventCounts()` and
+ * `entityMetrics.getMarketEventCounts()`. Today is never served, and a day not counted yet is
+ * absent from `days`.
+ */
+export interface EventCounts {
+  /** The entity as sent, or `"market"` on the market route. */
+  entity: string;
+  /** First day of the window, `"YYYY-MM-DD"`; on a free preview, the first of the last 7 closed days. */
+  from: string;
+  /** Last day of the window, `"YYYY-MM-DD"`. */
+  to: string;
+  /** Newest day in `days`, `"YYYY-MM-DD"`; `null` when no day is served. */
+  asOf: string | null;
+  /** `"America/New_York"`, the calendar the days are counted in. */
+  timezone: string;
+  /**
+   * First day served when the window reaches back before the day the events model began covering
+   * this entity's headlines, `"YYYY-MM-DD"`; `null` when the whole window is covered.
+   */
+  coverageStart: string | null;
+  /** The categories, in display order. */
+  categories: EventCategory[];
+  /** One entry per counted day, oldest first. */
+  days: EventCountsDay[];
+}
+
+/** One level of a headline score, lowest first: headlines scored in `[from, to)` on the 0 to 100 scale. */
+export interface HeadlineScoreLevel {
+  /** Display name, e.g. `"Hedged forecast"`. */
+  name: string;
+  /** Lowest score in the level, inclusive. */
+  from: number;
+  /** Score where the next level starts, exclusive; `null` for the top level. */
+  to: number | null;
+  /** Whether the level counts toward the day's `strong`. */
+  strong: boolean;
+}
+
+/**
+ * One score definition of a headline-scores response. A headline is strong on the score when it
+ * scores `strongFrom` or more; one scored below the lowest level counts in `rated` only.
+ */
+export interface HeadlineScore {
+  /** Score key, as used in each day's `scores`: `"UNCERTAINTY"`, `"PROMOTION"` or `"RESOLUTION"`. */
+  key: string;
+  /** Display name, e.g. `"Expressed uncertainty"`. */
+  name: string;
+  /** The score, on the 0 to 100 scale, from which a headline counts as strong. */
+  strongFrom: number;
+  /** What strong means for this score, in words. */
+  strongLabel: string;
+  /** The score's levels, lowest first. */
+  levels: HeadlineScoreLevel[];
+}
+
+/** One score on one day of a headline-scores response. */
+export interface HeadlineScoreCounts {
+  /** Headlines that received this score, at most the day's `rated`. */
+  rated: number;
+  /** Headlines that scored `strongFrom` or more, the sum of the strong levels. */
+  strong: number;
+  /** Headlines per level, in the order of the score's `levels`. */
+  levels: number[];
+}
+
+/** One closed US Eastern day of a headline-scores response. */
+export interface HeadlineScoresDay {
+  /** The day, `"YYYY-MM-DD"` (US Eastern). */
+  date: string;
+  /** News headlines tagged to the entity that day; on the market route, every news headline of the day. */
+  headlines: number;
+  /** Headlines the decision models scored, at most `headlines`. */
+  rated: number;
+  /**
+   * Headlines strong on at least one score, each counted once, so it can be less than the sum of
+   * the scores' `strong`.
+   */
+  strongHeadlines: number;
+  /** Per score key, that day's counts. */
+  scores: Record<string, HeadlineScoreCounts>;
+}
+
+/**
+ * Daily headline score counts, from `entityMetrics.getHeadlineScores()` and
+ * `entityMetrics.getMarketHeadlineScores()`. These are counts per day, not the SentiSense Score.
+ */
+export interface HeadlineScores {
+  /** The entity as sent, or `"market"` on the market route. */
+  entity: string;
+  /** First day of the window, `"YYYY-MM-DD"`; on a free preview, the first of the last 7 closed days. */
+  from: string;
+  /** Last day of the window, `"YYYY-MM-DD"`. */
+  to: string;
+  /** Newest day in `days`, `"YYYY-MM-DD"`; `null` when no day is served. */
+  asOf: string | null;
+  /** `"America/New_York"`, the calendar the days are counted in. */
+  timezone: string;
+  /**
+   * First day served when the window reaches back before the day the events model began covering
+   * this entity's headlines, `"YYYY-MM-DD"`; `null` when the whole window is covered.
+   */
+  coverageStart: string | null;
+  /** The score definitions, in display order. */
+  scores: HeadlineScore[];
+  /** One entry per counted day, oldest first. */
+  days: HeadlineScoresDay[];
+}
+
 // ── Market Mood & Market Summary ─────────────────────────────
 
 export interface MarketMood {

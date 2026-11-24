@@ -1,0 +1,103 @@
+{
+  "isPreview": false,
+  "previewReason": null,
+  "data": {
+    "entity": "NVDA",
+    "from": "2026-11-21",
+    "to": "2026-11-23",
+    "asOf": "2026-11-23",
+    "timezone": "America/New_York",
+    "coverageStart": null,
+    "categories": [
+      {
+        "key": "RESULTS",
+        "name": "Results and outlook",
+        "eventTypes": [
+          "EARNINGS",
+          "GUIDANCE"
+        ]
+      },
+      {
+        "key": "PRODUCT",
+        "name": "Product news",
+        "eventTypes": [
+          "PRODUCT",
+          "PRODUCT_TALK"
+        ]
+      },
+      {
+        "key": "ANALYST",
+        "name": "Analyst actions",
+        "eventTypes": [
+          "ANALYST"
+        ]
+      },
+      {
+        "key": "DEALS",
+        "name": "Deals and capital",
+        "eventTypes": [
+          "MA",
+          "DEAL",
+          "FINANCING"
+        ]
+      },
+      {
+        "key": "LEGAL",
+        "name": "Legal and regulatory",
+        "eventTypes": [
+          "LEGAL_REG"
+        ]
+      },
+      {
+        "key": "PEOPLE",
+        "name": "People and ownership",
+        "eventTypes": [
+          "MGMT",
+          "HOLDINGS"
+        ]
+      },
+      {
+        "key": "MACRO",
+        "name": "Macro and sector",
+        "eventTypes": [
+          "MACRO",
+          "SECTOR"
+        ]
+      }
+    ],
+    "days": [
+      {
+        "date": "2026-11-21",
+        "headlines": 20,
+        "classified": 14,
+        "noEvent": 5,
+        "withEvent": 9,
+        "categories": {
+          "RESULTS": 3,
+          "PRODUCT": 4,
+          "ANALYST": 2,
+          "DEALS": 0,
+          "LEGAL": 0,
+          "PEOPLE": 0,
+          "MACRO": 0
+        }
+      },
+      {
+        "date": "2026-11-23",
+        "headlines": 10,
+        "classified": 9,
+        "noEvent": 6,
+        "withEvent": 3,
+        "categories": {
+          "RESULTS": 0,
+          "PRODUCT": 0,
+          "ANALYST": 0,
+          "DEALS": 2,
+          "LEGAL": 1,
+          "PEOPLE": 0,
+          "MACRO": 0
+        }
+      }
+    ]
+  }
+}

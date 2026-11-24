@@ -1,6 +1,6 @@
 {
   "about": "Field names the public API docs list for each response table, copied from the docs pages named below. A test in this repository fails when a listed field has no declared type, or when a declared field is not listed. When the docs gain a field, copy the new list here and declare the field.",
-  "copied": "2026-11-20",
+  "copied": "2026-11-24",
   "endpoints": [
     {
       "endpoint": "GET /api/v1/analyst/{ticker}/estimates",
@@ -30,6 +30,76 @@
           "surprisePercent",
           "surprisePct",
           "surpriseFlag"
+        ]
+      }
+    },
+    {
+      "endpoint": "GET /api/v2/metrics/entity/{entityId}/event-counts",
+      "page": "https://sentisense.ai/docs/api/metrics/",
+      "tables": {
+        "data": [
+          "entity",
+          "from",
+          "to",
+          "asOf",
+          "timezone",
+          "coverageStart",
+          "categories",
+          "days"
+        ],
+        "categories[]": [
+          "key",
+          "name",
+          "eventTypes"
+        ],
+        "days[]": [
+          "date",
+          "headlines",
+          "classified",
+          "noEvent",
+          "withEvent",
+          "categories"
+        ]
+      }
+    },
+    {
+      "endpoint": "GET /api/v2/metrics/entity/{entityId}/headline-scores",
+      "page": "https://sentisense.ai/docs/api/metrics/",
+      "tables": {
+        "data": [
+          "entity",
+          "from",
+          "to",
+          "asOf",
+          "timezone",
+          "coverageStart",
+          "scores",
+          "days"
+        ],
+        "scores[]": [
+          "key",
+          "name",
+          "strongFrom",
+          "strongLabel",
+          "levels"
+        ],
+        "levels[]": [
+          "name",
+          "from",
+          "to",
+          "strong"
+        ],
+        "days[]": [
+          "date",
+          "headlines",
+          "rated",
+          "strongHeadlines",
+          "scores"
+        ],
+        "days[].scores.<key>": [
+          "rated",
+          "strong",
+          "levels"
         ]
       }
     }

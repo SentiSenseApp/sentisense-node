@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 0.87.0
+
+### Added
+
+- Four `entityMetrics` methods for the API's daily news counts. `getEventCounts(symbol)` and
+  `getMarketEventCounts()` count, per closed US Eastern day, the news headlines our events model
+  classified and how many fall in each of seven categories; `getHeadlineScores(symbol)` and
+  `getMarketHeadlineScores()` count the headlines our decision models scored strongly for
+  uncertainty, promotional framing and resolution stage. Each takes `NewsCountsOptions` (`days`
+  from 1 to 90, or `from` and `to`) and returns a `PreviewResponse` of the new `EventCounts` or
+  `HeadlineScores` type. A free key receives the last 7 closed days. They need the server release
+  that serves these routes.
 
 ### Fixed
 

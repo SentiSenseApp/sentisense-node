@@ -1,0 +1,164 @@
+{
+  "isPreview": false,
+  "previewReason": null,
+  "data": {
+    "entity": "NVDA",
+    "from": "2026-11-21",
+    "to": "2026-11-23",
+    "asOf": "2026-11-23",
+    "timezone": "America/New_York",
+    "coverageStart": null,
+    "scores": [
+      {
+        "key": "UNCERTAINTY",
+        "name": "Expressed uncertainty",
+        "strongFrom": 20.0,
+        "strongLabel": "scored 20 or more",
+        "levels": [
+          {
+            "name": "Hedged forecast",
+            "from": 20.0,
+            "to": 40.0,
+            "strong": true
+          },
+          {
+            "name": "Only a possibility",
+            "from": 40.0,
+            "to": 60.0,
+            "strong": true
+          },
+          {
+            "name": "Open doubt or worse",
+            "from": 60.0,
+            "to": null,
+            "strong": true
+          }
+        ]
+      },
+      {
+        "key": "PROMOTION",
+        "name": "Promotional framing",
+        "strongFrom": 20.0,
+        "strongLabel": "scored 20 or more",
+        "levels": [
+          {
+            "name": "Mild praise",
+            "from": 20.0,
+            "to": 40.0,
+            "strong": true
+          },
+          {
+            "name": "Strong hype",
+            "from": 40.0,
+            "to": 60.0,
+            "strong": true
+          },
+          {
+            "name": "Urges buying or promises returns",
+            "from": 60.0,
+            "to": null,
+            "strong": true
+          }
+        ]
+      },
+      {
+        "key": "RESOLUTION",
+        "name": "Resolution stage",
+        "strongFrom": 70.0,
+        "strongLabel": "agreed with conditions or final",
+        "levels": [
+          {
+            "name": "Partly resolved",
+            "from": 40.0,
+            "to": 70.0,
+            "strong": false
+          },
+          {
+            "name": "Agreed with conditions",
+            "from": 70.0,
+            "to": 90.0,
+            "strong": true
+          },
+          {
+            "name": "Final",
+            "from": 90.0,
+            "to": null,
+            "strong": true
+          }
+        ]
+      }
+    ],
+    "days": [
+      {
+        "date": "2026-11-21",
+        "headlines": 20,
+        "rated": 15,
+        "strongHeadlines": 6,
+        "scores": {
+          "UNCERTAINTY": {
+            "rated": 15,
+            "strong": 5,
+            "levels": [
+              3,
+              1,
+              1
+            ]
+          },
+          "PROMOTION": {
+            "rated": 14,
+            "strong": 3,
+            "levels": [
+              2,
+              1,
+              0
+            ]
+          },
+          "RESOLUTION": {
+            "rated": 10,
+            "strong": 2,
+            "levels": [
+              2,
+              1,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "date": "2026-11-23",
+        "headlines": 10,
+        "rated": 9,
+        "strongHeadlines": 2,
+        "scores": {
+          "UNCERTAINTY": {
+            "rated": 8,
+            "strong": 2,
+            "levels": [
+              1,
+              1,
+              0
+            ]
+          },
+          "PROMOTION": {
+            "rated": 7,
+            "strong": 1,
+            "levels": [
+              1,
+              0,
+              0
+            ]
+          },
+          "RESOLUTION": {
+            "rated": 5,
+            "strong": 1,
+            "levels": [
+              1,
+              1,
+              0
+            ]
+          }
+        }
+      }
+    ]
+  }
+}
