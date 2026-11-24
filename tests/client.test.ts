@@ -45,6 +45,7 @@ describe("SentiSense client", () => {
     expect(client.documents).toBeDefined();
     expect(client.institutional).toBeDefined();
     expect(client.entityMetrics).toBeDefined();
+    expect(client.newsSignals).toBeDefined();
     expect(client.marketMood).toBeDefined();
     expect(client.kb).toBeDefined();
   });

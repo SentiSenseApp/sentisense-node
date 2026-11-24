@@ -21,6 +21,7 @@ import { Institutional } from "./resources/institutional.js";
 import { KB } from "./resources/kb.js";
 import { MarketMoodResource } from "./resources/marketMood.js";
 import { MarketSummaryResource } from "./resources/marketSummary.js";
+import { NewsSignals } from "./resources/newsSignals.js";
 import { Options } from "./resources/options.js";
 import { Screener } from "./resources/screener.js";
 import { Stocks } from "./resources/stocks.js";
@@ -156,6 +157,7 @@ export class SentiSense implements APIClient {
   readonly insights: Insights;
   readonly analyst: Analyst;
   readonly entityMetrics: EntityMetrics;
+  readonly newsSignals: NewsSignals;
   readonly marketMood: MarketMoodResource;
   readonly marketSummary: MarketSummaryResource;
   readonly kb: KB;
@@ -187,6 +189,7 @@ export class SentiSense implements APIClient {
     this.insights = new Insights(this);
     this.analyst = new Analyst(this);
     this.entityMetrics = new EntityMetrics(this);
+    this.newsSignals = new NewsSignals(this);
     this.marketMood = new MarketMoodResource(this);
     this.marketSummary = new MarketSummaryResource(this);
     this.kb = new KB(this);

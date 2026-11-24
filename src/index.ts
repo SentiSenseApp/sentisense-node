@@ -266,7 +266,7 @@ export type {
   ServingMetric,
   MetricDistribution,
   MetricSlice,
-  NewsCountsOptions,
+  NewsSignalsOptions,
   EventCategory,
   EventCountsDay,
   EventCounts,

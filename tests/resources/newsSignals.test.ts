@@ -124,10 +124,22 @@ function declared(name: keyof typeof KEYS): string[] {
   return Object.keys(KEYS[name]).sort();
 }
 
-describe("entityMetrics news counts: requests", () => {
+describe("newsSignals: requests", () => {
+  it("lives on newsSignals only, not on entityMetrics", () => {
+    for (const name of [
+      "getEventCounts",
+      "getMarketEventCounts",
+      "getHeadlineScores",
+      "getMarketHeadlineScores",
+    ]) {
+      expect(typeof (client.newsSignals as unknown as Record<string, unknown>)[name]).toBe("function");
+      expect((client.entityMetrics as unknown as Record<string, unknown>)[name]).toBeUndefined();
+    }
+  });
+
   it("getEventCounts calls the entity route with no query by default", async () => {
     respond(EVENT_COUNTS);
-    await client.entityMetrics.getEventCounts("AAPL");
+    await client.newsSignals.getEventCounts("AAPL");
     const url = requestedUrl();
     expect(url.pathname).toBe("/api/v2/metrics/entity/AAPL/event-counts");
     expect(url.search).toBe("");
@@ -135,7 +147,7 @@ describe("entityMetrics news counts: requests", () => {
 
   it("getHeadlineScores calls the entity route and sends days", async () => {
     respond(HEADLINE_SCORES);
-    await client.entityMetrics.getHeadlineScores("Example-Entity", { days: 7 });
+    await client.newsSignals.getHeadlineScores("Example-Entity", { days: 7 });
     const url = requestedUrl();
     expect(url.pathname).toBe("/api/v2/metrics/entity/Example-Entity/headline-scores");
     expect(url.searchParams.get("days")).toBe("7");
@@ -144,9 +156,9 @@ describe("entityMetrics news counts: requests", () => {
 
   it("the market methods call the market routes and send from and to", async () => {
     respond(MARKET_EVENT_COUNTS);
-    await client.entityMetrics.getMarketEventCounts({ from: "2026-11-01", to: "2026-11-22" });
+    await client.newsSignals.getMarketEventCounts({ from: "2026-11-01", to: "2026-11-22" });
     respond(MARKET_HEADLINE_SCORES);
-    await client.entityMetrics.getMarketHeadlineScores();
+    await client.newsSignals.getMarketHeadlineScores();
     const first = requestedUrl(0);
     expect(first.pathname).toBe("/api/v2/metrics/market/event-counts");
     expect(first.searchParams.get("from")).toBe("2026-11-01");
@@ -159,21 +171,21 @@ describe("entityMetrics news counts: requests", () => {
 
   it("keeps an entity with reserved characters in one path segment", async () => {
     respond(EVENT_COUNTS);
-    await client.entityMetrics.getEventCounts("A/B?C");
+    await client.newsSignals.getEventCounts("A/B?C");
     expect(requestedUrl().pathname).toBe("/api/v2/metrics/entity/A%2FB%3FC/event-counts");
   });
 
   it.each(["", "   ", ".", ".."])("refuses the entity %j before any request", async (bad) => {
-    await expect(client.entityMetrics.getEventCounts(bad)).rejects.toBeInstanceOf(SentiSenseError);
-    await expect(client.entityMetrics.getHeadlineScores(bad)).rejects.toBeInstanceOf(SentiSenseError);
+    await expect(client.newsSignals.getEventCounts(bad)).rejects.toBeInstanceOf(SentiSenseError);
+    await expect(client.newsSignals.getHeadlineScores(bad)).rejects.toBeInstanceOf(SentiSenseError);
     expect(mockFetch).not.toHaveBeenCalled();
   });
 });
 
-describe("entityMetrics news counts: responses", () => {
+describe("newsSignals: responses", () => {
   it("returns the full envelope as sent", async () => {
     respond(EVENT_COUNTS);
-    const result = await client.entityMetrics.getEventCounts("AAPL");
+    const result = await client.newsSignals.getEventCounts("AAPL");
     expectTypeOf(result).toEqualTypeOf<PreviewResponse<EventCounts>>();
     expect(result).toEqual(EVENT_COUNTS);
     expect(result.isPreview).toBe(false);
@@ -182,7 +194,7 @@ describe("entityMetrics news counts: responses", () => {
 
   it("returns a free preview in the same data shape", async () => {
     respond(preview(MARKET_HEADLINE_SCORES));
-    const result = await client.entityMetrics.getMarketHeadlineScores();
+    const result = await client.newsSignals.getMarketHeadlineScores();
     expectTypeOf(result).toEqualTypeOf<PreviewResponse<HeadlineScores>>();
     expect(result.isPreview).toBe(true);
     expect(result.previewReason).toBe("PRO_REQUIRED");
@@ -200,7 +212,7 @@ describe("entityMetrics news counts: responses", () => {
   });
 });
 
-describe("entityMetrics news counts: declared keys match the wire", () => {
+describe("newsSignals: declared keys match the wire", () => {
   it.each([EVENT_COUNTS, MARKET_EVENT_COUNTS])("event counts", (body) => {
     expect(keysOf(body.data)).toEqual(declared("EventCounts"));
     for (const c of body.data.categories) expect(keysOf(c)).toEqual(declared("EventCategory"));
@@ -220,7 +232,7 @@ describe("entityMetrics news counts: declared keys match the wire", () => {
   });
 });
 
-describe("entityMetrics news counts: day identities", () => {
+describe("newsSignals: day identities", () => {
   it.each([EVENT_COUNTS, MARKET_EVENT_COUNTS])("event counts add up", (body) => {
     const keys = body.data.categories.map((c) => c.key);
     expect(keys).toEqual(["RESULTS", "PRODUCT", "ANALYST", "DEALS", "LEGAL", "PEOPLE", "MACRO"]);

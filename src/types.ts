@@ -3647,14 +3647,14 @@ export interface MetricSlice {
   displayName: string;
 }
 
-// ── News event counts and headline scores ────────────────────
+// ── News signals: event counts and headline scores ───────────
 
 /**
- * The window for `entityMetrics.getEventCounts()`, `getHeadlineScores()` and their market forms:
+ * The window for `newsSignals.getEventCounts()`, `getHeadlineScores()` and their market forms:
  * either `days`, or `from` and `to` together. Omit all three for the API's default, the last 30
  * closed days.
  */
-export interface NewsCountsOptions {
+export interface NewsSignalsOptions {
   /** Closed days ending with yesterday (New York), 1 to 90. Not combined with `from` and `to`. */
   days?: number;
   /** First day, `"YYYY-MM-DD"` (US Eastern), 2026-10-07 or later. Give it with `to`. */
@@ -3693,8 +3693,8 @@ export interface EventCountsDay {
 }
 
 /**
- * Daily news event counts, from `entityMetrics.getEventCounts()` and
- * `entityMetrics.getMarketEventCounts()`. Today is never served, and a day not counted yet is
+ * Daily news event counts, from `newsSignals.getEventCounts()` and
+ * `newsSignals.getMarketEventCounts()`. Today is never served, and a day not counted yet is
  * absent from `days`.
  */
 export interface EventCounts {
@@ -3776,8 +3776,8 @@ export interface HeadlineScoresDay {
 }
 
 /**
- * Daily headline score counts, from `entityMetrics.getHeadlineScores()` and
- * `entityMetrics.getMarketHeadlineScores()`. These are counts per day, not the SentiSense Score.
+ * Daily headline score counts, from `newsSignals.getHeadlineScores()` and
+ * `newsSignals.getMarketHeadlineScores()`. These are counts per day, not the SentiSense Score.
  */
 export interface HeadlineScores {
   /** The entity as sent, or `"market"` on the market route. */
