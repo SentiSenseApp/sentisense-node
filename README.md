@@ -216,7 +216,7 @@ Available metric types: `mentions`, `sentiment`, `sentisense_score`, `sentisense
 
 Sentiment runs from -1 to 1. The SentiSense Score is sentiment weighted by attention and has no fixed range. Each point's reading is in `value`. `startTime` and `endTime` are epoch milliseconds. [Metrics API docs](https://sentisense.ai/docs/api/metrics/)
 
-Event counts and headline scores are daily counts over closed US Eastern days, not the SentiSense Score; a free key receives the last 7 days. [Event counts and headline scores](https://sentisense.ai/docs/api/metrics/#event-counts-and-headline-scores)
+Event counts and headline scores are daily counts over closed US Eastern days, not the SentiSense Score; a free key receives the last 7 days. [News Signals API docs](https://sentisense.ai/docs/api/news-signals/)
 
 ### SentiSense Rating
 

@@ -35,7 +35,7 @@
     },
     {
       "endpoint": "GET /api/v2/metrics/entity/{entityId}/event-counts",
-      "page": "https://sentisense.ai/docs/api/metrics/",
+      "page": "https://sentisense.ai/docs/api/news-signals/",
       "tables": {
         "data": [
           "entity",
@@ -64,7 +64,7 @@
     },
     {
       "endpoint": "GET /api/v2/metrics/entity/{entityId}/headline-scores",
-      "page": "https://sentisense.ai/docs/api/metrics/",
+      "page": "https://sentisense.ai/docs/api/news-signals/",
       "tables": {
         "data": [
           "entity",
