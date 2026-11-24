@@ -12,7 +12,7 @@ import type {
 /**
  * Trackers: observational data products published as a standardized
  * `TrackerSnapshot` envelope. Every tracker (institution rankings,
- * hedge-fund reported returns, social trackers, surveillance dashboards)
+ * hedge-fund reported returns, social trackers, market monitoring dashboards)
  * returns the same shape, so consumers write one renderer per `viewType` and
  * get every current and future SentiSense tracker for free.
  *

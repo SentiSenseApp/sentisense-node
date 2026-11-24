@@ -4128,7 +4128,7 @@ export interface KBEntity {
 // ── Trackers ────────────────────────────────────────────────
 //
 // Trackers are observational data products. Every tracker (institution rankings,
-// hedge-fund reported returns, social trackers, surveillance
+// hedge-fund reported returns, social trackers, market monitoring
 // dashboards) returns the same standardized `TrackerSnapshot` envelope.
 // Dispatch on `viewType` to pick a renderer; consumers write one renderer per
 // viewType and get every tracker for free.
