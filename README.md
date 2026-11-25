@@ -221,7 +221,18 @@ client.newsSignals.getHeadlineScores("AAPL")                                   /
 client.newsSignals.getMarketHeadlineScores({ days: 30 })                       // the same over every news headline
 ```
 
-Each method takes `NewsSignalsOptions`: `days` from 1 to 90 (default 30), or `from` and `to` as `"YYYY-MM-DD"`. Event counts and headline scores are daily counts over closed US Eastern days, not the SentiSense Score; a free key receives the last 7 days. [News Signals API docs](https://sentisense.ai/docs/api/news-signals/)
+Each method takes `NewsSignalsOptions`: `days` from 1 to 90 (default 30), or `from` and `to` together as `"YYYY-MM-DD"` (the types refuse mixing them). Event counts and headline scores are daily counts over closed US Eastern days, not the SentiSense Score; a free key receives the last 7 days. [News Signals API docs](https://sentisense.ai/docs/api/news-signals/)
+
+```typescript
+const counts = await client.newsSignals.getEventCounts("AAPL", { days: 7 }); // or { from: "2026-11-01", to: "2026-11-07" }
+for (const day of counts.data.days) {                   // oldest first
+  const [top] = Object.entries(day.categories).sort((a, b) => b[1] - a[1])[0];
+  console.log(day.date, day.withEvent, top);            // headlines that report an event, busiest category
+}
+
+const scores = await client.newsSignals.getHeadlineScores("AAPL", { days: 7 });
+console.log(scores.data.days.map((d) => d.strongHeadlines)); // headlines scored strongly per day
+```
 
 ### SentiSense Rating
 
@@ -252,6 +263,7 @@ client.insights.types("AAPL")      // which signal types exist for a stock
 ```typescript
 client.insider.getActivity({ lookbackDays: 30 })         // buying and selling across the market
 client.insider.getTrades("NVDA", { lookbackDays: 90 })   // each filed trade in one stock
+client.insider.getTrades("NVDA", { limit: 20 })          // only the newest 20 rows; `totalCount` still counts the whole window
 client.insider.getClusterBuys({ lookbackDays: 90 })      // three or more insiders buying the same stock
 ```
 

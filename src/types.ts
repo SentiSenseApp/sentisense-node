@@ -3654,17 +3654,23 @@ export interface MetricSlice {
  * either `days`, or `from` and `to` together. Omit all three for the API's default, the last 30
  * closed days.
  */
-export interface NewsSignalsOptions {
-  /** Closed days ending with yesterday (New York), 1 to 90. Not combined with `from` and `to`. */
-  days?: number;
-  /** First day, `"YYYY-MM-DD"` (US Eastern), 2026-10-07 or later. Give it with `to`. */
-  from?: string;
-  /**
-   * Last day, `"YYYY-MM-DD"`, on or after `from`. A later day than yesterday is served as
-   * yesterday, and the window holds at most 366 days.
-   */
-  to?: string;
-}
+export type NewsSignalsOptions =
+  | {
+      /** Closed days ending with yesterday (New York), 1 to 90. Not combined with `from` and `to`. */
+      days?: number;
+      from?: never;
+      to?: never;
+    }
+  | {
+      /** First day, `"YYYY-MM-DD"` (US Eastern), 2026-10-07 or later. Give it with `to`. */
+      from: string;
+      /**
+       * Last day, `"YYYY-MM-DD"`, on or after `from`. A later day than yesterday is served as
+       * yesterday, and the window holds at most 366 days.
+       */
+      to: string;
+      days?: never;
+    };
 
 /** One category of an event-counts response, in display order. */
 export interface EventCategory {

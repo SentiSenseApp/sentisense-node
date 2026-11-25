@@ -11,6 +11,7 @@ import SentiSense, {
   type HeadlineScoreLevel,
   type HeadlineScores,
   type HeadlineScoresDay,
+  type NewsSignalsOptions,
   type PreviewResponse,
 } from "../../src/index.js";
 
@@ -258,5 +259,26 @@ describe("newsSignals: day identities", () => {
         expect(counts.rated).toBeLessThanOrEqual(day.rated);
       }
     }
+  });
+});
+
+describe("NewsSignalsOptions", () => {
+  it("accepts no options, days alone, or from and to together", () => {
+    const none: NewsSignalsOptions = {};
+    const days: NewsSignalsOptions = { days: 7 };
+    const range: NewsSignalsOptions = { from: "2026-11-01", to: "2026-11-07" };
+    expect([none, days, range]).toHaveLength(3);
+  });
+
+  it("refuses days with from or to, and from without to", () => {
+    // @ts-expect-error days cannot be combined with from and to
+    const mixed: NewsSignalsOptions = { days: 7, from: "2026-11-01", to: "2026-11-07" };
+    // @ts-expect-error days cannot be combined with from
+    const daysAndFrom: NewsSignalsOptions = { days: 7, from: "2026-11-01" };
+    // @ts-expect-error from needs to
+    const fromOnly: NewsSignalsOptions = { from: "2026-11-01" };
+    // @ts-expect-error to needs from
+    const toOnly: NewsSignalsOptions = { to: "2026-11-07" };
+    expect([mixed, daysAndFrom, fromOnly, toOnly]).toHaveLength(4);
   });
 });

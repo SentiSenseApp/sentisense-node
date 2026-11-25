@@ -12,6 +12,8 @@
   from 1 to 90, or `from` and `to`) and returns a `PreviewResponse` of the new `EventCounts` or
   `HeadlineScores` type. A free key receives the last 7 closed days. They need the server release
   that serves these routes.
+  `NewsSignalsOptions` is a union, so the types refuse `days` together with `from` or `to`, and
+  `from` without `to` (or the reverse).
 
 ### Fixed
 
